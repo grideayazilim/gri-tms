@@ -409,16 +409,16 @@ Period
 
 | entity    | fields (alanlar)                                                                        | kurallar                                      |
 | --------- | --------------------------------------------------------------------------------------- | --------------------------------------------- |
-| locations | `id (uuid PK)`<br>`name`<br>`program_no`<br>`is_active`<br>`created_at`<br>`updated_at` | `program_no` **UNIQUE** (kurum genelinde tek) |
-| units  | `id (uuid PK)`<br>`location_id (FK → locations.id)`<br>`name`<br>`is_active`<br>`created_at`<br>`updated_at` | Aynı yerleşkede aynı birim adı olamaz:<br>**UNIQUE(location_id, name)** |
-| employees | `id (uuid PK)`<br>`unit_id (FK → units.id)`<br>`employee_no`<br>`first_name`<br>`last_name`<br>`start_date`<br>`end_date`<br>`is_active`<br>`created_at`<br>`updated_at` | `employee_no` kullanılıyorsa **UNIQUE(employee_no)**<br>`end_date >= start_date` |
-| users  | `id (uuid PK)`<br>`username (unique)`<br>`password_hash`<br>`role (ADMIN / RESPONSIBLE)`<br>`status (PENDING / ACTIVE / DISABLED)`<br> `location_id (FK → locations.id, NULL olabilir)` <br>`unit_id (FK → units.id, NULL olabilir)`<br>`last_login_at`<br>`created_at`<br>`updated_at` | Birim sorumlusu için `unit_id` zorunlu:<br>`CHECK (role <> 'RESPONSIBLE' OR unit_id IS NOT NULL OR location_id IS NOT NULL)` |
+| locations | `id (uuid PK)`<br>`name`<br>`program_no`<br>`created_at`<br>`updated_at` | `program_no` **UNIQUE** (kurum genelinde tek) |
+| units  | `id (uuid PK)`<br>`location_id (FK → locations.id)`<br>`name`<br>`created_at`<br>`updated_at` | Aynı yerleşkede aynı birim adı olamaz:<br>**UNIQUE(location_id, name)** |
+| employees | `id (uuid PK)`<br>`unit_id (FK → units.id)`<br>`tc_no`<br>`iban_no`<br>`first_name`<br>`last_name`<br>`start_date`<br>`end_date`<br>`created_at`<br>`updated_at` | `tc_no` kullanılıyorsa **UNIQUE(tc_no)**<br>`end_date >= start_date` |
+| users  | `id (uuid PK)`<br>`username (unique)`<br>`password_hash`<br>`role (ADMIN / RESPONSIBLE)`<br>`status (PENDING / ACTIVE)`<br> `location_id (FK → locations.id, NULL olabilir)` <br>`unit_id (FK → units.id, NULL olabilir)`<br>`expiry_date`<br>`last_login_at`<br>`created_at`<br>`updated_at` | Birim sorumlusu için `unit_id` zorunlu:<br>`CHECK (role <> 'RESPONSIBLE' OR unit_id IS NOT NULL OR location_id IS NOT NULL)` |
 | periods | `id (uuid PK)`<br>`year`<br>`month`<br>`start_date`<br>`end_date` | **UNIQUE(year, month)**<br>`month BETWEEN 1 AND 12`<br>`end_date >= start_date` |
-| markers | `id (uuid PK)`<br>`code`<br>`label`<br>`is_paid`<br>`is_active`<br>`sort_order` | `code` **UNIQUE** |
-| timesheets | `id (uuid PK)`<br>`employee_id (FK → employees.id)`<br>`period_id (FK → periods.id)`<br>`unit_id (FK → units.id)`<br>`created_by (FK → users.id)`<br>`status (DRAFT / SUBMITTED / LOCKED)`<br>`created_at`<br>`updated_at` | Aynı çalışan + aynı ay tek kayıt:<br>**UNIQUE(employee_id, period_id)**<br>`unit_id`, employee’nin `unit_id`’si ile aynı olmalı (trigger) |
+| markers | `id (uuid PK)`<br>`code`<br>`label`<br>`is_paid`<br> | `code` **UNIQUE** |
+| timesheets | `id (uuid PK)`<br>`employee_id (FK → employees.id)`<br>`period_id (FK → periods.id)`<br>`unit_id (FK → units.id)`<br>`is_locked`<br>`created_at`<br>`updated_at` | Aynı çalışan + aynı ay tek kayıt:<br>**UNIQUE(employee_id, period_id)**<br>`unit_id`, employee’nin `unit_id`’si ile aynı olmalı (trigger). `is_locked` ise sorumlunun veri kaydı engellenmeli |
 | timesheet_days | `id (uuid PK)`<br>`timesheet_id (FK → timesheets.id)`<br>`day (date)`<br>`marker_code (FK → markers.code)`<br>`note` | Aynı gün iki kez girilemez:<br>**UNIQUE(timesheet_id, day)**<br>`day`, ilgili period aralığında olmalı (trigger)<br>Timesheet `LOCKED` ise insert/update yasak (trigger) |
-| settings | `key (PK)`<br>`value (jsonb)`<br>`updated_by (FK → users.id)`<br>`updated_at` | `key` sistem genelinde tek |
-| announcements | `id (uuid PK)`<br>`title`<br>`content`<br>`created_by (FK → users.id)`<br>`created_at` | —        |
+| settings | `key (PK)`<br>`value (jsonb)`<br>`program_start_date`<br>`<program_end_date`<br>`updated_at` | `key` sistem genelinde tek |
+| announcements | `id (uuid PK)`<br>`title`<br>`content`<br>`created_at` | —        |
 | logs   | `id`<br>`actor_user_id (FK → users.id)`<br>`action`<br>`entity_type`<br>`entity_id`<br>`metadata (jsonb)`<br>`created_at` | Log kayıtları **silinemez** (DB yetkisiyle engellenir) |
 
 ## 4. Veritabanı Tasarımı

@@ -370,6 +370,7 @@ aydaki puantaj formunu Excel formatında oluşturur.
 - **GET /settings:** Sistem ayarlarını getir.
 - **PUT /settings/daily-wage:** Günlük ödenek tutarını günceller.
 - **PUT /settings/max-weekly-days:** Haftalık maksimum çalışma gününü günceller.
+- **PUT /settings/program-date:** Programın dönemini ayarlar (başlangıç tarihi, bitiş tarihi olarak).
 - **PUT /settings/markers:** Puantaj işaretçisi ekler/siler/günceller.
 
 ## 3. Veri Modeli

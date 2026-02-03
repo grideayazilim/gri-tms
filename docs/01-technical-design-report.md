@@ -418,7 +418,7 @@ Period
 | markers | `id (uuid PK)`<br>`code`<br>`label`<br>`is_paid`<br> | `code` **UNIQUE** |
 | timesheets | `id (uuid PK)`<br>`employee_id (FK → employees.id)`<br>`period_id (FK → periods.id)`<br>`unit_id (FK → units.id)`<br>`is_locked`<br>`created_at`<br>`updated_at` | Aynı çalışan + aynı ay tek kayıt:<br>**UNIQUE(employee_id, period_id)**<br>`unit_id`, employee’nin `unit_id`’si ile aynı olmalı (trigger). `is_locked` ise sorumlunun veri kaydı engellenmeli |
 | timesheet_days | `id (uuid PK)`<br>`timesheet_id (FK → timesheets.id)`<br>`day (date)`<br>`marker_code (FK → markers.code)`<br>`note` | Aynı gün iki kez girilemez:<br>**UNIQUE(timesheet_id, day)**<br>`day`, ilgili period aralığında olmalı (trigger)<br>Timesheet `LOCKED` ise insert/update yasak (trigger) |
-| settings | `key (PK)`<br>`value (jsonb)`<br>`program_start_date`<br>`<program_end_date`<br>`updated_at` | `key` sistem genelinde tek |
+| settings | `key (PK)`<br>`value (jsonb)`<br>`program_start_date`<br>`<program_end_date`<br>`updated_at` | `key` sistem genelinde tek <br> settings tablosundaki `program_start_date` ve `program_end_date` değiştiğinde periods tablosu backend katmanında transaction içinde yeniden oluşturulmalı |
 | announcements | `id (uuid PK)`<br>`title`<br>`content`<br>`created_at` | —        |
 | logs   | `id`<br>`actor_user_id (FK → users.id)`<br>`action`<br>`entity_type`<br>`entity_id`<br>`metadata (jsonb)`<br>`created_at` | Log kayıtları **silinemez** (DB yetkisiyle engellenir) |
 

@@ -1,0 +1,48 @@
+/* ================= Colors =============== */
+
+$background-color: #f5f6fa;
+$surface-color: #ffffff;
+
+$border-color: #d5d5d5;
+
+$text-primary: #202224;
+$text-secondary: #979797;
+
+$brand-color: #4880ff;
+
+/* ============== Typography ============== */
+
+/* Font Family */
+$font-family-base: "Nunito Sans", sans-serif;
+
+/* Font Sizes */
+$font-size-normal-text: 14px;
+$font-size-main-title: 32px;
+$font-size-small-text: 8px;
+
+/* Font Weights */
+$font-weight-normal-text: 600;
+$font-weight-main-title: 700;
+$font-weight-small-text: 700;
+$font-weight-bold: 800;
+
+/* ============ Spacing =============== */
+
+$space-xs: 8px; /* Buton dikey padding, ikon-text arası gap vermek için kullanılır */
+$space-sm: 12px; /* Buton yatay padding, input ve card padding vermek için kullanılır */
+$space-md: 16px; /* Component arası gap vermek için kullanılır */
+$space-lg: 24px; /* Section padding vermek için kullanılır */
+$space-xl: 32px; /* Section arası gap vermek için kullanılır */
+
+/* =========== Border Radius =========== */
+
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+
+/* ============ Breakpoints =========== */
+
+$bp-sm: 500px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+$bp-xl: 1400px;

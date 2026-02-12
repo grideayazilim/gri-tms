@@ -1,3 +1,5 @@
+@use "./variables.scss";
+
 * {
   margin: 0;
   padding: 0;
@@ -7,10 +9,12 @@
 html,
 body {
   scroll-behavior: smooth;
+  background-color: var(--background-color);
 }
 
 body {
   overflow-x: hidden;
+  font-family: var(--font-family-base);
 }
 
 a {

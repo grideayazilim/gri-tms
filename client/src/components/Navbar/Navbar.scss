@@ -12,11 +12,13 @@
   border-right: 2px solid var(--border-color);
   padding: var(--space-lg) var(--space-md);
 
+  // Aktif nav linki (NavLink'ten otomatik geliyor)
   .active {
     background: var(--brand-color) !important;
     color: white;
   }
 
+  // Icon stili
   svg {
     display: block;
     width: 24px;
@@ -24,10 +26,12 @@
     font-size: 1.5rem;
   }
 
+  // Bir buton küçük kaldı, büyütmek için
   .tie-icon {
     font-size: 1.6rem;
   }
 
+  // Pop menüyü navbarın arkasından çıkar gibi göstermek için background
   &__bg {
     position: absolute;
     z-index: -1;
@@ -38,16 +42,37 @@
     background-color: var(--surface-color);
   }
 
-  &__management {
+  // Ürün adı başlığı
+  &__title {
     display: flex;
-    align-items: center;
+    padding-block: 0 var(--space-md);
+    font-size: 1.3rem;
+    font-weight: var(--font-weight-main-title);
+    transform: translateX(10%);
+    transition: 0.4s;
+
+    // 'gri'
+    .prefix {
+      opacity: 0;
+      max-width: 0;
+      overflow: hidden;
+      transition: 0.4s;
+    }
+
+    // 'TMS'
+    .colored {
+      color: var(--brand-color);
+      font-weight: var(--font-weight-bold);
+    }
   }
 
+  // Telefon ekranında management route'larını yönetme butonu
   &__management-navigator {
     display: none;
     border-radius: var(--radius-md);
   }
 
+  // Linklerin kapsayıcısı
   &__group {
     display: flex;
     flex-direction: column;
@@ -77,10 +102,6 @@
     }
 
     &--logout {
-      background: transparent;
-      border: none;
-      text-align: left;
-
       &:hover {
         background: #ff4d4f;
         color: white;
@@ -88,6 +109,10 @@
     }
   }
 
+  /*
+    Linkin içerisindeki yazı (animasyon için width 0 yapıldı. yazının aşağı 
+    kaymaması için white-space: nowrap)
+  */
   &__link-text {
     white-space: nowrap;
     margin-left: 0;
@@ -97,7 +122,7 @@
     transition: 0.4s;
   }
 
-  /* Sliding Indicator */
+  // Aktif linki takip eden çizgi
   &__indicator {
     position: absolute;
     background: var(--brand-color);
@@ -108,12 +133,24 @@
       height 0.35s ease;
   }
 
+  // MASAÜSTÜNDE İKEN / FARE ERİŞİMİ VARKEN HOVER İŞLEMİ
   @media (hover: hover) and (pointer: fine) {
     &:hover {
+      // 'gri' yazısını göster
+      .nav__title {
+        .prefix {
+          max-width: 150px;
+          opacity: 1;
+        }
+      }
+
+      // Linklere özel padding ver
+      // (Normal halde kare görünüm için block ve inline padding eşitti)
       .nav__link {
         padding: var(--space-md) var(--space-lg);
       }
 
+      // Linklerin yazılarını göster (Navbar'ın uzama sebebi)
       .nav__link-text {
         margin-left: 15px;
         max-width: 300px;
@@ -122,15 +159,23 @@
     }
   }
 
+  /*=================== TABLET EKRANI ===================*/
   @include respond-lg {
-    padding-inline: var(--space-xl);
+    // Navbar'ı aşağı koy, elemanları yan yana getir
+    flex-direction: row;
     bottom: 0;
     width: 100%;
+    padding: var(--space-md) var(--space-xl);
     border-right: none;
     border-top: 2px solid var(--border-color);
     height: auto;
-    flex-direction: row;
 
+    // Title'ı yok et
+    &__title {
+      display: none;
+    }
+
+    // Linkleri yan yana getir, bottom'da top'ta olan border'ı sola al
     &__group {
       flex-direction: row;
       gap: var(--space-md);
@@ -144,14 +189,17 @@
     }
   }
 
+  /*=================== TABLET EKRANI ===================*/
   @include respond-sm {
     padding: var(--space-sm);
 
+    // Özel sınıf: Sayfa dışındaki management bar'ı sayfa önüne getirir
     .show-management {
       bottom: 90px !important;
       gap: var(--space-sm) !important;
     }
 
+    // Management içerisindeki group'u absolute hale getirip sayfadan dışarı çıkar
     &__management {
       .nav__group {
         flex-direction: column;
@@ -162,12 +210,14 @@
         transition: 0.4s;
       }
 
+      // Yeni management bar için için link görünümü
       .nav__link {
         background-color: var(--surface-color);
         padding: var(--space-md) var(--space-lg);
         box-shadow: 0 0 20px rgba(148, 148, 148, 0.247);
       }
 
+      // Link yazılarını göster
       .nav__link-text {
         margin-left: 15px;
         max-width: 300px;
@@ -186,19 +236,25 @@
       }
     }
 
-    .popped {
-        box-shadow: 0 0 20px rgba(148, 148, 148, 0.247);
-        border-radius: var(--radius-md);
-        background-color: var(--surface-hover-color);
-        transition: 0.4s;
+    // management route seçili olduğunda navigator'ü renklendirme
+    .management-link-selected {
+      box-shadow: 0 0 20px rgba(148, 148, 148, 0.247);
+      border-radius: var(--radius-md);
+      background-color: var(--surface-hover-color);
+      transition: 0.4s;
 
-        .nav__management-navigator__icon {
-            transform: rotate(180deg);
-        }
+      .arrow {
+        transform: rotate(180deg);
+      }
+
+      .nav__management-navigator__icon {
+        transform: rotate(360deg);
+      }
     }
 
+    // Link buton boyutunu küçült
     &__link {
-        padding: var(--space-sm);
+      padding: var(--space-sm);
     }
   }
 }

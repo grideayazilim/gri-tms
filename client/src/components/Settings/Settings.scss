@@ -1,0 +1,184 @@
+@use "../../styles/variables.scss" as *;
+@use "../../styles/mixins.scss" as *;
+
+.settings {
+  width: 100%;
+  max-width: 550px;
+  margin: 0 auto;
+  margin-left: 120px;
+  min-height: 100vh;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px;
+
+  &__title {
+    font-size: var(--font-size-main-title);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-lg);
+  }
+
+  &__card {
+    background-color: var(--surface-color);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-xl);
+    gap: 20px;
+
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+    margin-bottom: var(--space-lg);
+  }
+
+  // Özel input hizalaması
+  .input--center {
+    text-align: center;
+  }
+
+  &__row {
+    display: flex;
+    gap: var(--space-md);
+    width: 100%;
+  }
+
+  &__submit-btn {
+    width: 100%;
+    margin-top: var(--space-lg);
+  }
+
+  /* ======================
+     TREE STRUCTURE
+     ====================== */
+  &__marker-section {
+    margin-top: var(--space-sm);
+  }
+
+  &__marker-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--space-sm);
+    padding-left: 4px;
+  }
+
+  &__marker-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    position: relative;
+    padding-left: 28px;
+
+    // Sol çizgi
+    &::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 0;
+      bottom: 20px;
+      width: 2px;
+      background-color: var(--border-color);
+    }
+  }
+
+  &__marker-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    position: relative;
+    width: 100%;
+
+    // Yatay bağlantı
+    &::before {
+      content: "";
+      position: absolute;
+      left: -20px;
+      top: 50%;
+      width: 20px;
+      height: 2px;
+      background-color: var(--border-color);
+    }
+
+    .marker-desc {
+      flex: 1;
+    }
+
+    .marker-symbol {
+      width: 70px;
+      flex: none;
+    }
+  }
+
+  &__add-marker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-top: 4px;
+
+    // L bağlantısı
+    &::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      margin-top: -30px;
+      width: 20px;
+      height: 40px;
+      border-left: 2px solid var(--border-color);
+      border-bottom: 2px solid var(--border-color);
+      border-bottom-left-radius: var(--radius-md);
+      pointer-events: none;
+    }
+
+    &:hover {
+      color: var(--brand-color);
+    }
+  }
+
+  // === RESPONSIVE ===
+  @include respond-lg {
+    margin-left: auto;
+    padding-top: 40px;
+    padding-bottom: 120px;
+    justify-content: flex-start;
+  }
+
+  @include respond-sm {
+    padding: 20px;
+
+    &__title {
+      font-size: 20px;
+    }
+
+    &__card {
+      padding: 20px;
+      gap: var(--space-md);
+    }
+
+    &__row {
+      flex-direction: column;
+    }
+
+    // Mobilde tree çizgilerini gizle
+    &__marker-list,
+    &__marker-item {
+      padding-left: 0;
+
+      &::before {
+        display: none;
+      }
+    }
+
+    &__add-marker::before {
+      display: none;
+    }
+  }
+}

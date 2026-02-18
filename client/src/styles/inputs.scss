@@ -1,0 +1,220 @@
+@use "../styles/variables.scss" as *;
+@use "../styles/mixins.scss" as *;
+@use "sass:color";
+
+/* ========================================================================
+   UI KIT & FORM ELEMANLARI
+   Bu dosya projedeki tüm Input, Select ve Button stillerini barındırır.
+   ======================================================================== */
+
+// Yerel Değişkenler
+$control-height: 48px;
+$control-height-sm: 40px;
+
+/* ============================================
+   1. STANDART INPUT
+   --------------------------------------------
+   Kullanım: 
+   <input className="input" type="text" />
+   
+   Select Kullanımı:
+   <select className="input input--select">...</select>
+   ============================================ */
+.input {
+  width: 100%;
+  height: $control-height;
+  padding: 0 var(--space-sm);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-normal-text);
+  font-weight: 500;
+  color: var(--text-primary);
+
+  // Arka plan şeffaf DEĞİL, surface rengi
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &::placeholder {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  &:focus {
+    border-color: var(--brand-color);
+    box-shadow: 0 0 0 1px var(--brand-color);
+    z-index: 10;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: var(--background-color);
+  }
+
+  // Select oku yerine özel ikon koymak için
+  &--select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23979797' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    cursor: pointer;
+  }
+}
+
+// Küçük boy input varyasyonu
+.input--sm {
+  height: $control-height-sm;
+  font-size: 13px;
+}
+
+/* ============================================
+   2. FLOATING LABEL (Yüzen Etiket)
+   --------------------------------------------
+   DİKKAT! Bu yapının çalışması için 2 kural şarttır:
+   1. HTML Sırası: Input önce, Label sonra gelmelidir.
+   2. Placeholder: Input'un placeholder'ı boşluk (" ") dahi olsa tanımlı olmalıdır.
+   
+   Örnek HTML:
+   <div className="floating-group">
+      <input className="input" placeholder=" " />  <-- BOŞLUKLU PLACEHOLDER ŞART
+      <label className="floating-group__label">Adınız</label>
+   </div>
+   ============================================ */
+.floating-group {
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+
+  // Floating label kullanırken input'un kendi placeholder'ını gizliyoruz
+  .input {
+    &::placeholder {
+      color: transparent;
+    }
+  }
+
+  &__label {
+    position: absolute;
+    left: var(--space-sm);
+    top: 50%;
+    transform: translateY(-50%);
+
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-normal-text);
+    color: var(--text-secondary);
+
+    pointer-events: none; // Tıklamayı inputa geçirir
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    padding: 0 4px;
+    z-index: 15;
+  }
+
+  // --- Label Animasyonu ---
+  // Input focus olduğunda VEYA içi dolu olduğunda (placeholder gösterilmediğinde)
+  .input:focus ~ .floating-group__label,
+  .input:not(:placeholder-shown) ~ .floating-group__label {
+    top: 0;
+    font-size: 12px;
+    color: var(--brand-color);
+    font-weight: 600;
+
+    background-color: var(--surface-color);
+    margin-left: -4px;
+  }
+
+  // Input dolu ama focus değilse label gri kalsın
+  .input:not(:focus):not(:placeholder-shown) ~ .floating-group__label {
+    color: var(--text-secondary);
+  }
+}
+
+/* ============================================
+   3. BUTONLAR
+   --------------------------------------------
+   Temel Kullanım: <button className="btn">Kaydet</button>
+   Kırmızı Buton:  <button className="btn btn--danger">Sil</button>
+   Sadece İkon:    <button className="btn btn--icon-only"><Icon /></button>
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+
+  height: $control-height;
+  padding: 0 var(--space-lg);
+
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-normal-text);
+  font-weight: 600;
+
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
+
+  background-color: var(--brand-color);
+  color: var(--surface-color);
+
+  user-select: none;
+
+  &:disabled {
+    background-color: var(--text-secondary);
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  &:not(:disabled):hover {
+    background-color: color-mix(in srgb, var(--brand-color), black 10%);
+  }
+
+  &:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
+  // Kırmızı İşlem Butonu
+  &--danger {
+    background-color: #ff4d4f;
+
+    &:not(:disabled):hover {
+      background-color: #d9363e;
+    }
+  }
+
+  // Kare Buton (Sadece ikon içerdiğinde kullanılır)
+  &--icon-only {
+    padding: 0;
+    width: $control-height;
+    flex-shrink: 0;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  // Küçük Buton (Tablo içi veya liste içi işlemler)
+  &--sm {
+    height: $control-height-sm;
+
+    &.btn--icon-only {
+      width: $control-height-sm;
+    }
+  }
+
+  // Responsive: Tablet ve altında normal butonlar tam genişlik olur
+  @include respond-md {
+    &:not(.btn--icon-only) {
+      width: 100%;
+    }
+  }
+}

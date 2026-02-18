@@ -1,0 +1,226 @@
+@use "../../styles/variables.scss" as *;
+@use "../../styles/mixins.scss" as *;
+
+// === YEREL DEĞİŞKENLER ===
+$tree-indent: 40px;
+$row-height: 48px;
+$line-color: var(--border-color);
+
+.locations-page {
+  padding: 40px var(--space-md);
+  width: 100%;
+  max-width: 800px;
+  min-height: 100vh;
+  margin: 0 auto;
+  margin-left: max(120px, auto);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  @include respond-lg {
+    margin-left: auto;
+    padding-top: 40px;
+    padding-bottom: 120px;
+    justify-content: flex-start;
+  }
+}
+
+.page-title {
+  font-size: var(--font-size-main-title);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: var(--space-xl);
+  text-align: center;
+}
+
+// === TREE CONTAINER ===
+.tree-container {
+  position: relative;
+  padding-left: $tree-indent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
+
+// Ana Sol Dikey Çizgi (Kök)
+.tree-root-line {
+  position: absolute;
+  left: 0;
+  top: calc($row-height / 2);
+  bottom: calc($row-height / 2);
+  width: 2px;
+  background-color: $line-color;
+  z-index: 0;
+}
+
+// === NODE (SATIR) STİLLERİ ===
+.node-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  position: relative;
+
+  .floating-group {
+    position: relative;
+    z-index: 2;
+    background-color: var(--surface-color);
+    border-radius: var(--radius-sm);
+    flex: 1;
+  }
+
+  .input {
+    position: relative;
+    z-index: 3;
+    background-color: var(--surface-color);
+  }
+}
+
+// --- YERLEŞKE (LEVEL 1) ---
+.location-row {
+  .input {
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  // Yerleşke yatay çizgisi
+  &::before {
+    content: "";
+    position: absolute;
+    left: -#{$tree-indent};
+    top: 50%;
+    width: $tree-indent;
+    height: 2px;
+    background-color: $line-color;
+    z-index: 0;
+  }
+}
+
+// --- BİRİM (LEVEL 2) ---
+.unit-row {
+  // Birim yatay çizgisi
+  &::before {
+    content: "";
+    position: absolute;
+    left: calc(($tree-indent / 2) * -1);
+    top: 50%;
+    width: calc($tree-indent / 2);
+    height: 2px;
+    background-color: $line-color;
+    z-index: 0;
+  }
+}
+
+// --- ÇOCUK ELEMANLAR KAPSAYICISI ---
+.node-children {
+  margin-top: var(--space-sm);
+  padding-left: $tree-indent;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  position: relative;
+}
+
+// Yerleşke node'u
+.location-node {
+  position: relative;
+
+  // Dikey Bağlantı Çizgisi
+  &::after {
+    content: "";
+    position: absolute;
+    left: calc($tree-indent / 2);
+    top: calc($row-height/ 2);
+    bottom: calc($row-height/ 2);
+    width: 2px;
+    background-color: $line-color;
+    z-index: 0;
+  }
+}
+
+// === "YENİ EKLE" BUTONLARI ===
+.add-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background-color: var(--background-color);
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: fit-content;
+  z-index: 2;
+
+  &:hover {
+    color: var(--brand-color);
+    background-color: var(--surface-hover-color);
+  }
+}
+
+// L Şekli: Birim Ekle
+.add-unit-btn {
+  margin-left: 4px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: calc(($tree-indent / 2 + 4px) * -1);
+    top: -12px;
+    width: 20px;
+    height: 30px;
+    border-left: 2px solid $line-color;
+    border-bottom: 2px solid $line-color;
+    border-bottom-left-radius: var(--radius-md);
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+// L Şekli: Yerleşke Ekle
+.add-location-btn {
+  margin-top: var(--space-xs);
+
+  &::before {
+    content: "";
+    position: absolute;
+    left: -#{$tree-indent};
+    top: -36px;
+    width: 32px;
+    height: 54px;
+    border-left: 2px solid $line-color;
+    border-bottom: 2px solid $line-color;
+    border-bottom-left-radius: var(--radius-lg);
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+// === RESPONSIVE ===
+@include respond-sm {
+  .locations-page {
+    padding: 20px;
+    margin: 0;
+  }
+
+  // Mobilde çizgileri gizle
+  .tree-root-line,
+  .location-row::before,
+  .location-node::after,
+  .unit-row::before,
+  .add-unit-btn::before,
+  .add-location-btn::before {
+    display: none;
+  }
+
+  .tree-container {
+    padding-left: 0;
+  }
+
+  .node-children {
+    padding-left: var(--space-md);
+    border-left: 2px solid $line-color;
+  }
+}

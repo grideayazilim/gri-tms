@@ -13,6 +13,26 @@
 
   --brand-color: #4880ff;
 
+  --thead-header-bg: #f8fafc;
+
+  /* ============= Table Colors ============= */
+  /* Tablo ve kart kenarlık rengi */
+  --border-color-strong: #e2e8f0;
+  /* Tablo satır hover / ayraç yüzeyi */
+  --surface-alt: #f1f5f9;
+  /* Pagination buton hover border */
+  --border-hover: #cbd5e1;
+  /* Scrollbar thumb rengi */
+  --scrollbar-thumb: #cbd5e0;
+  /* Tablo gövde metin rengi */
+  --text-dark: #334155;
+  /* En koyu metin (select değeri vb.) */
+  --text-darker: #1e293b;
+  /* Sütun başlığı, pagination buton metni */
+  --text-muted: #64748b;
+  /* Gün numaraları, filter etiket, "gösterilen" metni */
+  --text-faint: #94a3b8;
+
   /* ============== Typography ============== */
   /* Font Family */
   --font-family-base: "Nunito Sans", sans-serif;

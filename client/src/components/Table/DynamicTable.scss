@@ -1,0 +1,305 @@
+@import '../../styles/variables';
+
+.dynamic-table-container {
+    display: flex;
+    flex-direction: column;
+    //flex: 1;
+    //min-height: 0;
+    gap: var(--space-sm);
+    margin: auto;
+
+    // --- Toolbar (Filter + Save) ---
+    .table-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+
+        .toolbar-filters {
+            display: flex;
+            border: 1px solid var(--border-color-strong);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background-color: var(--surface-color);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 2px;
+            background-color: var(--surface-color);
+            padding: var(--space-xs) var(--space-md);
+            min-width: 150px;
+            min-height: 56px;
+            cursor: pointer;
+            transition: background-color 0.15s;
+
+            // Dikey ayraç — ilk hariç her filter-group'un sol kenarı
+            &+.filter-group {
+                border-left: 1px solid var(--border-color-strong);
+            }
+
+            &:hover {
+                background-color: var(--surface-alt);
+            }
+        }
+
+        .filter-label {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            text-align: center;
+        }
+
+        .filter-select {
+            border: none;
+            background-color: transparent;
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: var(--text-faint);
+            cursor: pointer;
+            padding: 0;
+            appearance: none;
+            width: 100%;
+            text-align: center;
+
+            &:focus {
+                outline: none;
+            }
+        }
+
+        .save-btn {
+            padding: 9px 26px;
+            background-color: var(--brand-color);
+            color: var(--surface-color);
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 4px rgba(72, 128, 255, 0.25);
+
+            &:hover {
+                background-color: color-mix(in srgb, var(--brand-color) 85%, black);
+                box-shadow: 0 4px 10px rgba(72, 128, 255, 0.35);
+            }
+
+            &:active {
+                background-color: color-mix(in srgb, var(--brand-color) 70%, black);
+            }
+        }
+    }
+
+    // --- Table Card ---
+    .table-wrapper {
+        //flex: 1;
+        overflow-y: auto;
+        max-height: 480px;
+        background-color: var(--surface-color);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color-strong);
+
+        &::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        &::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: var(--radius-sm);
+        }
+    }
+
+    .dynamic-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+
+        thead {
+            position: sticky;
+            top: 0;
+            background-color: var(--thead-header-bg);
+            z-index: 10;
+
+            th {
+                padding: var(--space-sm) var(--space-md);
+                text-align: left;
+                font-size: 0.75rem;
+                font-weight: 600;
+                color: var(--text-muted);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                border-bottom: 2px solid var(--border-color-strong);
+                white-space: nowrap;
+                vertical-align: middle;
+            }
+
+            // Gün numarası header hücreleri
+            th.th-day {
+                padding: var(--space-sm) 1px;
+                width: 26px;
+                min-width: 26px;
+                max-width: 26px;
+                text-align: center;
+                font-size: 0.7rem;
+                font-weight: 600;
+                color: var(--text-faint);
+                text-transform: none;
+                letter-spacing: 0;
+                vertical-align: middle;
+            }
+
+            // Çalışma Günü sayaç sütunu başlığı
+            th.th-count {
+                text-align: center;
+            }
+        }
+
+        tbody {
+            tr {
+                border-bottom: 1px solid var(--surface-alt);
+                transition: background-color 0.15s ease;
+
+                &:hover:not(.empty-row) {
+                    background-color: var(--thead-header-bg);
+                }
+
+                &:last-child {
+                    border-bottom: none;
+                }
+
+                td {
+                    padding: var(--space-sm) var(--space-md);
+                    font-size: 0.9rem;
+                    color: var(--text-dark);
+                    vertical-align: middle;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                // Gün hücreleri — th.th-day ile aynı box model
+                td.td-day {
+                    padding: var(--space-sm) 1px;
+                    width: 26px;
+                    min-width: 26px;
+                    max-width: 26px;
+                    text-align: center;
+                    overflow: visible;
+                }
+
+                // Çalışma Günü sayaç sütunu
+                td.td-count {
+                    text-align: center;
+                    font-size: 0.9rem;
+                    font-weight: 700;
+                    color: var(--text-dark);
+                }
+            }
+
+            .empty-row {
+                pointer-events: none;
+
+                td {
+                    color: transparent;
+                }
+            }
+        }
+    }
+
+    // --- Loading State ---
+    .dynamic-table-loading {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 200px;
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+
+    // --- Empty State ---
+    .no-data {
+        text-align: center;
+        padding: 60px;
+        color: var(--text-faint);
+        font-size: 0.95rem;
+    }
+
+    // --- Pagination ---
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-xs) 4px;
+
+        .showing-text {
+            font-size: 0.85rem;
+            color: var(--text-faint);
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 6px;
+
+            .pagination-btn {
+                background-color: var(--surface-color);
+                border: 1px solid var(--border-color-strong);
+                border-radius: 6px;
+                padding: 6px 14px;
+                color: var(--text-muted);
+                cursor: pointer;
+                transition: all 0.15s;
+                font-size: 0.9rem;
+
+                &:hover:not(:disabled) {
+                    background-color: var(--surface-alt);
+                    border-color: var(--border-hover);
+                    color: var(--text-dark);
+                }
+
+                &:disabled {
+                    opacity: 0.4;
+                    cursor: not-allowed;
+                }
+            }
+        }
+    }
+}
+
+// ─── İşlem butonları (TableColumns'daki edit/delete) ───
+.action-btn {
+    padding: 6px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 1.1rem;
+    line-height: 1;
+
+    &.edit-btn {
+        background-color: #f0f9ff;
+        color: #0369a1;
+
+        &:hover {
+            background-color: #e0f2fe;
+        }
+    }
+
+    &.delete-btn {
+        background-color: #fef2f2;
+        color: #b91c1c;
+
+        &:hover {
+            background-color: #fee2e2;
+        }
+    }
+}

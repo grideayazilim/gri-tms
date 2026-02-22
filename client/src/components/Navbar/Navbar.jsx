@@ -16,7 +16,7 @@ import { VscArrowUp } from "react-icons/vsc";
 
 // =================== CORE IMPORTLAR
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useBreakpoint } from "../../hooks/useBreakpoint";
+import { useBreakpoint } from "../../hooks/ui/useBreakpoint";
 import { useState, useEffect, useRef } from "react";
 import "./Navbar.scss";
 

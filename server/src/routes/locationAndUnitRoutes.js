@@ -1,8 +1,9 @@
 import express from "express";
-// import { ... } from "../controllers/locationAndUnitController.js";
+import { getLocations, getUnitsByLocation } from "../controllers/locationAndUnitController.js";
 
 const router = express.Router();
 
-// router.get("__route_yolu__", __gerekliyse_middleware'lar__, __controller_fonksiyonu__);
+router.get("/locations", getLocations);
+router.get("/locations/:locationId/units", getUnitsByLocation);
 
 export default router;

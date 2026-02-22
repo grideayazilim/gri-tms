@@ -1,13 +1,48 @@
-import express from "express";
-import cors from "cors";
-import testRoutes from "./routes/testRoutes.js";
+import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import authRoutes from './routes/authRoutes.js';
+import locationAndUnitRoutes from './routes/locationAndUnitRoutes.js';
 
 const app = express();
 
-app.use(cors());
+// CORS - Cookie'lerin çalışması için credentials: true
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+  })
+);
+
+// Middlewares
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Routes
-app.use("/api/test", testRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/locationAndUnits', locationAndUnitRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Route bulunamadı',
+  });
+});
+
+// Error handler
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    success: false,
+    message: 'Sunucu hatası',
+  });
+});
 
 export default app;

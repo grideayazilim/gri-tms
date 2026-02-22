@@ -1,4 +1,4 @@
-export function requireAdmin(req, res, next) {
+export function adminMiddleware(req, res, next) {
   if (req.user.role !== "ADMIN") {
     return res.status(403).json({
       message: "Bu işlem için admin yetkisi gerekli.",

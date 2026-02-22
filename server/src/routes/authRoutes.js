@@ -1,8 +1,16 @@
-import express from "express";
-// import { ... } from "../controllers/authController.js";
+import express from 'express';
+import { register, login, refresh, logout, getMe } from '../controllers/authController.js';
+import { authMiddleware } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-// router.get("__route_yolu__", __gerekliyse_middleware'lar__, __controller_fonksiyonu__);
+// Public routes
+router.post('/register', register);
+router.post('/login', login);
+router.post('/refresh', refresh);
+router.post('/logout', logout);
+
+// Protected routes
+router.get('/me', authMiddleware, getMe);
 
 export default router;

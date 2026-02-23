@@ -312,7 +312,8 @@ Database
 - - **_Yetki:_** Giriş yapmış herkes
 
 #### 2.3.2. Puantaj API'leri
-- **GET /timesheets:** Query ile alınan ilgili birim ve aya ait puantaj verilerini öğrenci bilgileri ile birlikte getirir.
+**GET /timesheets** 
+Query ile 
 - **POST /timesheets:** Query ile alınan ilgili aya ait puantaj yoksa oluşturur, varsa günceller. Tekli veri güncelleme API'si değildir. UI'dan değiştirilen birden fazla öğrenci puantajını toplu günceller.
 - - **_Yetki:_** Sorumlular kapsam dahilindeki verileri, adminler tüm verileri.
 - **GET /timesheets/export:** Query olarak alınan yerleşke id'li birimin yine query olarak alınan
@@ -414,9 +415,9 @@ Period
 | units  | `id (uuid PK)`<br>`location_id (FK → locations.id)`<br>`name`<br>`created_at`<br>`updated_at` | Aynı yerleşkede aynı birim adı olamaz:<br>**UNIQUE(location_id, name)** |
 | employees | `id (uuid PK)`<br>`unit_id (FK → units.id)`<br>`tc_no`<br>`iban_no`<br>`first_name`<br>`last_name`<br>`start_date`<br>`end_date`<br>`created_at`<br>`updated_at` | `tc_no` kullanılıyorsa **UNIQUE(tc_no)**<br>`end_date >= start_date` |
 | users  | `id (uuid PK)`<br>`username (unique)`<br>`password_hash`<br>`role (ADMIN / RESPONSIBLE)`<br>`status (PENDING / ACTIVE)`<br> `location_id (FK → locations.id, NULL olabilir)` <br>`unit_id (FK → units.id, NULL olabilir)`<br>`expiry_date`<br>`last_login_at`<br>`created_at`<br>`updated_at` | Birim sorumlusu için `unit_id` zorunlu:<br>`CHECK (role <> 'RESPONSIBLE' OR unit_id IS NOT NULL OR location_id IS NOT NULL)` |
-| periods | `id (uuid PK)`<br>`year`<br>`month`<br>`start_date`<br>`end_date` | **UNIQUE(year, month)**<br>`month BETWEEN 1 AND 12`<br>`end_date >= start_date` |
+| periods | `id (uuid PK)`<br>`year`<br>`month`<br>`start_date`<br>`end_date`<br>`is_locked`<br> | **UNIQUE(year, month)**<br>`month BETWEEN 1 AND 12`<br>`end_date >= start_date`. `is_locked` ise sorumlunun veri kaydı engellenmeli |
 | markers | `id (uuid PK)`<br>`code`<br>`label`<br>`is_paid`<br> | `code` **UNIQUE** |
-| timesheets | `id (uuid PK)`<br>`employee_id (FK → employees.id)`<br>`period_id (FK → periods.id)`<br>`unit_id (FK → units.id)`<br>`is_locked`<br>`created_at`<br>`updated_at` | Aynı çalışan + aynı ay tek kayıt:<br>**UNIQUE(employee_id, period_id)**<br>`unit_id`, employee’nin `unit_id`’si ile aynı olmalı (trigger). `is_locked` ise sorumlunun veri kaydı engellenmeli |
+| timesheets | `id (uuid PK)`<br>`employee_id (FK → employees.id)`<br>`period_id (FK → periods.id)`<br>`unit_id (FK → units.id)`<br>`created_at`<br>`updated_at` | Aynı çalışan + aynı ay tek kayıt:<br>**UNIQUE(employee_id, period_id)**<br>`unit_id`, employee’nin `unit_id`’si ile aynı olmalı (trigger). |
 | timesheet_days | `id (uuid PK)`<br>`timesheet_id (FK → timesheets.id)`<br>`day (date)`<br>`marker_code (FK → markers.code)`<br>`note` | Aynı gün iki kez girilemez:<br>**UNIQUE(timesheet_id, day)**<br>`day`, ilgili period aralığında olmalı (trigger)<br>Timesheet `LOCKED` ise insert/update yasak (trigger) |
 | settings | `key (PK)`<br>`value (jsonb)`<br>`program_start_date`<br>`<program_end_date`<br>`updated_at` | `key` sistem genelinde tek <br> settings tablosundaki `program_start_date` ve `program_end_date` değiştiğinde periods tablosu backend katmanında transaction içinde yeniden oluşturulmalı |
 | announcements | `id (uuid PK)`<br>`title`<br>`content`<br>`created_at` | —        |

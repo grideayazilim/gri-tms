@@ -1,0 +1,64 @@
+@use "../../styles/inputs.scss" as *;
+
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  z-index: 2000;
+}
+
+.toast {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  min-width: 260px;
+  animation: slideIn 200ms ease forwards;
+  cursor: default;
+  font-size: var(--font-size-normal-text);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+  color: var(--surface-color);
+
+  &--success {
+    background: var(--success-color);
+  }
+
+  &--error {
+    background: var(--button-red-color);
+  }
+
+  &--info {
+    background: var(--brand-color);
+  }
+
+  &__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    font-weight: bold;
+    font-size: 1.1em;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.2); // İkona hafif bir arka plan
+    flex-shrink: 0;
+  }
+
+  &__message {
+    flex-grow: 1;
+    word-break: break-word; // Uzun metinlerin taşmasını engeller
+    line-height: 1.4;
+  }
+
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+}

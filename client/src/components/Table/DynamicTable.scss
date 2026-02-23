@@ -142,7 +142,7 @@
 
             // Gün numarası header hücreleri
             th.th-day {
-                padding: var(--space-sm) 1px;
+                padding: var(--space-sm) 0;
                 width: 26px;
                 min-width: 26px;
                 max-width: 26px;
@@ -186,12 +186,17 @@
 
                 // Gün hücreleri — th.th-day ile aynı box model
                 td.td-day {
-                    padding: var(--space-sm) 1px;
+                    padding: var(--space-sm) 0;
                     width: 26px;
                     min-width: 26px;
                     max-width: 26px;
                     text-align: center;
                     overflow: visible;
+                    display: table-cell;
+
+                    .day-cell {
+                        margin: 0 auto;
+                    }
                 }
 
                 // Çalışma Günü sayaç sütunu

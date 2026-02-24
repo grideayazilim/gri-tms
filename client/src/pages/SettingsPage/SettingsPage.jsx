@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { RiDeleteBinLine } from "react-icons/ri";
 import "../../styles/inputs.scss";
-import "./Settings.scss";
+import "../../styles/page-layout.scss";
+import "./SettingsPage.scss";
 
-function Settings() {
+function SettingsPage() {
   // STATE YÖNETİMİ
   const [loginInfo, setLoginInfo] = useState({ username: "", password: "" });
   const [systemInfo, setSystemInfo] = useState({
@@ -12,7 +13,13 @@ function Settings() {
     programStart: "",
     programEnd: "",
   });
-  const [markers, setMarkers] = useState([{ symbol: "X", description: "" }]);
+  const [markers, setMarkers] = useState([
+    { code: "X", label: "Geldi", isPaid: true },
+    { code: "İ", label: "İzinli", isPaid: false },
+    { code: "R", label: "Raporlu", isPaid: false },
+    { code: "DT", label: "Devlet Tatili", isPaid: true },
+    { code: "RT", label: "Resmi Tatil", isPaid: true },
+  ]);
 
   // SNAPSHOT STATE (İlk değerler)
   const [initialLoginInfo] = useState({ username: "", password: "" });
@@ -22,7 +29,13 @@ function Settings() {
     programStart: "",
     programEnd: "",
   });
-  const [initialMarkers] = useState([{ symbol: "X", description: "" }]);
+  const [initialMarkers] = useState([
+    { code: "X", label: "Geldi", isPaid: true },
+    { code: "İ", label: "İzinli", isPaid: false },
+    { code: "R", label: "Raporlu", isPaid: false },
+    { code: "DT", label: "Devlet Tatili", isPaid: true },
+    { code: "RT", label: "Resmi Tatil", isPaid: true },
+  ]);
 
   // HANDLERS
   const handleLoginChange = (e) => {
@@ -40,7 +53,7 @@ function Settings() {
   };
 
   const addMarker = () => {
-    setMarkers([...markers, { symbol: "X", description: "" }]);
+    setMarkers([...markers, { code: "", label: "", isPaid: true }]);
   };
 
   const removeMarker = (index) => {
@@ -55,11 +68,13 @@ function Settings() {
     JSON.stringify(markers) !== JSON.stringify(initialMarkers);
 
   return (
-    <div className="settings">
-      <h1 className="settings__title">Ayarlar</h1>
+    <main className="page-container">
+      <h1 className="page-title">Ayarlar</h1>
 
       {/* --- GİRİŞ BİLGİLERİ --- */}
-      <form className="settings__card" onSubmit={(e) => e.preventDefault()}>
+      <form className="settings-card" onSubmit={(e) => e.preventDefault()}>
+        <h2 className="settings-card__title">Giriş Bilgileri</h2>
+
         <div className="floating-group">
           <input
             type="text"
@@ -92,7 +107,7 @@ function Settings() {
 
         <button
           type="submit"
-          className="btn settings__submit-btn"
+          className="btn btn--primary settings-card__submit"
           disabled={!isLoginDirty}
         >
           Giriş Bilgilerini Güncelle
@@ -100,10 +115,12 @@ function Settings() {
       </form>
 
       {/* --- SİSTEM BİLGİLERİ --- */}
-      <form className="settings__card" onSubmit={(e) => e.preventDefault()}>
+      <form className="settings-card" onSubmit={(e) => e.preventDefault()}>
+        <h2 className="settings-card__title">Sistem Ayarları</h2>
+
         <div className="floating-group">
           <input
-            type="text"
+            type="number"
             id="dailyAllowance"
             name="dailyAllowance"
             className="input"
@@ -112,13 +129,13 @@ function Settings() {
             onChange={handleSystemChange}
           />
           <label htmlFor="dailyAllowance" className="floating-group__label">
-            Günlük Ödenek
+            Günlük Ödenek (₺)
           </label>
         </div>
 
         <div className="floating-group">
           <input
-            type="text"
+            type="number"
             id="weeklyLimit"
             name="weeklyLimit"
             className="input"
@@ -127,11 +144,11 @@ function Settings() {
             onChange={handleSystemChange}
           />
           <label htmlFor="weeklyLimit" className="floating-group__label">
-            Haftalık Çalışma Sınırı
+            Haftalık Çalışma Sınırı (Gün)
           </label>
         </div>
 
-        <div className="settings__row">
+        <div className="settings-row">
           <div className="floating-group">
             <input
               type="date"
@@ -163,41 +180,50 @@ function Settings() {
           </div>
         </div>
 
-        {/* --- PUANTAJ TREE --- */}
-        <div className="settings__marker-section">
-          <p className="settings__marker-title">Puantaj İşaretçisi</p>
+        {/* --- PUANTAJ İŞARETÇİLERİ --- */}
+        <div className="marker-section">
+          <h3 className="marker-section__title">Puantaj İşaretçileri</h3>
 
-          <div className="settings__marker-list">
+          <div className="marker-list">
             {markers.map((marker, index) => (
-              <div
-                className="settings__marker-item"
-                key={marker.symbol + index}
-              >
-                <div className="floating-group marker-desc">
+              <div className="marker-item" key={index}>
+                <div className="floating-group marker-item__code">
+                  <input
+                    type="text"
+                    className="input input--center"
+                    placeholder=" "
+                    value={marker.code}
+                    onChange={(e) =>
+                      handleMarkerChange(index, "code", e.target.value)
+                    }
+                    maxLength={3}
+                  />
+                  <label className="floating-group__label">Kod</label>
+                </div>
+
+                <div className="floating-group marker-item__label">
                   <input
                     type="text"
                     className="input"
                     placeholder=" "
-                    value={marker.description}
+                    value={marker.label}
                     onChange={(e) =>
-                      handleMarkerChange(index, "description", e.target.value)
+                      handleMarkerChange(index, "label", e.target.value)
                     }
                   />
                   <label className="floating-group__label">Açıklama</label>
                 </div>
 
-                <div className="floating-group marker-symbol">
+                <label className="checkbox-label marker-item__paid">
                   <input
-                    type="text"
-                    className="input input--center"
-                    placeholder=" "
-                    value={marker.symbol}
+                    type="checkbox"
+                    checked={marker.isPaid}
                     onChange={(e) =>
-                      handleMarkerChange(index, "symbol", e.target.value)
+                      handleMarkerChange(index, "isPaid", e.target.checked)
                     }
                   />
-                  <label className="floating-group__label">İşaretçi</label>
-                </div>
+                  <span>Ücretli</span>
+                </label>
 
                 <button
                   type="button"
@@ -212,7 +238,7 @@ function Settings() {
 
             <button
               type="button"
-              className="settings__add-marker"
+              className="add-marker-btn"
               onClick={addMarker}
             >
               + Yeni İşaretçi Ekle
@@ -222,14 +248,15 @@ function Settings() {
 
         <button
           type="submit"
-          className="btn settings__submit-btn"
+          className="btn btn--primary settings-card__submit"
           disabled={!isSystemDirty}
         >
-          Sistem Bilgilerini Güncelle
+          Sistem Ayarlarını Güncelle
         </button>
       </form>
-    </div>
+    </main>
   );
 }
 
-export default Settings;
+export default SettingsPage;
+

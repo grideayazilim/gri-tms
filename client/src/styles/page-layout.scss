@@ -1,0 +1,190 @@
+@use "./variables.scss" as *;
+
+/* ==========================================
+   Global Page Container Layout
+   ========================================== */
+
+.page-container {
+  width: 100%;
+  padding: 80px 50px 80px 50px;
+  display: flex;
+  flex-direction: column;
+  row-gap: 1rem;
+}
+
+/* ==========================================
+   Page Header (Title + Actions)
+   ========================================== */
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+
+  @media (max-width: $bp-md) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-md);
+  }
+}
+
+/* ==========================================
+   Page Title
+   ========================================== */
+
+.page-title {
+  font-size: var(--font-size-main-title);
+  font-weight: var(--font-weight-main-title);
+}
+
+/* ==========================================
+   Page Actions
+   ========================================== */
+
+.page-actions {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+/* ==========================================
+   Page Section
+   ========================================== */
+
+.page-section {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+
+  @media (max-width: $bp-md) {
+    padding: var(--space-md);
+    border-radius: var(--radius-md);
+  }
+
+  @media (max-width: $bp-sm) {
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* ==========================================
+   Filter Area
+   ========================================== */
+
+.filter-area {
+  display: flex;
+  gap: var(--space-md);
+
+  .floating-group {
+    flex: 1 1 250px;
+  }
+
+  @media (max-width: $bp-lg) {
+    flex-wrap: wrap;
+    
+    .floating-group {
+      flex: 1 1 200px;
+    }
+  }
+
+  @media (max-width: $bp-sm) {
+    flex-direction: column;
+    gap: var(--space-sm);
+
+    .floating-group {
+      flex: 1 1 100%;
+    }
+  }
+}
+
+/* ==========================================
+   Empty State
+   ========================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl) var(--space-lg);
+  text-align: center;
+  color: var(--text-secondary);
+
+  &__icon {
+    font-size: 48px;
+    margin-bottom: var(--space-md);
+    opacity: 0.5;
+  }
+
+  &__title {
+    font-size: 20px;
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--space-xs);
+  }
+
+  &__description {
+    font-size: var(--font-size-normal-text);
+    color: var(--text-secondary);
+    margin-bottom: var(--space-md);
+  }
+}
+
+/* ==========================================
+   Loading State
+   ========================================== */
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-secondary);
+
+  &__spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--brand-color);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  &__text {
+    margin-left: var(--space-md);
+    font-size: var(--font-size-normal-text);
+    font-weight: var(--font-weight-normal-text);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================
+   Error State
+   ========================================== */
+
+.error-state {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+
+  &__title {
+    font-size: var(--font-size-normal-text);
+    font-weight: var(--font-weight-bold);
+    color: #dc2626;
+    margin-bottom: var(--space-xs);
+  }
+
+  &__message {
+    font-size: var(--font-size-normal-text);
+    color: #991b1b;
+  }
+}
+

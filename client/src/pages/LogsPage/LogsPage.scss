@@ -1,0 +1,156 @@
+@use "../../styles/variables.scss" as *;
+
+/* ==========================================
+   Logs List
+   ========================================== */
+
+.logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.log-card {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    border-color: var(--border-hover);
+  }
+
+  @media (max-width: $bp-sm) {
+    padding: var(--space-sm);
+  }
+}
+
+.log-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-sm);
+  gap: var(--space-md);
+
+  @media (max-width: $bp-sm) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+  }
+}
+
+.log-card__badges {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
+}
+
+.log-card__time {
+  font-size: 12px;
+  font-weight: var(--font-weight-normal-text);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.log-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.log-card__user {
+  font-size: var(--font-size-normal-text);
+  color: var(--text-dark);
+
+  strong {
+    font-weight: var(--font-weight-bold);
+    color: var(--text-darker);
+  }
+}
+
+.log-card__metadata {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-xs);
+  background: var(--background-color);
+  border-radius: var(--radius-sm);
+  margin-top: var(--space-xs);
+}
+
+.metadata-item {
+  display: flex;
+  gap: var(--space-xs);
+  font-size: 12px;
+
+  &__key {
+    font-weight: var(--font-weight-bold);
+    color: var(--text-muted);
+  }
+
+  &__value {
+    color: var(--text-dark);
+    word-break: break-word;
+  }
+}
+
+/* ==========================================
+   Badges - Action Types
+   ========================================== */
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  white-space: nowrap;
+
+  &--create {
+    background: #d1fae5;
+    color: #065f46;
+  }
+
+  &--update {
+    background: #dbeafe;
+    color: #1e40af;
+  }
+
+  &--delete {
+    background: #fee2e2;
+    color: #991b1b;
+  }
+
+  &--login {
+    background: #e0e7ff;
+    color: #4338ca;
+  }
+
+  &--logout {
+    background: #f3f4f6;
+    color: #4b5563;
+  }
+
+  &--default {
+    background: #f3f4f6;
+    color: #6b7280;
+  }
+
+  &--entity {
+    background: #fef3c7;
+    color: #92400e;
+  }
+}
+
+.btn--secondary {
+  background: var(--background-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+
+  &:hover {
+    background: var(--surface-hover-color);
+  }
+}
+

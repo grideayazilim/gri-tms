@@ -1,0 +1,166 @@
+@use "../../styles/variables.scss" as *;
+
+/* ==========================================
+   Modal Overlay
+   ========================================== */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-md);
+  animation: overlayFade 160ms ease forwards;
+}
+
+@keyframes overlayFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ==========================================
+   Modal Container
+   ========================================== */
+
+.modal-container {
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: modalFade 160ms ease forwards;
+  width: 100%;
+
+  // Size Variants
+  &--small {
+    max-width: 420px;
+  }
+
+  &--medium {
+    max-width: 600px;
+  }
+
+  &--large {
+    max-width: 800px;
+  }
+
+  &--full {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  // Responsive
+  @media (max-width: $bp-sm) {
+    max-height: 95vh;
+    max-width: 100%;
+    border-radius: var(--radius-md);
+  }
+}
+
+@keyframes modalFade {
+  from {
+    transform: scale(0.96) translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ==========================================
+   Modal Header
+   ========================================== */
+
+.modal-header {
+  padding: var(--space-lg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-shrink: 0;
+
+  @media (max-width: $bp-sm) {
+    padding: var(--space-md);
+  }
+}
+
+.modal-title {
+  font-size: 20px;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+
+  @media (max-width: $bp-sm) {
+    font-size: 18px;
+  }
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--background-color);
+    color: var(--text-primary);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+/* ==========================================
+   Modal Content
+   ========================================== */
+
+.modal-content {
+  padding: var(--space-lg);
+  overflow-y: auto;
+  flex: 1;
+
+  // Custom scrollbar
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: var(--background-color);
+    border-radius: var(--radius-sm);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: var(--radius-sm);
+
+    &:hover {
+      background: var(--border-hover);
+    }
+  }
+
+  @media (max-width: $bp-sm) {
+    padding: var(--space-md);
+  }
+}
+

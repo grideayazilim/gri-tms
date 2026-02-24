@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { RiDeleteBinLine } from "react-icons/ri";
 import "../../styles/inputs.scss";
-import "./Locations.scss";
+import "../../styles/page-layout.scss";
+import "./LocationsPage.scss";
 
-function Locations() {
+function LocationsPage() {
   // === STATE ===
   const [locations, setLocations] = useState([
     {
       id: 1,
       name: "",
+      programNo: "",
       units: [
         { id: 101, name: "" },
         { id: 102, name: "" },
@@ -17,14 +19,15 @@ function Locations() {
     {
       id: 2,
       name: "",
+      programNo: "",
       units: [{ id: 201, name: "" }],
     },
   ]);
 
   // === HANDLERS ===
-  const handleLocationChange = (id, value) => {
+  const handleLocationChange = (id, field, value) => {
     setLocations((prev) =>
-      prev.map((loc) => (loc.id === id ? { ...loc, name: value } : loc)),
+      prev.map((loc) => (loc.id === id ? { ...loc, [field]: value } : loc)),
     );
   };
 
@@ -32,6 +35,7 @@ function Locations() {
     const newLocation = {
       id: Date.now(),
       name: "",
+      programNo: "",
       units: [{ id: Date.now() + 1, name: "" }],
     };
     setLocations((prev) => [...prev, newLocation]);
@@ -79,11 +83,24 @@ function Locations() {
     );
   };
 
-  return (
-    <div className="locations-page">
-      <h1 className="page-title">AYBÜ Gençlik Programı</h1>
+  const handleSave = () => {
+    console.log('Kaydedilen yerleşke ve birim verisi:', locations);
+    // TODO: await api.saveLocations(locations);
+    alert('Değişiklikler kaydedildi! (Console\'a bakınız)');
+  };
 
-      <div className="tree-container">
+  return (
+    <main className="page-container">
+      <div className="page-header">
+      <h1 className="page-title">Yerleşke ve Birim Yönetimi</h1>
+        <div className="page-actions">
+          <button type="button" className="btn btn--primary" onClick={handleSave}>
+            Değişiklikleri Kaydet
+          </button>
+        </div>
+      </div>
+
+      <div className="locations-tree">
         {/* Sol taraftaki ana rehber çizgi */}
         <div className="tree-root-line" />
 
@@ -91,17 +108,32 @@ function Locations() {
           <div key={location.id} className="tree-node location-node">
             {/* LEVEL 1: YERLEŞKE */}
             <div className="node-row location-row">
-              <div className="floating-group">
-                <input
-                  type="text"
-                  className="input"
-                  placeholder=" "
-                  value={location.name}
-                  onChange={(e) =>
-                    handleLocationChange(location.id, e.target.value)
-                  }
-                />
-                <label className="floating-group__label">Yerleşke Adı</label>
+              <div className="location-inputs">
+                <div className="floating-group floating-group--on-background">
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder=" "
+                    value={location.name}
+                    onChange={(e) =>
+                      handleLocationChange(location.id, "name", e.target.value)
+                    }
+                  />
+                  <label className="floating-group__label">Yerleşke Adı</label>
+                </div>
+
+                <div className="floating-group floating-group--on-background">
+                  <input
+                    type="text"
+                    className="input"
+                    placeholder=" "
+                    value={location.programNo}
+                    onChange={(e) =>
+                      handleLocationChange(location.id, "programNo", e.target.value)
+                    }
+                  />
+                  <label className="floating-group__label">Program No</label>
+                </div>
               </div>
 
               <button
@@ -119,7 +151,7 @@ function Locations() {
               {location.units.map((unit) => (
                 <div key={unit.id} className="tree-node unit-node">
                   <div className="node-row unit-row">
-                    <div className="floating-group">
+                    <div className="floating-group floating-group--on-background">
                       <input
                         type="text"
                         className="input"
@@ -165,8 +197,9 @@ function Locations() {
           + Yeni Yerleşke Ekle
         </button>
       </div>
-    </div>
+    </main>
   );
 }
 
-export default Locations;
+export default LocationsPage;
+

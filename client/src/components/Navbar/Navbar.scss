@@ -2,8 +2,6 @@
 @use "../../styles/mixins.scss" as *;
 
 .nav {
-  position: fixed;
-  z-index: 101;
   height: 100vh;
   background: var(--surface-color);
   display: flex;
@@ -162,6 +160,8 @@
   /*=================== TABLET EKRANI ===================*/
   @include respond-lg {
     // Navbar'ı aşağı koy, elemanları yan yana getir
+    position: fixed;
+    z-index: 101;
     flex-direction: row;
     bottom: 0;
     width: 100%;
@@ -189,7 +189,7 @@
     }
   }
 
-  /*=================== TABLET EKRANI ===================*/
+  /*=================== TELEFON EKRANI ===================*/
   @include respond-sm {
     padding: var(--space-sm);
 

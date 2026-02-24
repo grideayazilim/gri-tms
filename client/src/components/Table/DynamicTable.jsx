@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import DayCell from './DayCell';
 import './DynamicTable.scss';
 
@@ -23,31 +23,12 @@ const expandColumns = (columns) =>
 const expandedLength = (columns) =>
     columns.reduce((acc, col) => acc + (col.isDaysColumn ? (col.currentMonthDays || 31) : 1), 0);
 
-const DynamicTable = ({ columns, data, loading, pageSize = 10, onSave }) => {
+const DynamicTable = ({ columns, data, loading, pageSize = 10 }) => {
     const [currentPage, setCurrentPage] = useState(1);
-    const [selectedLocation, setSelectedLocation] = useState('');
-    const [selectedUnit, setSelectedUnit] = useState('');
-    const [filteredData, setFilteredData] = useState(data);
 
-    const locations = [...new Set(data.map(item => item.location))].filter(Boolean);
-    const units = [...new Set(data.map(item => item.unit))].filter(Boolean);
-
-    // Filtre uygulaması — data VEYA filtreler değişince güncellenir
-    useEffect(() => {
-        let result = data;
-        if (selectedLocation) result = result.filter(item => item.location === selectedLocation);
-        if (selectedUnit) result = result.filter(item => item.unit === selectedUnit);
-        setFilteredData(result);
-    }, [data, selectedLocation, selectedUnit]);
-
-    // Sayfa sıfırlama — sadece FİLTRE değişince (data değişince değil)
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [selectedLocation, selectedUnit]);
-
-    const totalPages = Math.ceil(filteredData.length / pageSize);
+    const totalPages = Math.ceil(data.length / pageSize);
     const startIndex = (currentPage - 1) * pageSize;
-    const currentData = filteredData.slice(startIndex, startIndex + pageSize);
+    const currentData = data.slice(startIndex, startIndex + pageSize);
 
     const handlePageChange = (page) => {
         if (page >= 1 && page <= totalPages) setCurrentPage(page);
@@ -61,30 +42,6 @@ const DynamicTable = ({ columns, data, loading, pageSize = 10, onSave }) => {
 
     return (
         <div className="dynamic-table-container">
-
-            {/* Filter & Save Bar */}
-            <div className="table-toolbar">
-                <div className="toolbar-filters">
-                    <div className="filter-group">
-                        <label className="filter-label">Yerleşke</label>
-                        <select className="filter-select" value={selectedLocation} onChange={e => setSelectedLocation(e.target.value)}>
-                            <option value="">Tümü</option>
-                            {locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-                        </select>
-                    </div>
-                    <div className="filter-group">
-                        <label className="filter-label">Birim</label>
-                        <select className="filter-select" value={selectedUnit} onChange={e => setSelectedUnit(e.target.value)}>
-                            <option value="">Tümü</option>
-                            {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
-                        </select>
-                    </div>
-                </div>
-                {onSave && (
-                    <button className="save-btn" onClick={() => onSave(data)}>Kaydet</button>
-                )}
-            </div>
-
             <div className="table-wrapper">
                 <table className="dynamic-table">
                     <thead>
@@ -152,14 +109,13 @@ const DynamicTable = ({ columns, data, loading, pageSize = 10, onSave }) => {
 
             <div className="pagination-container">
                 <span className="showing-text">
-                    Showing {filteredData.length === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + pageSize, filteredData.length)} of {filteredData.length}
+                    Showing {data.length === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + pageSize, data.length)} of {data.length}
                 </span>
                 <div className="pagination-controls">
                     <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="pagination-btn">&lt;</button>
                     <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages || totalPages === 0} className="pagination-btn">&gt;</button>
                 </div>
             </div>
-
         </div>
     );
 };

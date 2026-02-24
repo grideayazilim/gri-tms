@@ -1,1 +1,17 @@
 @use "./styles/global.scss";
+
+.app {
+  height: 100vh;
+}
+
+.app-content {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-content__main {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}

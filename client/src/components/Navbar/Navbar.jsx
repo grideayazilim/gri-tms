@@ -1,14 +1,4 @@
 // =================== ICON IMPORTLARI
-// Puantaj yönetimi
-import { AiOutlineFile } from "react-icons/ai";
-// Yerleşke ve Birimler
-import { PiBuildingOffice } from "react-icons/pi";
-// Birim sorumluları
-import { LiaUserTieSolid } from "react-icons/lia";
-// Çalışanlar
-import { PiHardHat } from "react-icons/pi";
-// Ayarlar
-import { IoSettingsOutline } from "react-icons/io5";
 // Logout
 import { LiaPowerOffSolid } from "react-icons/lia";
 // Mobile pop
@@ -17,35 +7,15 @@ import { VscArrowUp } from "react-icons/vsc";
 // =================== CORE IMPORTLAR
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useBreakpoint } from "../../hooks/ui/useBreakpoint";
+import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect, useRef } from "react";
+import { managementRoutes, settingsRoute } from "../../routes";
 import "./Navbar.scss";
-
-const navManagementRoutes = [
-  {
-    path: "/timesheet",
-    title: "Puantaj İşaretleme",
-    icon: <AiOutlineFile />,
-  },
-  {
-    path: "/locations",
-    title: "Yerleşkeler ve Birimler",
-    icon: <PiBuildingOffice />,
-  },
-  {
-    path: "/users",
-    title: "Kullanıcılar",
-    icon: <LiaUserTieSolid className="tie-icon" />,
-  },
-  {
-    path: "/employees",
-    title: "Çalışanlar",
-    icon: <PiHardHat />,
-  },
-];
 
 function Navbar() {
   // ========== HOOK TANIMLARI
   const { isPhone, isTablet, isDesktop } = useBreakpoint();
+  const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -59,14 +29,22 @@ function Navbar() {
   const navRef = useRef(null);
 
   // ========== YARDIMCI FONKSİYONLAR
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
+  const handleLogout = async () => {
+    await logout();
+    navigate("/auth");
   };
+
+  // Kullanıcının görebileceği management route'ları filtrele
+  const visibleManagementRoutes = managementRoutes.filter(route => {
+    if (route.adminOnly) {
+      return isAdmin();
+    }
+    return true;
+  });
 
   // Bulunulan sayfanın route'unun array'deki objesini alır
   const activeManagementRoute =
-    navManagementRoutes.find((r) => r.path === location.pathname) || null;
+    visibleManagementRoutes.find((r) => r.path === location.pathname) || null;
 
   // Yukarıdaki değişken undefined ise (route, management route değil) bu değeri false yap
   const isManagementRouteActive = !!activeManagementRoute;
@@ -141,7 +119,7 @@ function Navbar() {
     }
   }, [
     location,
-    navManagementRoutes,
+    visibleManagementRoutes,
     isPhone,
     isTablet,
     isDesktop,
@@ -177,7 +155,7 @@ function Navbar() {
         <div
           className={`nav__group ${popManagementBar ? "show-management" : ""}`}
         >
-          {navManagementRoutes.map((route) => (
+          {visibleManagementRoutes.map((route) => (
             <NavLink
               key={route.path}
               to={route.path}
@@ -185,7 +163,7 @@ function Navbar() {
               onClick={() => setPopManagementBar(false)}
             >
               {route.icon}
-              <p className="nav__link-text">{route.title}</p>
+              <p className="nav__link-text">{route.name}</p>
             </NavLink>
           ))}
         </div>
@@ -193,12 +171,12 @@ function Navbar() {
       {/* Nav bottom */}
       <div className="nav__group nav__group--bottom">
         <NavLink
-          to="/settings"
+          to={settingsRoute.path}
           className="nav__link"
           onClick={() => setPopManagementBar(false)}
         >
-          <IoSettingsOutline />
-          <p className="nav__link-text">Ayarlar</p>
+          {settingsRoute.icon}
+          <p className="nav__link-text">{settingsRoute.name}</p>
         </NavLink>
         <div className="nav__link nav__link--logout" onClick={handleLogout}>
           <LiaPowerOffSolid /> <p className="nav__link-text">Çıkış Yap</p>

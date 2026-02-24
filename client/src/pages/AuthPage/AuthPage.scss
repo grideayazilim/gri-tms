@@ -2,7 +2,7 @@
 @use "../../styles/mixins.scss" as *;
 @use "../../styles/inputs.scss";
 
-.signin {
+.auth-page {
   position: relative;
   display: flex;
   align-items: center;
@@ -32,11 +32,11 @@
     background-color: var(--surface-color);
     border-radius: var(--radius-lg);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
-  }
 
-  &--phone &__card {
-    padding: var(--space-lg);
-    border-radius: var(--radius-md);
+    @media (max-width: $bp-sm) {
+      padding: var(--space-lg);
+      border-radius: var(--radius-md);
+    }
   }
 
   &__title {
@@ -46,10 +46,10 @@
     font-weight: var(--font-weight-main-title);
     color: var(--text-primary);
     margin-bottom: var(--space-xs);
-  }
 
-  &--phone &__title {
-    font-size: 24px;
+    @media (max-width: $bp-sm) {
+      font-size: 24px;
+    }
   }
 
   &__subtitle {
@@ -133,3 +133,22 @@
     }
   }
 }
+
+/* Select için Floating Label */
+.auth-page .floating-group {
+  .input--select:focus ~ .floating-group__label,
+  .input--select:valid ~ .floating-group__label {
+    top: 0;
+    font-size: 12px;
+    color: var(--brand-color);
+    font-weight: 600;
+
+    background-color: var(--surface-color);
+    margin-left: -4px;
+  }
+
+  .input--select:not(:focus):valid ~ .floating-group__label {
+    color: var(--text-secondary);
+  }
+}
+

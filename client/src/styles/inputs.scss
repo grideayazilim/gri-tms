@@ -76,66 +76,148 @@ $control-height-sm: 40px;
 /* ============================================
    2. FLOATING LABEL (Yüzen Etiket)
    --------------------------------------------
-   DİKKAT! Bu yapının çalışması için 2 kural şarttır:
-   1. HTML Sırası: Input önce, Label sonra gelmelidir.
-   2. Placeholder: Input'un placeholder'ı boşluk (" ") dahi olsa tanımlı olmalıdır.
+   Variants:
+   - Default (on-surface): Beyaz/surface arkaplanlar üzerinde kullanım
+   - on-background: Gri arkaplanlar üzerinde kullanım
    
-   Örnek HTML:
+   Örnek HTML (on-surface - default):
    <div className="floating-group">
-      <input className="input" placeholder=" " />  <-- BOŞLUKLU PLACEHOLDER ŞART
+      <input className="input" placeholder=" " />
+      <label className="floating-group__label">Adınız</label>
+   </div>
+   
+   Örnek HTML (on-background):
+   <div className="floating-group floating-group--on-background">
+      <input className="input" placeholder=" " />
       <label className="floating-group__label">Adınız</label>
    </div>
    ============================================ */
-.floating-group {
-  position: relative;
-  width: 100%;
-  isolation: isolate;
+   .floating-group {
+    position: relative;
+    width: 100%;
+    isolation: isolate;
+  
+    // Floating label kullanırken input'un kendi placeholder'ını gizliyoruz
+    .input {
+      &::placeholder {
+        color: transparent;
+      }
 
-  // Floating label kullanırken input'un kendi placeholder'ını gizliyoruz
-  .input {
-    &::placeholder {
-      color: transparent;
+      // Hata durumunda text ve border'ın rengini kırmızı yap
+      &--error {
+        border-color: #ff4d4f !important;
+        
+        &:focus {
+          border-color: #ff4d4f !important;
+          box-shadow: 0 0 0 1px #ff4d4f !important;
+        }
+      }
+    }
+  
+    &__label {
+      position: absolute;
+      left: var(--space-sm);
+      top: 50%;
+      transform: translateY(-50%);
+  
+      font-family: var(--font-family-base);
+      font-size: var(--font-size-normal-text);
+      color: var(--text-secondary);
+  
+      pointer-events: none;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+      padding: 0 4px;
+      z-index: 15;
+    }
+  
+    // --- Label Animasyonu (Hata durumu dahil)
+    .input:focus ~ .floating-group__label,
+    .input:not(:placeholder-shown) ~ .floating-group__label,
+    .input--error ~ .floating-group__label {
+      top: 0;
+      font-size: 12px;
+      color: var(--brand-color);
+      font-weight: 600;
+  
+      background-color: var(--surface-color); // Beyaz arkaplan
+      margin-left: -4px;
+    }
+
+    .input:not(:focus):not(:placeholder-shown) ~ .floating-group__label {
+      color: var(--text-secondary);
+    }
+  
+    // --- ON-BACKGROUND VARIANT ---
+    &--on-background {
+      .input {
+        background-color: var(--background-color);
+        
+        &:focus {
+          background-color: var(--background-color);
+          border-color: var(--brand-color);
+          box-shadow: 0 0 0 1px var(--brand-color);
+        }
+      }
+  
+      .input:focus ~ .floating-group__label,
+      .input:not(:placeholder-shown) ~ .floating-group__label,
+      .input--error ~ .floating-group__label {
+        background-color: var(--background-color);
+      }
+
+      // Error durumunda label kırmızı olsun
+      .input--error ~ .floating-group__label {
+        color: #ff4d4f;
+      }
     }
   }
 
-  &__label {
-    position: absolute;
-    left: var(--space-sm);
-    top: 50%;
-    transform: translateY(-50%);
+/* ============================================
+   3. INPUT ERROR STATES & MESSAGES
+   --------------------------------------------
+   Hatalı input görünümü ve hata mesajları için kullanılır.
+   
+   Örnek HTML (Field error):
+   <div className="floating-group">
+      <input className="input input--error" placeholder=" " />
+      <label className="floating-group__label">Email</label>
+      <span className="input-error">Bu alan zorunludur</span>
+   </div>
+   
+   Örnek HTML (Form error box):
+   <div className="input-error-box">
+      Giriş bilgileri hatalı
+   </div>
+   ============================================ */
 
-    font-family: var(--font-family-base);
-    font-size: var(--font-size-normal-text);
-    color: var(--text-secondary);
 
-    pointer-events: none; // Tıklamayı inputa geçirir
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+// Field-level error message (input altında küçük metin)
+.input-error-message {
+  display: block;
+  color: #ff4d4f;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+  font-family: var(--font-family-base);
+}
 
-    padding: 0 4px;
-    z-index: 15;
-  }
-
-  // --- Label Animasyonu ---
-  // Input focus olduğunda VEYA içi dolu olduğunda (placeholder gösterilmediğinde)
-  .input:focus ~ .floating-group__label,
-  .input:not(:placeholder-shown) ~ .floating-group__label {
-    top: 0;
-    font-size: 12px;
-    color: var(--brand-color);
-    font-weight: 600;
-
-    background-color: var(--surface-color);
-    margin-left: -4px;
-  }
-
-  // Input dolu ama focus değilse label gri kalsın
-  .input:not(:focus):not(:placeholder-shown) ~ .floating-group__label {
-    color: var(--text-secondary);
-  }
+// Form-level error box (tüm form için genel hata)
+.input-error-box {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: var(--radius-sm);
+  color: #ff4d4f;
+  font-size: var(--font-size-normal-text);
+  font-weight: 500;
+  font-family: var(--font-family-base);
+  line-height: 1.4;
 }
 
 /* ============================================
-   3. BUTONLAR
+   4. BUTONLAR
    --------------------------------------------
    Temel Kullanım: <button className="btn">Kaydet</button>
    Kırmızı Buton:  <button className="btn btn--danger">Sil</button>

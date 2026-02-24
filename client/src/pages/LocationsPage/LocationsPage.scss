@@ -1,41 +1,11 @@
 @use "../../styles/variables.scss" as *;
-@use "../../styles/mixins.scss" as *;
 
 // === YEREL DEĞİŞKENLER ===
 $tree-indent: 40px;
 $row-height: 48px;
 $line-color: var(--border-color);
 
-.locations-page {
-  padding: 40px var(--space-md);
-  width: 100%;
-  max-width: 800px;
-  min-height: 100vh;
-  margin: 0 auto;
-  margin-left: max(120px, auto);
-
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-
-  @include respond-lg {
-    margin-left: auto;
-    padding-top: 40px;
-    padding-bottom: 120px;
-    justify-content: flex-start;
-  }
-}
-
-.page-title {
-  font-size: var(--font-size-main-title);
-  font-weight: var(--font-weight-bold);
-  color: var(--text-primary);
-  margin-bottom: var(--space-xl);
-  text-align: center;
-}
-
-// === TREE CONTAINER ===
-.tree-container {
+.locations-tree {
   position: relative;
   padding-left: $tree-indent;
   display: flex;
@@ -64,7 +34,6 @@ $line-color: var(--border-color);
   .floating-group {
     position: relative;
     z-index: 2;
-    background-color: var(--surface-color);
     border-radius: var(--radius-sm);
     flex: 1;
   }
@@ -72,15 +41,26 @@ $line-color: var(--border-color);
   .input {
     position: relative;
     z-index: 3;
-    background-color: var(--surface-color);
+    border: 1px solid $line-color;
+    box-shadow: 0 0 0 0.25px $line-color;
   }
 }
 
 // --- YERLEŞKE (LEVEL 1) ---
 .location-row {
+  .location-inputs {
+    display: flex;
+    gap: var(--space-sm);
+    flex: 1;
+
+    @media (max-width: $bp-md) {
+      flex-direction: column;
+    }
+  }
+
   .input {
     font-weight: 700;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    
   }
 
   // Yerleşke yatay çizgisi
@@ -199,12 +179,7 @@ $line-color: var(--border-color);
 }
 
 // === RESPONSIVE ===
-@include respond-sm {
-  .locations-page {
-    padding: 20px;
-    margin: 0;
-  }
-
+@media (max-width: $bp-sm) {
   // Mobilde çizgileri gizle
   .tree-root-line,
   .location-row::before,
@@ -215,7 +190,7 @@ $line-color: var(--border-color);
     display: none;
   }
 
-  .tree-container {
+  .locations-tree {
     padding-left: 0;
   }
 
@@ -224,3 +199,4 @@ $line-color: var(--border-color);
     border-left: 2px solid $line-color;
   }
 }
+

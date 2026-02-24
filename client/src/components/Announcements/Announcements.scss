@@ -1,0 +1,172 @@
+@use "../../styles/variables.scss" as *;
+
+/* ==========================================
+   Announcement List
+   ========================================== */
+
+.announcement-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  min-height: 300px;
+}
+
+.announcement-list__add-btn {
+  width: fit-content;
+  align-self: flex-start;
+}
+
+.announcement-list__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.announcement-list__empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl) 0;
+}
+
+/* ==========================================
+   Announcement Card
+   ========================================== */
+
+.announcement-card {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  }
+}
+
+.announcement-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.announcement-card__title {
+  font-size: 18px;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+  flex: 1;
+}
+
+.announcement-card__delete {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: var(--space-xs);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: var(--background-color);
+    color: var(--button-red-color);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.announcement-card__content {
+  font-size: var(--font-size-normal-text);
+  color: var(--text-dark);
+  line-height: 1.6;
+  margin: 0 0 var(--space-md) 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.announcement-card__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border-color);
+  font-size: 13px;
+
+  @media (max-width: $bp-sm) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xs);
+  }
+}
+
+.announcement-card__author {
+  font-weight: var(--font-weight-normal-text);
+  color: var(--text-primary);
+}
+
+.announcement-card__date {
+  color: var(--text-secondary);
+}
+
+/* ==========================================
+   Announcement Form
+   ========================================== */
+
+.announcement-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.announcement-form__textarea {
+  min-height: 150px;
+  resize: vertical;
+  font-family: var(--font-family-base);
+  line-height: 1.6;
+}
+
+.announcement-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-color);
+
+  @media (max-width: $bp-sm) {
+    flex-direction: column-reverse;
+
+    .btn {
+      width: 100%;
+    }
+  }
+}
+
+/* ==========================================
+   Input Hint (Character Counter)
+   ========================================== */
+
+.input-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: var(--space-xs);
+  text-align: right;
+}
+

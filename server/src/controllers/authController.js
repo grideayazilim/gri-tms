@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import { withTransaction } from '../config/database.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/tokenUtils.js';
 import { cookieConfig } from '../config/jwt.js';
+import { toCamelCase } from '../utils/caseMapper.js';
 
 export async function register(req, res) {
   try {
@@ -39,7 +40,7 @@ export async function register(req, res) {
     res.status(201).json({
       success: true,
       data: {
-        user: result.rows[0],
+        user: toCamelCase(result.rows[0]),
       },
       message: 'Kullanıcı başarıyla oluşturuldu',
     });
@@ -140,14 +141,14 @@ export async function login(req, res) {
     res.json({
       success: true,
       data: {
-        user: {
+        user: toCamelCase({
           id: user.id,
           username: user.username,
           role: user.role,
           status: user.status,
           unit_id: user.unit_id,
           location_id: user.location_id,
-        },
+        }),
       },
     });
   } catch (error) {
@@ -257,7 +258,7 @@ export async function getMe(req, res) {
 
     res.json({
       success: true,
-      data: result.rows[0],
+      data: toCamelCase(result.rows[0]),
     });
   } catch (error) {
     console.error('Get me error:', error);

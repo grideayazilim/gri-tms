@@ -33,7 +33,7 @@ src/
 │   ├── location
 │   ├── settings
 │   ├── announcement
-│   ├── logs
+│   ├── auditLogs
 │   └── otherHooks.js        # Kullanılabilecek diğer hooklar
 │
 ├── routes/
@@ -198,9 +198,13 @@ sistem parametrelerini yönetmesini sağlar.
 | Senaryo                        | Method | Endpoint                    | Açıklama                                        |
 | ------------------------------ | ------ | --------------------------- | ----------------------------------------------- |
 | Sayfa ilk açıldığında (Admin)  | GET    | `/settings`                 | Sistem ayarlarını getirir                       |
-| Günlük ödenek güncelleme       | PUT    | `/settings/daily-wage`      | Günlük çalışma ücretini günceller               |
+| Günlük ücret güncelleme        | PUT    | `/settings/daily-wage`      | Günlük çalışma ücretini günceller               |
 | Haftalık max gün güncelleme    | PUT    | `/settings/max-weekly-days` | Haftalık maksimum çalışma gününü günceller      |
-| Puantaj işaretçi güncelleme    | PUT    | `/settings/markers`         | İşaretçi ekleme/silme/güncelleme işlemleri      |
+| Program tarihi güncelleme      | PUT    | `/settings/program-date`    | Program başlangıç/bitiş tarihini günceller      |
+| Marker listesi                 | GET    | `/markers`                  | Tüm puantaj işaretçilerini getirir              |
+| Marker ekleme                  | POST   | `/markers`                  | Yeni puantaj işaretçisi ekler                   |
+| Marker güncelleme              | PUT    | `/markers/:code`            | Mevcut işaretçiyi günceller                     |
+| Marker silme                   | DELETE | `/markers/:code`            | İşaretçiyi siler                                |
 | Kullanıcı adı/şifre güncelleme | PUT    | `/users/me`                 | Oturum açmış kullanıcının bilgilerini günceller |
 
 #### 1.3.7. Duyuru Sayfası
@@ -227,9 +231,9 @@ sistem parametrelerini yönetmesini sağlar.
 **API Entegrasyonu:**
 | Senaryo               | Method | Endpoint     | Açıklama                                                |
 | --------------------- | ------ | ------------ | ------------------------------------------------------- |
-| Sayfa ilk açıldığında | GET    | `/logs`      | Varsayılan log listesini getirir                        |
-| Log türü filtresi     | GET    | `/logs`      | Seçilen filtrelere göre logları getirir                 |
-| Log metadata çekme    | GET    | `/logs/meta` | Frontend filtreleme alanları için log tiplerini getirir |
+| Sayfa ilk açıldığında | GET    | `/audit-logs`      | Sistem aktivite kayıtlarını getirir                     |
+| Log filtresi          | GET    | `/audit-logs`      | Seçilen filtrelere göre audit logları getirir           |
+| Event type'ları getir | GET    | `/audit-logs/meta` | Frontend filtreleme için event type listesini getirir   |
 
 ## 2. Backend
 > Not: Bu bölümde API’lerin sorumlulukları ve yetkilendirme yapıları açıklanmıştır.
@@ -251,7 +255,8 @@ src/
 │   ├── userRoutes.js
 │   ├── announcementRoutes.js
 │   ├── settingsRoutes.js
-│   └── logRoutes.js
+│   ├── markerRoutes.js
+│   └── auditLogRoutes.js
 │
 ├── controllers/
 │   ├── authController.js
@@ -262,7 +267,8 @@ src/
 │   ├── userController.js
 │   ├── announcementController.js
 │   ├── settingsController.js
-│   └── logController.js
+│   ├── markerController.js
+│   └── auditLogController.js
 │
 ├── middlewares/
 │   ├── authMiddleware.js          # JWT doğrulama
@@ -363,16 +369,19 @@ aydaki puantaj formunu Excel formatında oluşturur.
 
 #### 2.3.7. Log API'leri
 **_Yetki:_** Yalnızca admin
-- **GET /logs:** Log listesini getirir. Query ile filtre.
-- **GET /logs/meta:** Frontend'de kullanılacak log türlerini getirir.
+- **GET /audit-logs:** Sistem aktivite kayıtlarını getirir. Query ile filtre (username, event_type, tarih).
+- **GET /audit-logs/meta:** Frontend'de kullanılacak event type'ları getirir.
 
-#### 2.3.8. Ayarlar API'leri
+#### 2.3.8. Ayarlar ve Marker API'leri
 **_Yetki:_** Yalnızca admin
 - **GET /settings:** Sistem ayarlarını getir.
-- **PUT /settings/daily-wage:** Günlük ödenek tutarını günceller.
+- **PUT /settings/daily-wage:** Günlük ücret tutarını günceller.
 - **PUT /settings/max-weekly-days:** Haftalık maksimum çalışma gününü günceller.
-- **PUT /settings/program-date:** Programın dönemini ayarlar (başlangıç tarihi, bitiş tarihi olarak).
-- **PUT /settings/markers:** Puantaj işaretçisi ekler/siler/günceller.
+- **PUT /settings/program-date:** Programın dönemini ayarlar (başlangıç tarihi, bitiş tarihi). Periods tablosunu yeniden oluşturur.
+- **GET /markers:** Tüm puantaj işaretçilerini listeler.
+- **POST /markers:** Yeni puantaj işaretçisi ekler.
+- **PUT /markers/:code:** Mevcut işaretçiyi günceller.
+- **DELETE /markers/:code:** İşaretçiyi siler.
 
 ## 3. Veri Modeli
 
@@ -387,7 +396,7 @@ aydaki puantaj formunu Excel formatında oluşturur.
 - timesheet_days: Her puantaj dosyasının gün gün değeri
 - settings: Sistem ayarları
 - announcements: Duyurular
-- logs: Log kayıtları
+- audit_logs: Sistem aktivite kayıtları (audit trail)
 
 ### 3.2. İlişkiler (Relationships)
 ```text
@@ -419,9 +428,9 @@ Period
 | markers | `id (uuid PK)`<br>`code`<br>`label`<br>`is_paid`<br> | `code` **UNIQUE** |
 | timesheets | `id (uuid PK)`<br>`employee_id (FK → employees.id)`<br>`period_id (FK → periods.id)`<br>`unit_id (FK → units.id)`<br>`created_at`<br>`updated_at` | Aynı çalışan + aynı ay tek kayıt:<br>**UNIQUE(employee_id, period_id)**<br>`unit_id`, employee’nin `unit_id`’si ile aynı olmalı (trigger). |
 | timesheet_days | `id (uuid PK)`<br>`timesheet_id (FK → timesheets.id)`<br>`day (date)`<br>`marker_code (FK → markers.code)`<br>`note` | Aynı gün iki kez girilemez:<br>**UNIQUE(timesheet_id, day)**<br>`day`, ilgili period aralığında olmalı (trigger)<br>Timesheet `LOCKED` ise insert/update yasak (trigger) |
-| settings | `key (PK)`<br>`value (jsonb)`<br>`program_start_date`<br>`<program_end_date`<br>`updated_at` | `key` sistem genelinde tek <br> settings tablosundaki `program_start_date` ve `program_end_date` değiştiğinde periods tablosu backend katmanında transaction içinde yeniden oluşturulmalı |
+| settings | `id (PK, singleton)`<br>`daily_wage`<br>`max_weekly_days`<br>`program_start_date`<br>`program_end_date`<br>`created_at`<br>`updated_at` | Singleton pattern: sadece 1 satır (id=1)<br>`daily_wage > 0`, `max_weekly_days > 0`<br>`program_end_date > program_start_date`<br>Tarih değişikliğinde periods tablosu yeniden oluşturulmalı |
 | announcements | `id (uuid PK)`<br>`title`<br>`content`<br>`created_at` | —        |
-| logs   | `id`<br>`actor_user_id (FK → users.id)`<br>`action`<br>`entity_type`<br>`entity_id`<br>`metadata (jsonb)`<br>`created_at` | Log kayıtları **silinemez** (DB yetkisiyle engellenir) |
+| audit_logs | `id (uuid PK)`<br>`username`<br>`user_role`<br>`description (text)`<br>`event_type`<br>`table_name`<br>`record_id (uuid)`<br>`old_data (jsonb)`<br>`new_data (jsonb)`<br>`created_at` | Log kayıtları **silinemez** (DB yetkisiyle engellenir)<br>İnsan-okunabilir `description` alan ile detaylı izleme |
 
 ## 4. Veritabanı Tasarımı
 Sistem verilerinin tutulduğu şema: `app`.
@@ -470,7 +479,10 @@ Hıza ihtiyacı olan index setleri
 - `timesheet_days(timesheet_id, day)`
 - `users(unit_id)`
 - `units(location_id)`
-- `logs(created_at)`
+- `audit_logs(created_at)`
+- `audit_logs(username)`
+- `audit_logs(event_type)`
+- `audit_logs(table_name, event_type, created_at)` (composite)
 
 ### 4.4. RLS Yönetimi
 **Amaç:** Backend'de middleware ile sağlanan güvenlik, DB'de RLS ile sağlanır. Kullanıcıların sorumlu olduğu kapsam kadar veriye erişmesini sağlar.

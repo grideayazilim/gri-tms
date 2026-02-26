@@ -518,7 +518,7 @@ limit (integer, optional) - Sayfa başına kayıt (default: 20)
 - title 1-200 karakter olmalı
 - content 1-3000 karakter olmalı
 
-## 7. Ayarlar API'leri
+## 7. Ayarlar ve Marker API'leri
 🔒 **Yetki:** Yalnızca adminler
 
 **Middleware:** authMiddleware -> adminMiddleware
@@ -526,86 +526,345 @@ limit (integer, optional) - Sayfa başına kayıt (default: 20)
 ### 7.1. GET /settings
 **Açıklama:** Sistem ayarlarını getirir.
 
+**Örnek Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "settings": {
+      "id": 1,
+      "dailyWage": 500.00,
+      "maxWeeklyDays": 6,
+      "programStartDate": "2024-01-01",
+      "programEndDate": "2026-12-31",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2026-02-26T10:00:00Z"
+    }
+  }
+}
+```
+
 ### 7.2. PUT /settings/daily-wage
-**Açıklama:** Günlük ödenek bilgisini güncelle.
-- Ödenek 0'dan büyük olmalı.
+**Açıklama:** Günlük ücret bilgisini güncelle.
+
+**Request Body:**
+```json
+{
+  "dailyWage": 600.00
+}
+```
+
+**Validasyon:**
+- `dailyWage` 0'dan büyük olmalı.
+
+**Örnek Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "settings": {
+      "id": 1,
+      "dailyWage": 600.00,
+      "maxWeeklyDays": 6,
+      "programStartDate": "2024-01-01",
+      "programEndDate": "2026-12-31",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2026-02-26T10:30:00Z"
+    }
+  },
+  "message": "Günlük ücret güncellendi"
+}
+```
 
 ### 7.3. PUT /settings/max-weekly-days
-**Açıklama:** Haftalık çalışma günü sınırını değiştir.
-- 0'dan büyük olmalı.
+**Açıklama:** Haftalık maksimum çalışma gün sınırını değiştir.
+
+**Request Body:**
+```json
+{
+  "maxWeeklyDays": 5
+}
+```
+
+**Validasyon:**
+- `maxWeeklyDays` 0'dan büyük olmalı.
+
+**Örnek Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "settings": {
+      "id": 1,
+      "dailyWage": 600.00,
+      "maxWeeklyDays": 5,
+      "programStartDate": "2024-01-01",
+      "programEndDate": "2026-12-31",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2026-02-26T10:45:00Z"
+    }
+  },
+  "message": "Haftalık maksimum gün güncellendi"
+}
+```
 
 ### 7.4. PUT /settings/program-date
 **Açıklama:** Program başlangıç ve bitiş tarihini günceller.
-- startDate > endDate olmalı.
-- Bu güncelleme yapıldığında periods tablosu startDate'ten endDate'e kadar tekrar oluşturulmalı.
 
-### 7.5. PUT /settings/markers
-**Açıklama:** Puantaj işaretçisi ekle/güncelle.
+**Request Body:**
+```json
+{
+  "programStartDate": "2024-01-01",
+  "programEndDate": "2027-12-31"
+}
+```
 
-## 8. Log API'leri
+**Validasyon:**
+- `programEndDate` > `programStartDate` olmalı.
+
+**Yan Etkiler:**
+- Bu güncelleme yapıldığında `periods` tablosu tamamen temizlenip yeniden oluşturulur.
+- Yeni başlangıç ve bitiş tarihi arasındaki tüm aylar için period kayıtları oluşturulur.
+
+**Örnek Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "settings": {
+      "id": 1,
+      "dailyWage": 600.00,
+      "maxWeeklyDays": 5,
+      "programStartDate": "2024-01-01",
+      "programEndDate": "2027-12-31",
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2026-02-26T11:00:00Z"
+    }
+  },
+  "message": "Program tarihleri ve dönemler güncellendi"
+}
+```
+
+### 7.5. GET /markers
+**Açıklama:** Tüm puantaj işaretçilerini listele.
+
+**Örnek Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "markers": [
+      {
+        "id": "uuid-1",
+        "code": "X",
+        "label": "Çalıştı",
+        "isPaid": true
+      },
+      {
+        "id": "uuid-2",
+        "code": ".",
+        "label": "Çalışmadı",
+        "isPaid": false
+      },
+      {
+        "id": "uuid-3",
+        "code": "İ",
+        "label": "İzin",
+        "isPaid": true
+      },
+      {
+        "id": "uuid-4",
+        "code": "R",
+        "label": "Rapor",
+        "isPaid": true
+      }
+    ]
+  }
+}
+```
+
+### 7.6. POST /markers
+**Açıklama:** Yeni puantaj işaretçisi ekle.
+
+**Request Body:**
+```json
+{
+  "code": "M",
+  "label": "Mazeret",
+  "isPaid": false
+}
+```
+
+**Validasyon:**
+- `code` unique olmalı.
+- `code`, `label` ve `isPaid` (boolean) zorunlu.
+
+**Örnek Response (201 Created):**
+```json
+{
+  "success": true,
+  "data": {
+    "marker": {
+      "id": "uuid-5",
+      "code": "M",
+      "label": "Mazeret",
+      "isPaid": false
+    }
+  },
+  "message": "Marker oluşturuldu"
+}
+```
+
+### 7.7. PUT /markers/:code
+**Açıklama:** Mevcut işaretçiyi güncelle.
+
+**Request Body:**
+```json
+{
+  "label": "Mazeretli",
+  "isPaid": true
+}
+```
+
+**Not:** `code` değiştirilemez (PK olarak kullanılıyor).
+
+**Örnek Response (200 OK):**
+```json
+{
+  "success": true,
+  "data": {
+    "marker": {
+      "id": "uuid-5",
+      "code": "M",
+      "label": "Mazeretli",
+      "isPaid": true
+    }
+  },
+  "message": "Marker güncellendi"
+}
+```
+
+### 7.8. DELETE /markers/:code
+**Açıklama:** İşaretçiyi sil.
+
+**Validasyon:**
+- Eğer bu marker `timesheet_days` tablosunda kullanılıyorsa silinemez (FK constraint).
+
+**Örnek Response (200 OK):**
+```json
+{
+  "success": true,
+  "message": "Marker silindi"
+}
+```
+
+**Hata Durumu (409 Conflict):**
+```json
+{
+  "success": false,
+  "message": "Bu marker kullanımda, silinemez"
+}
+```
+
+## 8. Audit Log API'leri
 🔒 **Yetki:** Yalnızca adminler
 
 **Middleware:** authMiddleware -> adminMiddleware
 
-### 8.1. GET /logs
-**Açıklama:** Logları getir.
+### 8.1. GET /audit-logs
+**Açıklama:** Sistem aktivite kayıtlarını getirir.
 
 **Query Parameters:**
 ```text
-action      (string, optional) - CREATE, UPDATE, DELETE, LOGIN
-entityType  (string, optional) - USER, EMPLOYEE, TIMESHEET, etc.
-userId      (string, optional) - İşlemi yapan kullanıcı ID
+username    (string, optional) - İşlemi yapan kullanıcı adı
+eventType   (string, optional) - LOGIN, LOGOUT, USER, EMPLOYEE, TIMESHEET, SETTINGS, vb.
+tableName   (string, optional) - employees, users, timesheets, vb.
 startDate   (string, optional) - Başlangıç tarihi (YYYY-MM-DD)
 endDate     (string, optional) - Bitiş tarihi (YYYY-MM-DD)
-page        (integer, optional)
-limit       (integer, optional)
+page        (integer, optional) - Sayfa numarası (default: 1)
+limit       (integer, optional) - Sayfa başına kayıt (default: 50)
 ```
 
 **Örnek Response (200 OK):**
-```text
+```json
 {
   "success": true,
   "data": {
-    "logs": [
+    "auditLogs": [
       {
-        "id": "uuid",
-        "actorUser": {
-          "id": "uuid",
-          "username": "admin_user"
+        "id": "uuid-1",
+        "username": "sorumlu_ahmet",
+        "userRole": "RESPONSIBLE",
+        "description": "Mehmet Yılmaz adlı çalışanın Şubat 2026 puantajını güncelledi (5 gün değiştirildi)",
+        "eventType": "TIMESHEET",
+        "tableName": "timesheets",
+        "recordId": "uuid-timesheet-1",
+        "oldData": {
+          "modifiedDays": [
+            {"date": "2026-02-01", "oldMarker": "X", "newMarker": "."}
+          ]
         },
-        "action": "UPDATE",
-        "entityType": "TIMESHEET",
-        "entityId": "uuid",
-        "metadata": {
-          "changes": {
-            "daysModified": 5,
-            "employeeName": "Ali Yılmaz"
-          }
+        "newData": {
+          "totalDaysChanged": 5,
+          "paidDaysChanged": 2
         },
-        "createdAt": "2024-02-15T14:30:00Z"
+        "createdAt": "2026-02-26T14:30:00Z"
+      },
+      {
+        "id": "uuid-2",
+        "username": "sorumlu_ahmet",
+        "userRole": "RESPONSIBLE",
+        "description": "Sisteme giriş yaptı",
+        "eventType": "LOGIN",
+        "tableName": null,
+        "recordId": null,
+        "oldData": null,
+        "newData": null,
+        "createdAt": "2026-02-26T09:00:00Z"
+      },
+      {
+        "id": "uuid-3",
+        "username": "admin_user",
+        "userRole": "ADMIN",
+        "description": "Günlük ücreti 500.00 TL'den 600.00 TL'ye yükseltti",
+        "eventType": "SETTINGS",
+        "tableName": "settings",
+        "recordId": "1",
+        "oldData": {"dailyWage": 500.00},
+        "newData": {"dailyWage": 600.00},
+        "createdAt": "2026-02-26T11:00:00Z"
       }
     ],
-    "pagination": { ... }
+    "pagination": {
+      "page": 1,
+      "limit": 50,
+      "total": 150,
+      "totalPages": 3
+    }
   }
 }
 ```
 
-### 8.2. GET /logs/meta
-**Açıklama:** Log tiplerini getir.
+### 8.2. GET /audit-logs/meta
+**Açıklama:** Frontend'de filtreleme için event type'ları getirir.
 
 **Örnek Response (200 OK):**
+```json
 {
   "success": true,
   "data": {
-    "actions": ["CREATE", "UPDATE", "DELETE", "LOGIN", "LOGOUT"],
-    "entityTypes": [
+    "eventTypes": [
+      "LOGIN",
+      "LOGOUT",
       "USER",
       "EMPLOYEE",
       "TIMESHEET",
-      "LOCATION",
-      "UNIT",
+      "MARKER",
       "ANNOUNCEMENT",
-      "SETTINGS"
+      "LOCATION_UNIT",
+      "SETTINGS",
+      "SECURITY"
     ]
   }
 }
+```

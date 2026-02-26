@@ -14,8 +14,8 @@ export const useLocationsAndUnits = () => {
 
     try {
       const response = await locationAndUnitService.getLocations();
-      setLocations(response.data || []);
-      return { success: true, data: response.data };
+      setLocations(response.data?.locations || []);
+      return { success: true, data: response.data?.locations };
     } catch (err) {
       setError(err.message);
       return { success: false, error: err.message };
@@ -31,8 +31,8 @@ export const useLocationsAndUnits = () => {
 
     try {
       const response = await locationAndUnitService.getUnitsByLocation(locationId);
-      setUnits(response.data || []);
-      return { success: true, data: response.data };
+      setUnits(response.data?.units || []);
+      return { success: true, data: response.data?.units };
     } catch (err) {
       setError(err.message);
       setUnits([]);

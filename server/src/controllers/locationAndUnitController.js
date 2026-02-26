@@ -1,4 +1,5 @@
 import { withTransaction } from "../config/database.js";
+import { toCamelCase } from "../utils/caseMapper.js";
 
 // Tüm yerleşkeleri getir
 export async function getLocations(req, res) {
@@ -12,7 +13,9 @@ export async function getLocations(req, res) {
 
     res.json({
       success: true,
-      data: result.rows,
+      data: {
+        locations: toCamelCase(result.rows),
+      },
     });
   } catch (error) {
     console.error('Get locations error:', error);
@@ -37,7 +40,9 @@ export async function getUnitsByLocation(req, res) {
 
     res.json({
       success: true,
-      data: result.rows,
+      data: {
+        units: toCamelCase(result.rows),
+      },
     });
   } catch (error) {
     console.error('Get units error:', error);

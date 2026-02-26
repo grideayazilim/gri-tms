@@ -175,7 +175,7 @@ function SignUp({ onToggle }) {
                 <option value="" disabled hidden></option>
                 {locations.map((loc) => (
                   <option key={loc.id} value={loc.id}>
-                    {loc.name} ({loc.program_no})
+                    {loc.name} ({loc.programNo})
                   </option>
                 ))}
               </select>

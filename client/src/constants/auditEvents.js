@@ -1,0 +1,24 @@
+export const AUDIT_EVENT_TYPES = [
+    "LOGIN",
+    "LOGOUT",
+    "USER",
+    "EMPLOYEE",
+    "TIMESHEET",
+    "MARKER",
+    "ANNOUNCEMENT",
+    "LOCATION_UNIT",
+    "SETTINGS",
+    "SECURITY"
+];
+
+export const AUDIT_EVENT_LABELS = {
+    LOGIN: "GİRİŞ",
+    USER: "KULLANICI",
+    EMPLOYEE: "ÇALIŞAN",
+    TIMESHEET: "PUANTAJ",
+    MARKER: "İŞARETECİ",
+    ANNOUNCEMENT: "DUYURU",
+    LOCATION_UNIT: "YERLEŞKE/BİRİM",
+    SETTINGS: "AYARLAR",
+    SECURITY: "GÜVENLİK"
+};

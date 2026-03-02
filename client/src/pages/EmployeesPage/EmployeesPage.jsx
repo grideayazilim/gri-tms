@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import DynamicTable from '../../components/Table/DynamicTable';
-import { employeeColumns } from '../../components/Table/TableColumns';
-import { MOCK_DATA } from '../../components/Table/mockData';
+import DynamicTable from '../../components/DynamicTable/DynamicTable';
+import { employeeColumns } from './employeeColumns';
+import { MOCK_DATA } from '../../components/DynamicTable/mockData';
+import FilterBar from '../../components/FilterBar/FilterBar';
 import '../../styles/page-layout.scss';
 import '../../styles/inputs.scss';
 
@@ -34,6 +35,12 @@ const EmployeesPage = () => {
     setFilters({ ...filters, [field]: value });
   };
 
+  const filterConfig = [
+    { key: 'location', label: 'Yerleşke', type: 'select', options: locations, defaultOption: 'Tüm Yerleşkeler' },
+    { key: 'unit', label: 'Birim', type: 'select', options: units, defaultOption: 'Tüm Birimler' },
+    { key: 'search', label: 'Çalışan Adı Ara', type: 'text' },
+  ];
+
   return (
     <main className="page-container">
       <div className="page-header">
@@ -41,46 +48,7 @@ const EmployeesPage = () => {
       </div>
 
       {/* Filters */}
-        <div className="filter-area">
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.location}
-              onChange={(e) => handleFilterChange('location', e.target.value)}
-            >
-              <option value="">Tüm Yerleşkeler</option>
-              {locations.map(loc => (
-                <option key={loc} value={loc}>{loc}</option>
-              ))}
-            </select>
-            <label className="floating-group__label">Yerleşke</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.unit}
-              onChange={(e) => handleFilterChange('unit', e.target.value)}
-            >
-              <option value="">Tüm Birimler</option>
-              {units.map(unit => (
-                <option key={unit} value={unit}>{unit}</option>
-              ))}
-            </select>
-            <label className="floating-group__label">Birim</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <input
-              type="text"
-              className="input"
-              placeholder=" "
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-            />
-            <label className="floating-group__label">Çalışan Adı Ara</label>
-          </div>
-        </div>
+      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
       
       <DynamicTable
         columns={employeeColumns}

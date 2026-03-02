@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { AiOutlineBell } from 'react-icons/ai';
-import DynamicTable from '../../components/Table/DynamicTable';
-import { timesheetColumns } from '../../components/Table/TableColumns';
-import { MOCK_DATA } from '../../components/Table/mockData';
+import DynamicTable from '../../components/DynamicTable/DynamicTable';
+import { timesheetColumns } from './timesheetColumns';
+import { MOCK_DATA } from '../../components/DynamicTable/mockData';
 import { useModal } from '../../components/Modal';
 import { AnnouncementList } from '../../components/Announcements';
+import MarkerSelector, { MARKERS } from './MarkerSelector/MarkerSelector';
+import FilterBar from '../../components/FilterBar/FilterBar';
 import '../../styles/page-layout.scss';
 import '../../styles/inputs.scss';
 
 const TimesheetPage = () => {
   const [data, setData] = useState(MOCK_DATA); // TODO: API fetch ile değiştir
+  const [originalData, setOriginalData] = useState(MOCK_DATA); // To track dirty state natively
+  const [selectedMarker, setSelectedMarker] = useState('X'); // Default selected marker
   const [filters, setFilters] = useState({
     period: '2026-02', // Default current period
     location: '',
@@ -29,14 +33,6 @@ const TimesheetPage = () => {
     { value: '2026-02', label: '2026 Şubat' },
     { value: '2026-03', label: '2026 Mart' },
     { value: '2026-04', label: '2026 Nisan' },
-    { value: '2026-05', label: '2026 Mayıs' },
-    { value: '2026-06', label: '2026 Haziran' },
-    { value: '2026-07', label: '2026 Temmuz' },
-    { value: '2026-08', label: '2026 Ağustos' },
-    { value: '2026-09', label: '2026 Eylül' },
-    { value: '2026-10', label: '2026 Ekim' },
-    { value: '2026-11', label: '2026 Kasım' },
-    { value: '2026-12', label: '2026 Aralık' },
   ];
 
   // Filtre uygulaması
@@ -56,19 +52,53 @@ const TimesheetPage = () => {
     setFilters({ ...filters, [field]: value });
   };
 
-  const handleDayClick = (rowId, day, newValue) => {
-    setData(prev => prev.map(row => {
-      if (row.id !== rowId) return row;
+  const handleDayClick = (row, day) => {
+    if (!selectedMarker) {
+        alert("Lütfen önce bir işaretçi seçiniz!");
+        return;
+    }
+    setData(prev => prev.map(r => {
+      if (r.id !== row.id) return r;
       const dayStr = day.toString().padStart(2, '0');
-      const existingKey = Object.keys(row.timesheet_days || {}).find(k => k.endsWith(`-${dayStr}`));
-      const key = existingKey || `2026-02-${dayStr}`;
-      return { ...row, timesheet_days: { ...row.timesheet_days, [key]: newValue } };
+      const key = `${filters.period}-${dayStr}`;
+
+      const newDays = { ...r.timesheet_days };
+      if (newDays[key] === selectedMarker) {
+        delete newDays[key];
+      } else {
+        newDays[key] = selectedMarker;
+      }
+      
+      // Calculate the new total based on isPaid flags
+      const paidMarkerCodes = MARKERS.filter(m => m.isPaid).map(m => m.code);
+      const newCount = Object.values(newDays).filter(val => paidMarkerCodes.includes(val)).length;
+
+      return { ...r, timesheet_days: newDays, work_days_count: newCount };
     }));
   };
 
+  const isDayCellDirty = (rowId, day) => {
+    const dayStr = day.toString().padStart(2, '0');
+    const key = `${filters.period}-${dayStr}`;
+    
+    const originalRow = originalData.find(r => r.id === rowId);
+    if (!originalRow) return false;
+
+    const originalVal = originalRow.timesheet_days?.[key] || '';
+    const currentVal = data.find(r => r.id === rowId)?.timesheet_days?.[key] || '';
+    
+    return originalVal !== currentVal;
+  };
+  
+  const hasGlobalChanges = data.some(r => {
+     const originalRow = originalData.find(o => o.id === r.id);
+     if (!originalRow) return false;
+     return JSON.stringify(r.timesheet_days || {}) !== JSON.stringify(originalRow.timesheet_days || {});
+  });
+
   const handleSave = async () => {
     console.log('Kaydedilen puantaj verisi:', data);
-    // TODO: await api.saveTimesheet(data);
+    setOriginalData(JSON.parse(JSON.stringify(data)));
     alert('Puantaj kaydedildi! (Console\'a bakınız)');
   };
 
@@ -79,6 +109,20 @@ const TimesheetPage = () => {
       content: (onClose) => <AnnouncementList onClose={onClose} />,
     });
   };
+
+  const getDaysInMonth = (periodStr) => {
+    if (!periodStr) return 30;
+    const [year, month] = periodStr.split('-');
+    return new Date(year, month, 0).getDate();
+  };
+  const currentDaysInMonth = getDaysInMonth(filters.period);
+
+  const filterConfig = [
+    { key: 'period', label: 'Dönem', type: 'select', options: periods },
+    { key: 'location', label: 'Yerleşke', type: 'select', options: locations, defaultOption: 'Tüm Yerleşkeler' },
+    { key: 'unit', label: 'Birim', type: 'select', options: units, defaultOption: 'Tüm Birimler' },
+    { key: 'search', label: 'Çalışan Adı Ara', type: 'text' },
+  ];
 
   return (
     <main className="page-container">
@@ -92,69 +136,21 @@ const TimesheetPage = () => {
           >
             <AiOutlineBell />
           </button>
-          <button className="btn btn--primary" onClick={handleSave}>
-            Değişiklikleri Kaydet
-          </button>
+          {hasGlobalChanges && (
+             <button className="btn btn--primary" onClick={handleSave}>
+               Değişiklikleri Kaydet
+             </button>
+          )}
         </div>
       </div>
 
       {/* Filters */}
-        <div className="filter-area">
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.period}
-              onChange={(e) => handleFilterChange('period', e.target.value)}
-            >
-              {periods.map(period => (
-                <option key={period.value} value={period.value}>{period.label}</option>
-              ))}
-            </select>
-            <label className="floating-group__label">Dönem</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.location}
-              onChange={(e) => handleFilterChange('location', e.target.value)}
-            >
-              <option value="">Tüm Yerleşkeler</option>
-              {locations.map(loc => (
-                <option key={loc} value={loc}>{loc}</option>
-              ))}
-            </select>
-            <label className="floating-group__label">Yerleşke</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.unit}
-              onChange={(e) => handleFilterChange('unit', e.target.value)}
-            >
-              <option value="">Tüm Birimler</option>
-              {units.map(unit => (
-                <option key={unit} value={unit}>{unit}</option>
-              ))}
-            </select>
-            <label className="floating-group__label">Birim</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <input
-              type="text"
-              className="input"
-              placeholder=" "
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-            />
-            <label className="floating-group__label">Çalışan Adı Ara</label>
-          </div>
-        </div>
+      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
       
+      <MarkerSelector selected={selectedMarker} onSelect={setSelectedMarker} />
+
       <DynamicTable
-        columns={timesheetColumns(handleDayClick)}
+        columns={timesheetColumns(currentDaysInMonth, handleDayClick, isDayCellDirty)}
         data={filteredData}
         pageSize={10}
       />

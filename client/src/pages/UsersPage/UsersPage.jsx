@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import DynamicTable from '../../components/Table/DynamicTable';
-import { userColumns } from '../../components/Table/TableColumns';
+import DynamicTable from '../../components/DynamicTable/DynamicTable';
+import { userColumns } from './userColumns';
+import FilterBar from '../../components/FilterBar/FilterBar';
 import '../../styles/page-layout.scss';
 import '../../styles/inputs.scss';
-import './UsersPage.scss';
 
 const UsersPage = () => {
   // Mock data - TODO: API'den fetch et
@@ -76,6 +76,30 @@ const UsersPage = () => {
 
   const pendingUsers = users.filter(u => u.status === 'PENDING');
 
+  const filterConfig = [
+    { 
+      key: 'role', 
+      label: 'Rol', 
+      type: 'select', 
+      options: [
+        { value: 'ADMIN', label: 'Admin' }, 
+        { value: 'RESPONSIBLE', label: 'Sorumlu' }
+      ], 
+      defaultOption: 'Tüm Roller' 
+    },
+    { 
+      key: 'status', 
+      label: 'Durum', 
+      type: 'select', 
+      options: [
+        { value: 'ACTIVE', label: 'Aktif' }, 
+        { value: 'PENDING', label: 'Onay Bekliyor' }
+      ], 
+      defaultOption: 'Tüm Durumlar' 
+    },
+    { key: 'search', label: 'Kullanıcı Adı Ara', type: 'text' },
+  ];
+
   return (
     <main className="page-container">
       <div className="page-header">
@@ -95,44 +119,7 @@ const UsersPage = () => {
       )}
 
       {/* Filters */}
-        <div className="filter-area">
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.role}
-              onChange={(e) => handleFilterChange('role', e.target.value)}
-            >
-              <option value="">Tüm Roller</option>
-              <option value="ADMIN">Admin</option>
-              <option value="RESPONSIBLE">Sorumlu</option>
-            </select>
-            <label className="floating-group__label">Rol</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-            >
-              <option value="">Tüm Durumlar</option>
-              <option value="ACTIVE">Aktif</option>
-              <option value="PENDING">Onay Bekliyor</option>
-            </select>
-            <label className="floating-group__label">Durum</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <input
-              type="text"
-              className="input"
-              placeholder=" "
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-            />
-            <label className="floating-group__label">Kullanıcı Adı Ara</label>
-          </div>
-        </div>
+      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
 
       {/* Users Table */}
       <DynamicTable

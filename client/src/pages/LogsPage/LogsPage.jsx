@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import DynamicTable from '../../components/DynamicTable/DynamicTable';
+import { logColumns } from './logColumns';
+import FilterBar from '../../components/FilterBar/FilterBar';
 import '../../styles/page-layout.scss';
 import '../../styles/inputs.scss';
-import './LogsPage.scss';
 
 const LogsPage = () => {
   const [logs, setLogs] = useState([
@@ -60,41 +62,37 @@ const LogsPage = () => {
     return true;
   });
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-  };
-
-  const getActionBadge = (action) => {
-    const actionMap = {
-      CREATE: { label: 'Oluştur', class: 'create' },
-      UPDATE: { label: 'Güncelle', class: 'update' },
-      DELETE: { label: 'Sil', class: 'delete' },
-      LOGIN: { label: 'Giriş', class: 'login' },
-      LOGOUT: { label: 'Çıkış', class: 'logout' },
-    };
-    return actionMap[action] || { label: action, class: 'default' };
-  };
-
-  const getEntityTypeLabel = (entityType) => {
-    const typeMap = {
-      USER: 'Kullanıcı',
-      EMPLOYEE: 'Çalışan',
-      TIMESHEET: 'Puantaj',
-      LOCATION: 'Yerleşke',
-      UNIT: 'Birim',
-      ANNOUNCEMENT: 'Duyuru',
-      SETTINGS: 'Ayarlar',
-    };
-    return typeMap[entityType] || entityType;
-  };
+  const filterConfig = [
+    { 
+      key: 'action', 
+      label: 'İşlem Tipi', 
+      type: 'select', 
+      options: [
+        { value: 'CREATE', label: 'Oluştur' }, 
+        { value: 'UPDATE', label: 'Güncelle' },
+        { value: 'DELETE', label: 'Sil' },
+        { value: 'LOGIN', label: 'Giriş' },
+        { value: 'LOGOUT', label: 'Çıkış' }
+      ], 
+      defaultOption: 'Tüm İşlemler' 
+    },
+    { 
+      key: 'entityType', 
+      label: 'Varlık Tipi', 
+      type: 'select', 
+      options: [
+        { value: 'USER', label: 'Kullanıcı' }, 
+        { value: 'EMPLOYEE', label: 'Çalışan' },
+        { value: 'TIMESHEET', label: 'Puantaj' },
+        { value: 'LOCATION', label: 'Yerleşke' },
+        { value: 'UNIT', label: 'Birim' },
+        { value: 'ANNOUNCEMENT', label: 'Duyuru' },
+        { value: 'SETTINGS', label: 'Ayarlar' }
+      ], 
+      defaultOption: 'Tüm Varlıklar' 
+    },
+    { key: 'username', label: 'Kullanıcı Adı', type: 'text' },
+  ];
 
   return (
     <main className="page-container">
@@ -103,105 +101,14 @@ const LogsPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="filter-area">
-        <div className="floating-group floating-group--on-background">
-          <select
-            className="input"
-            value={filters.action}
-            onChange={(e) => handleFilterChange('action', e.target.value)}
-          >
-            <option value="">Tüm İşlemler</option>
-            <option value="CREATE">Oluştur</option>
-            <option value="UPDATE">Güncelle</option>
-            <option value="DELETE">Sil</option>
-            <option value="LOGIN">Giriş</option>
-            <option value="LOGOUT">Çıkış</option>
-          </select>
-          <label className="floating-group__label">İşlem Tipi</label>
-        </div>
-
-        <div className="floating-group floating-group--on-background">
-          <select
-            className="input"
-            value={filters.entityType}
-            onChange={(e) => handleFilterChange('entityType', e.target.value)}
-          >
-            <option value="">Tüm Varlıklar</option>
-            <option value="USER">Kullanıcı</option>
-            <option value="EMPLOYEE">Çalışan</option>
-            <option value="TIMESHEET">Puantaj</option>
-            <option value="LOCATION">Yerleşke</option>
-            <option value="UNIT">Birim</option>
-            <option value="ANNOUNCEMENT">Duyuru</option>
-            <option value="SETTINGS">Ayarlar</option>
-          </select>
-          <label className="floating-group__label">Varlık Tipi</label>
-        </div>
-
-        <div className="floating-group floating-group--on-background">
-          <input
-            type="text"
-            className="input"
-            placeholder=" "
-            value={filters.username}
-            onChange={(e) => handleFilterChange('username', e.target.value)}
-          />
-          <label className="floating-group__label">Kullanıcı Adı</label>
-        </div>
-      </div>
+      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
 
       {/* Logs List */}
-      <div className="logs-list">
-        {filteredLogs.length === 0 ? (
-          <div className="page-section">
-            <div className="empty-state">
-              <div className="empty-state__icon">📋</div>
-              <div className="empty-state__title">Log bulunamadı</div>
-              <div className="empty-state__description">
-                Filtreleri değiştirerek tekrar deneyin
-              </div>
-            </div>
-          </div>
-        ) : (
-          filteredLogs.map(log => {
-            const actionInfo = getActionBadge(log.action);
-            return (
-              <div key={log.id} className="log-card">
-                <div className="log-card__header">
-                  <div className="log-card__badges">
-                    <span className={`badge badge--${actionInfo.class}`}>
-                      {actionInfo.label}
-                    </span>
-                    <span className="badge badge--entity">
-                      {getEntityTypeLabel(log.entityType)}
-                    </span>
-                  </div>
-                  <span className="log-card__time">{formatDate(log.createdAt)}</span>
-                </div>
-                
-                <div className="log-card__body">
-                  <div className="log-card__user">
-                    <strong>{log.actorUsername}</strong>
-                  </div>
-                  
-                  {log.metadata && Object.keys(log.metadata).length > 0 && (
-                    <div className="log-card__metadata">
-                      {Object.entries(log.metadata).map(([key, value]) => (
-                        <div key={key} className="metadata-item">
-                          <span className="metadata-item__key">{key}:</span>
-                          <span className="metadata-item__value">
-                            {typeof value === 'object' ? JSON.stringify(value) : value}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+      <DynamicTable
+        columns={logColumns}
+        data={filteredLogs}
+        pageSize={10}
+      />
     </main>
   );
 };

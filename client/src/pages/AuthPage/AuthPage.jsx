@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import SignIn from './SignIn';
 import SignUp from './SignUp';
+import { motion, AnimatePresence } from 'framer-motion';
 import './AuthPage.scss';
 
 function AuthPage() {
@@ -23,7 +24,31 @@ function AuthPage() {
         />
       </svg>
 
-      {isLogin ? <SignIn onToggle={() => setIsLogin(false)} /> : <SignUp onToggle={() => setIsLogin(true)} />}
+      <AnimatePresence mode="wait">
+        {isLogin ? (
+          <motion.div
+            key="login"
+            className="auth-page__card"
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -15 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <SignIn onToggle={() => setIsLogin(false)} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="register"
+            className="auth-page__card"
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -15 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <SignUp onToggle={() => setIsLogin(true)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

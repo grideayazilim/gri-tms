@@ -1,39 +1,58 @@
 import { Link } from 'react-router-dom';
-import { RiHome4Line, RiArrowLeftLine } from 'react-icons/ri';
-import './NotFoundPage.scss';
+import "./NotFoundPage.scss";
 
-const NotFoundPage = () => {
+function NotFoundPage() {
   return (
-    <div className="not-found-page">
-      <div className="not-found-container">
-        <div className="not-found-animation">
-          <div className="number-404">404</div>
-          <div className="floating-shapes">
-            <div className="shape shape-1"></div>
-            <div className="shape shape-2"></div>
-            <div className="shape shape-3"></div>
+    <div className="auth-page">
+      <svg
+        className="auth-page__wave"
+        viewBox="0 0 1440 900"
+        preserveAspectRatio="xMidYMid slice"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M-200,600 C100,350 400,800 750,450 C1100,100 1300,550 1650,300"
+          fill="none"
+          stroke="rgba(0, 40, 160, 0.18)"
+          strokeWidth="380"
+          strokeLinecap="round"
+        />
+      </svg>
+
+      <div className="auth-page__card notfound">
+        {/* 404 Browser Illustration */}
+        <div className="notfound__browser">
+          <div className="notfound__browser-bar">
+            <span className="notfound__dot notfound__dot--red" />
+            <span className="notfound__dot notfound__dot--yellow" />
+            <span className="notfound__dot notfound__dot--green" />
+            <div className="notfound__address-bar" />
+          </div>
+          <div className="notfound__browser-body">
+            <span className="notfound__404">404</span>
+            <div className="notfound__browser-footer">
+              <div className="notfound__lines">
+                <span />
+                <span />
+              </div>
+              <div className="notfound__dots-group">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
           </div>
         </div>
 
-        <h1 className="not-found-title">Sayfa Bulunamadı</h1>
-        <p className="not-found-description">
-          Aradığınız sayfa taşınmış, silinmiş veya hiç var olmamış olabilir.
-        </p>
+        <p className="notfound__message">Görünüşe göre kaybolmuşsunuz....</p>
 
-        <div className="not-found-actions">
-          <Link to="/" className="btn btn--primary">
-            <RiHome4Line />
-            Ana Sayfaya Dön
-          </Link>
-          <button onClick={() => window.history.back()} className="btn btn--secondary">
-            <RiArrowLeftLine />
-            Geri Dön
-          </button>
-        </div>
+        <Link to="/" className="btn notfound__btn" style={{textDecoration: 'none'}}>
+          Ana Sayfaya Dön
+        </Link>
       </div>
     </div>
   );
-};
+}
 
 export default NotFoundPage;
 

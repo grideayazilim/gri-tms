@@ -9,7 +9,8 @@ export const MOCK_DATA = [
             "2026-02-02": "X",
             "2026-02-04": "X",
             "2026-02-06": "X"
-        }
+        },
+        work_days_count: 3
     },
     {
         id: 2,
@@ -20,7 +21,8 @@ export const MOCK_DATA = [
         timesheet_days: {
             "2026-02-01": "RT",
             "2026-02-02": "X"
-        }
+        },
+        work_days_count: 1
     },
     {
         id: 3,
@@ -28,7 +30,8 @@ export const MOCK_DATA = [
         name: "Mehmet Demir",
         unit: "Havacılık",
         location: "Etlik",
-        timesheet_days: {}
+        timesheet_days: {},
+        work_days_count: 0
     },
     {
         id: 4,
@@ -36,7 +39,8 @@ export const MOCK_DATA = [
         name: "Fatma Kaya",
         unit: "Kantin",
         location: "Etlik",
-        timesheet_days: { "2026-02-10": "I" }
+        timesheet_days: { "2026-02-10": "I" },
+        work_days_count: 0
     },
     {
         id: 5,
@@ -44,7 +48,8 @@ export const MOCK_DATA = [
         name: "Ali Veli",
         unit: "Havacılık",
         location: "Çubuk",
-        timesheet_days: { "2026-02-15": "R" }
+        timesheet_days: { "2026-02-15": "R" },
+        work_days_count: 0
     },
     {
         id: 6,
@@ -52,7 +57,8 @@ export const MOCK_DATA = [
         name: "Zeynep Şen",
         unit: "Yemekhane",
         location: "Etlik",
-        timesheet_days: {}
+        timesheet_days: {},
+        work_days_count: 0
     },
     {
         id: 7,
@@ -60,7 +66,8 @@ export const MOCK_DATA = [
         name: "Hasan Can",
         unit: "Güvenlik",
         location: "Merkez",
-        timesheet_days: { "2026-02-20": "X" }
+        timesheet_days: { "2026-02-20": "X" },
+        work_days_count: 1
     }
 ];
 

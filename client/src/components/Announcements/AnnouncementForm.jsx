@@ -1,103 +1,59 @@
-import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { announcementSchema } from '../../schemas/announcement.schema';
 import '../../styles/inputs.scss';
 import './Announcements.scss';
 
 function AnnouncementForm({ onSubmit, onCancel }) {
   const { user } = useAuth();
-  const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-  });
-  const [errors, setErrors] = useState({
-    title: '',
-    content: '',
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const validate = () => {
-    const newErrors = {
+  
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(announcementSchema),
+    defaultValues: {
       title: '',
       content: '',
-    };
-    let isValid = true;
+    },
+  });
 
-    // Başlık validasyonu
-    if (!formData.title.trim()) {
-      newErrors.title = 'Başlık gereklidir';
-      isValid = false;
-    } else if (formData.title.trim().length < 3) {
-      newErrors.title = 'Başlık en az 3 karakter olmalıdır';
-      isValid = false;
-    } else if (formData.title.length > 100) {
-      newErrors.title = 'Başlık en fazla 100 karakter olabilir';
-      isValid = false;
-    }
+  const contentValue = watch("content", "");
 
-    // İçerik validasyonu
-    if (!formData.content.trim()) {
-      newErrors.content = 'İçerik gereklidir';
-      isValid = false;
-    } else if (formData.content.trim().length < 10) {
-      newErrors.content = 'İçerik en az 10 karakter olmalıdır';
-      isValid = false;
-    } else if (formData.content.length > 1000) {
-      newErrors.content = 'İçerik en fazla 1000 karakter olabilir';
-      isValid = false;
-    }
-
-    setErrors(newErrors);
-    return isValid;
-  };
-
-  const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validate()) {
-      return;
-    }
-
-    setIsSubmitting(true);
+  const onSubmitForm = async (data) => {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Create announcement object
     const newAnnouncement = {
       id: Date.now().toString(),
-      title: formData.title.trim(),
-      content: formData.content.trim(),
+      title: data.title.trim(),
+      content: data.content.trim(),
       createdAt: new Date().toISOString(),
       createdBy: user?.username || 'Bilinmeyen',
     };
 
-    // Simulate API call
-    setTimeout(() => {
-      onSubmit(newAnnouncement);
-      setIsSubmitting(false);
-    }, 300);
+    onSubmit(newAnnouncement);
   };
 
   return (
-    <form className="announcement-form" onSubmit={handleSubmit}>
+    <form className="announcement-form" onSubmit={handleSubmit(onSubmitForm)}>
       {/* Başlık */}
       <div className="floating-group">
         <input
           type="text"
           className={`input ${errors.title ? 'input--error' : ''}`}
           placeholder=" "
-          value={formData.title}
-          onChange={(e) => handleChange('title', e.target.value)}
           maxLength={100}
+          {...register('title')}
+          disabled={isSubmitting}
         />
         <label className="floating-group__label">Başlık</label>
         {errors.title && (
-          <span className="input-error">{errors.title}</span>
+          <span className="input-error">{errors.title.message}</span>
         )}
       </div>
 
@@ -106,17 +62,17 @@ function AnnouncementForm({ onSubmit, onCancel }) {
         <textarea
           className={`input announcement-form__textarea ${errors.content ? 'input--error' : ''}`}
           placeholder=" "
-          value={formData.content}
-          onChange={(e) => handleChange('content', e.target.value)}
           maxLength={1000}
           rows={6}
+          {...register('content')}
+          disabled={isSubmitting}
         />
         <label className="floating-group__label">İçerik</label>
         {errors.content && (
-          <span className="input-error">{errors.content}</span>
+          <span className="input-error">{errors.content.message}</span>
         )}
         <span className="input-hint">
-          {formData.content.length} / 1000 karakter
+          {contentValue.length} / 1000 karakter
         </span>
       </div>
 
@@ -143,4 +99,3 @@ function AnnouncementForm({ onSubmit, onCancel }) {
 }
 
 export default AnnouncementForm;
-

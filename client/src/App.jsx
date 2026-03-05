@@ -1,9 +1,10 @@
 import "./App.scss";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { ModalProvider } from "./components/Modal";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Navbar from "./components/Navbar/Navbar";
+import { AnimatePresence } from "framer-motion";
 import {
   publicRoutes,
   protectedRoutes,
@@ -13,11 +14,12 @@ import {
 
 function App() {
   const { isAuthenticated } = useAuth();
+  const location = useLocation();
 
   return (
     <ModalProvider>
       <div className="app">
-      <Routes>
+        <Routes>
           {/* Public Routes (Auth) */}
           {publicRoutes.map(({ path, element: Element }) => (
         <Route
@@ -37,7 +39,8 @@ function App() {
                 <div className="app-content">
                 <Navbar />
                   <div className="app-content__main">
-                <Routes>
+                  <AnimatePresence mode="wait">
+                <Routes location={location} key={location.pathname}>
                   {/* Herkesin erişebileceği sayfalar */}
                   {protectedRoutes.map(({ path, element: Element }) => (
                     <Route key={path} path={path} element={<Element />} />
@@ -62,6 +65,7 @@ function App() {
                     element={<notFoundRoute.element />}
                   />
                 </Routes>
+                  </AnimatePresence>
                   </div>
                 </div>
             </ProtectedRoute>

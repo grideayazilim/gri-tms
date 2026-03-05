@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { RiDeleteBinLine } from "react-icons/ri";
 import "../../styles/inputs.scss";
-import "../../styles/page-layout.scss";
+import PageShell from "../../components/PageShell/PageShell";
 import "./LocationsPage.scss";
 
 function LocationsPage() {
@@ -89,17 +89,14 @@ function LocationsPage() {
     alert('Değişiklikler kaydedildi! (Console\'a bakınız)');
   };
 
-  return (
-    <main className="page-container">
-      <div className="page-header">
-      <h1 className="page-title">Yerleşke ve Birim Yönetimi</h1>
-        <div className="page-actions">
-          <button type="button" className="btn btn--primary" onClick={handleSave}>
-            Değişiklikleri Kaydet
-          </button>
-        </div>
-      </div>
+  const headerActions = (
+    <button type="button" className="btn btn--primary" onClick={handleSave}>
+      Değişiklikleri Kaydet
+    </button>
+  );
 
+  return (
+    <PageShell title="Yerleşke ve Birimler" headerActions={headerActions}>
       <div className="locations-tree">
         {/* Sol taraftaki ana rehber çizgi */}
         <div className="tree-root-line" />
@@ -197,7 +194,7 @@ function LocationsPage() {
           + Yeni Yerleşke Ekle
         </button>
       </div>
-    </main>
+    </PageShell>
   );
 }
 

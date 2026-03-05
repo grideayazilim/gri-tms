@@ -127,26 +127,54 @@
 
 import { createContext, useContext, useState, useCallback } from 'react';
 import Modal from './Modal';
-import ConfirmDialog from '../ConfirmDialog/ConfirmDialog';
 
 const ModalContext = createContext();
 
-// ConfirmDialog için initial state
-const initialConfirmState = {
-  isOpen: false,
-  title: "",
-  message: "",
-  type: "danger",
-  confirmText: "Onayla",
-  cancelText: "Vazgeç",
-  onConfirm: null,
-  resolve: null,
-};
+function ConfirmContent({ message, type, confirmText, cancelText, onConfirm, onClose }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleConfirm = async () => {
+    if (onConfirm) {
+      setLoading(true);
+      try {
+        await onConfirm();
+        onClose(true);
+      } catch (error) {
+        onClose(false);
+      }
+    } else {
+      onClose(true);
+    }
+  };
+
+  return (
+    <div>
+      <p className="confirm-dialog-message">{message}</p>
+      <div className="confirm-dialog-actions">
+        <button className="btn btn--sm" onClick={() => onClose(false)} disabled={loading}>
+          {cancelText}
+        </button>
+        <button
+          className={`btn btn--sm ${type === "danger" ? "btn--danger" : "btn--primary"}`}
+          onClick={handleConfirm}
+          disabled={loading}
+        >
+          {loading ? (
+            <span className="confirm-dialog-loading">
+              <span className="spinner confirm-dialog-spinner" />
+              Yükleniyor...
+            </span>
+          ) : (
+            confirmText
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function ModalProvider({ children }) {
   const [modals, setModals] = useState([]);
-  const [confirmState, setConfirmState] = useState(initialConfirmState);
-  const [confirmLoading, setConfirmLoading] = useState(false);
 
   /**
    * showModal - Generic modal açma fonksiyonu
@@ -175,19 +203,21 @@ export function ModalProvider({ children }) {
    * @returns {Promise<boolean>} Kullanıcı onaylarsa true, iptal ederse false
    */
   const showConfirm = useCallback((options) => {
-    return new Promise((resolve) => {
-      setConfirmState({
-        isOpen: true,
-        title: options?.title || "Emin misiniz?",
-        message: options?.message || "",
-        type: options?.type || "danger",
-        confirmText: options?.confirmText || "Onayla",
-        cancelText: options?.cancelText || "Vazgeç",
-        onConfirm: options?.onConfirm || null,
-        resolve,
-      });
+    return showModal({
+      title: options?.title || "Emin misiniz?",
+      size: 'small',
+      content: (closeModal) => (
+        <ConfirmContent
+          message={options?.message || ""}
+          type={options?.type || "danger"}
+          confirmText={options?.confirmText || "Onayla"}
+          cancelText={options?.cancelText || "Vazgeç"}
+          onConfirm={options?.onConfirm}
+          onClose={closeModal}
+        />
+      )
     });
-  }, []);
+  }, [showModal]);
 
   /**
    * closeModal - Modal'ı kapat
@@ -204,36 +234,6 @@ export function ModalProvider({ children }) {
     });
   }, []);
 
-  /**
-   * Confirm Dialog handlers
-   */
-  const closeConfirm = useCallback(() => {
-    setConfirmState(initialConfirmState);
-    setConfirmLoading(false);
-  }, []);
-
-  const handleConfirm = useCallback(async () => {
-    try {
-      setConfirmLoading(true);
-
-      if (confirmState.onConfirm) {
-        await confirmState.onConfirm();
-      }
-      confirmState.resolve?.(true);
-    } catch (error) {
-      confirmState.resolve?.(false);
-    } finally {
-      closeConfirm();
-    }
-  }, [confirmState, closeConfirm]);
-
-  const handleCancel = useCallback(() => {
-    if (!confirmLoading) {
-      confirmState.resolve?.(false);
-      closeConfirm();
-    }
-  }, [confirmState.resolve, closeConfirm, confirmLoading]);
-
   return (
     <ModalContext.Provider value={{ showModal, showConfirm, closeModal }}>
       {children}
@@ -247,14 +247,6 @@ export function ModalProvider({ children }) {
           onClose={(result) => closeModal(modal.id, result)}
         />
       ))}
-      
-      {/* Confirm Dialog (backward compatible, highest z-index) */}
-      <ConfirmDialog
-        {...confirmState}
-        loading={confirmLoading}
-        onConfirm={handleConfirm}
-        onCancel={handleCancel}
-      />
     </ModalContext.Provider>
   );
 }

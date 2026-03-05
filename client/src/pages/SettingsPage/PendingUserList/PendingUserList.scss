@@ -1,0 +1,49 @@
+@use "../../../styles/variables.scss" as *;
+
+.pending-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+
+  &__title {
+    font-size: 0.9rem;
+    margin: 0;
+    color: var(--text-muted);
+  }
+}
+
+.pending-user-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  gap: var(--space-md);
+
+  &__name {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  &__details {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--space-xs);
+  }
+}
+
+.pending-empty-state {
+  padding: 12px 14px;
+  color: var(--text-faint);
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}

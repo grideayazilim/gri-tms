@@ -116,7 +116,7 @@
     .dynamic-table {
         width: 100%;
         border-collapse: collapse;
-        table-layout: fixed;
+        table-layout: auto;
 
         thead {
             position: sticky;
@@ -136,27 +136,9 @@
                 white-space: nowrap;
                 vertical-align: middle;
             }
-
-            // Gün numarası header hücreleri
-            th.th-day {
-                padding: var(--space-sm) 0;
-                width: 26px;
-                min-width: 26px;
-                max-width: 26px;
-                text-align: center;
-                font-size: 0.7rem;
-                font-weight: 600;
-                color: var(--text-faint);
-                text-transform: none;
-                letter-spacing: 0;
-                vertical-align: middle;
-            }
-
-            // Çalışma Günü sayaç sütunu başlığı
-            th.th-count {
-                text-align: center;
-            }
         }
+
+            // Gün numarası header hücreleri - KALDIRILDI (DayCell artık DynamicTable dışında)
 
         tbody {
             tr {
@@ -179,29 +161,6 @@
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
-                }
-
-                // Gün hücreleri — th.th-day ile aynı box model
-                td.td-day {
-                    padding: var(--space-sm) 0;
-                    width: 26px;
-                    min-width: 26px;
-                    max-width: 26px;
-                    text-align: center;
-                    overflow: visible;
-                    display: table-cell;
-
-                    .day-cell {
-                        margin: 0 auto;
-                    }
-                }
-
-                // Çalışma Günü sayaç sütunu
-                td.td-count {
-                    text-align: center;
-                    font-size: 0.9rem;
-                    font-weight: 700;
-                    color: var(--text-dark);
                 }
             }
 
@@ -304,4 +263,76 @@
             background-color: #fee2e2;
         }
     }
+}
+
+// ─── Data popup (old/new data hover) ───
+.data-popup-wrapper {
+    position: relative;
+    display: inline-block;
+
+    .data-popup-trigger {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--brand-color, #4880ff);
+        cursor: pointer;
+        border-bottom: 1px dashed currentColor;
+        white-space: nowrap;
+    }
+
+    .data-popup {
+        display: none;
+        position: absolute;
+        top: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 100;
+        min-width: 260px;
+        max-width: 380px;
+        background: var(--surface-color, #fff);
+        border: 1px solid var(--border-color-strong, #e0e0e0);
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        padding: 12px;
+        gap: 10px;
+        flex-direction: column;
+    }
+
+    &:hover .data-popup {
+        display: flex;
+    }
+
+    .data-popup__section {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .data-popup__label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted, #888);
+    }
+
+    .data-popup__pre {
+        margin: 0;
+        font-size: 0.78rem;
+        line-height: 1.5;
+        color: var(--text-dark, #333);
+        background: var(--background-color, #f8f8f8);
+        border-radius: 4px;
+        padding: 6px 8px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 160px;
+        overflow-y: auto;
+    }
+}
+
+// td containing popup must allow overflow
+.dynamic-table tbody td:has(.data-popup-wrapper),
+.dynamic-table tbody td:has(.day-grid) {
+    overflow: visible;
+    white-space: normal;
 }

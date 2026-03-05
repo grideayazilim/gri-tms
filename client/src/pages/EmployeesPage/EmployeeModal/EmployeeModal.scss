@@ -1,0 +1,97 @@
+.employee-modal {
+  &__tabs {
+    display: flex;
+    margin-bottom: 24px;
+    gap: 8px; /* Added gap between buttons */
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      background: var(--bg-color-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-md);
+      color: var(--text-color-secondary);
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: var(--hover-color);
+        color: var(--text-color);
+      }
+
+      &.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+      }
+    }
+  }
+
+  .settings-row {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    margin-bottom: 16px; /* Added bottom margin to settings-row inside modal */
+  }
+  
+    .flex-full {
+      width: 100%;
+      margin-top: 16px;
+    }
+  
+    .bulk-upload-section {
+      text-align: center;
+  
+      .upload-box {
+        border: 2px dashed var(--border-color);
+        border-radius: var(--border-radius-md);
+        padding: 48px 24px;
+        background-color: var(--bg-color-secondary);
+        transition: border-color 0.2s;
+        margin-bottom: 16px;
+  
+        &:hover {
+          border-color: var(--primary-color);
+        }
+  
+        .upload-icon {
+          font-size: 48px;
+          color: var(--primary-color);
+          margin-bottom: 16px;
+        }
+  
+        h3 {
+          margin: 0 0 8px 0;
+          color: var(--text-color);
+        }
+  
+        p {
+          color: var(--text-color-secondary);
+          margin: 0 0 24px 0;
+          font-size: 0.9rem;
+        }
+  
+        .file-input-hidden {
+          display: none;
+        }
+        
+        .upload-btn {
+          cursor: pointer;
+          display: inline-block;
+        }
+      }
+  
+      .template-download {
+        .link-text {
+          color: var(--primary-color);
+          text-decoration: none;
+          font-size: 0.9rem;
+          
+          &:hover {
+            text-decoration: underline;
+          }
+        }
+      }
+    }
+  }

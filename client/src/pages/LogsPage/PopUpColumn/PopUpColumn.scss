@@ -1,0 +1,48 @@
+.data-popup-trigger {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--brand-color, #4880ff);
+    cursor: pointer;
+    border-bottom: 1px dashed currentColor;
+    white-space: nowrap;
+    transition: opacity 0.2s;
+
+    &:hover {
+        opacity: 0.8;
+    }
+}
+
+.log-details-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    .data-popup__section {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .data-popup__label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted, #888);
+    }
+
+    .data-popup__pre {
+        margin: 0;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: var(--text-dark, #333);
+        background: var(--surface-alt, #f8f8f8);
+        border: 1px solid var(--border-color-strong, #e0e0e0);
+        border-radius: 6px;
+        padding: 10px 12px;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+}

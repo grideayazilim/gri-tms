@@ -52,5 +52,3 @@ export async function getUnitsByLocation(req, res) {
     });
   }
 }
-
-// export async function __controller_fonksiyon_adı__(req, res) { ... }

@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/authRoutes.js';
 import locationAndUnitRoutes from './routes/locationAndUnitRoutes.js';
 import timesheetRoutes from './routes/timesheetRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+import markerRoutes from './routes/markerRoutes.js';
 
 const app = express();
 
@@ -24,6 +26,8 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/locationAndUnits', locationAndUnitRoutes);
 app.use('/api/timesheets', timesheetRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/markers', markerRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

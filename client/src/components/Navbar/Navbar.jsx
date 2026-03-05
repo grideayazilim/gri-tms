@@ -9,6 +9,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useBreakpoint } from "../../hooks/ui/useBreakpoint";
 import { useAuth } from "../../context/AuthContext";
 import { useState, useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { managementRoutes, settingsRoute } from "../../routes";
 import "./Navbar.scss";
 
@@ -128,7 +129,14 @@ function Navbar() {
 
   // =================== ELEMENT
   return (
-    <nav className="nav" ref={navRef}>
+    <motion.nav 
+      className="nav" 
+      ref={navRef}
+      initial={{ x: -100, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: -100, opacity: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+    >
       {/* Aktif link işaret eden indicator */}
       <div className="nav__indicator" ref={indicatorRef}></div>
       <div className="nav__bg"></div>
@@ -182,7 +190,7 @@ function Navbar() {
           <LiaPowerOffSolid /> <p className="nav__link-text">Çıkış Yap</p>
         </div>
       </div>
-    </nav>
+    </motion.nav>
   );
 }
 

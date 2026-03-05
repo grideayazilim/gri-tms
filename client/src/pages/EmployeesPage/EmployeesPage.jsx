@@ -1,93 +1,106 @@
 import { useState, useEffect } from 'react';
-import DynamicTable from '../../components/Table/DynamicTable';
-import { employeeColumns } from '../../components/Table/TableColumns';
-import { MOCK_DATA } from '../../components/Table/mockData';
-import '../../styles/page-layout.scss';
+import DynamicTable from '../../components/DynamicTable/DynamicTable';
+import { employeeColumns } from './employeeColumns';
+import { MOCK_DATA } from '../../components/DynamicTable/mockData';
+import FilterBar from '../../components/FilterBar/FilterBar';
+import PageShell from '../../components/PageShell/PageShell';
+import { useModal } from '../../components/Modal';
+import EmployeeModal from './EmployeeModal/EmployeeModal';
+import { useFilter } from '../../hooks/data/useFilter';
+import { getEmployeeFilterConfig } from './employeeFilters';
 import '../../styles/inputs.scss';
 
 const EmployeesPage = () => {
   const [data, setData] = useState(MOCK_DATA); // TODO: API fetch ile değiştir
-  const [filters, setFilters] = useState({
+  const { showConfirm, showModal, closeModal } = useModal();
+
+  const locations = [...new Set(data.map(item => item.location))].filter(Boolean);
+  const units = [...new Set(data.map(item => item.unit))].filter(Boolean);
+
+  const filterConfig = getEmployeeFilterConfig(locations, units);
+  const { filteredData, filters, handleFilterChange } = useFilter(data, filterConfig, {
     location: '',
     unit: '',
     search: '',
   });
-  const [filteredData, setFilteredData] = useState(data);
 
-  // Filtreleme için unique değerler
-  const locations = [...new Set(data.map(item => item.location))].filter(Boolean);
-  const units = [...new Set(data.map(item => item.unit))].filter(Boolean);
-
-  // Filtre uygulaması
-  useEffect(() => {
-    let result = data;
-    if (filters.location) result = result.filter(item => item.location === filters.location);
-    if (filters.unit) result = result.filter(item => item.unit === filters.unit);
-    if (filters.search) result = result.filter(item => 
-      item.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.tc.includes(filters.search)
-    );
-    setFilteredData(result);
-  }, [data, filters]);
-
-  const handleFilterChange = (field, value) => {
-    setFilters({ ...filters, [field]: value });
+  const handleDelete = async (employeeId) => {
+    const confirmed = await showConfirm({
+      title: 'Çalışanı Sil',
+      message: 'Bu çalışanı silmek istediğinizden emin misiniz?',
+      type: 'danger',
+      confirmText: 'Sil',
+      cancelText: 'Vazgeç',
+    });
+    
+    if (confirmed) {
+      setData(data.filter(e => e.id !== employeeId));
+    }
   };
 
+  const handleEdit = async (employeeId) => {
+    const employeeToEdit = data.find(e => e.id === employeeId);
+    if (!employeeToEdit) return;
+
+    await showModal({
+      title: 'Çalışan Düzenle',
+      size: 'medium',
+      content: (closeModal) => (
+        <EmployeeModal 
+          employee={employeeToEdit}
+          onClose={() => closeModal(null)}
+          onSave={(updatedData) => {
+            const newEmployees = data.map(e => 
+              e.id === employeeId ? { ...e, ...updatedData } : e
+            );
+            setData(newEmployees);
+            closeModal(updatedData);
+          }}
+        />
+      )
+    });
+  };
+
+  const handleAdd = async () => {
+    await showModal({
+      title: 'Yeni Çalışan Ekle',
+      size: 'medium',
+      content: (closeModal) => (
+        <EmployeeModal 
+          onClose={() => closeModal(null)}
+          onSave={(newData, mode) => {
+            if (mode === 'SINGLE') {
+                const newId = Math.max(...data.map(d => d.id || 0)) + 1;
+                setData([...data, { id: newId, ...newData }]);
+            } else {
+                // Bulk logic handled in bulk mode internally or by API
+            }
+            closeModal(newData);
+          }}
+        />
+      )
+    });
+  };
+
+  const headerActions = (
+    <div className="page-header__actions">
+      <button className="btn btn--primary" onClick={handleAdd}>
+        + Yeni Çalışan Ekle
+      </button>
+    </div>
+  );
+
   return (
-    <main className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">Çalışan Yönetimi</h1>
-      </div>
-
+    <PageShell title="Çalışanlar" headerActions={headerActions}>
       {/* Filters */}
-        <div className="filter-area">
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.location}
-              onChange={(e) => handleFilterChange('location', e.target.value)}
-            >
-              <option value="">Tüm Yerleşkeler</option>
-              {locations.map(loc => (
-                <option key={loc} value={loc}>{loc}</option>
-              ))}
-            </select>
-            <label className="floating-group__label">Yerleşke</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <select
-              className="input"
-              value={filters.unit}
-              onChange={(e) => handleFilterChange('unit', e.target.value)}
-            >
-              <option value="">Tüm Birimler</option>
-              {units.map(unit => (
-                <option key={unit} value={unit}>{unit}</option>
-              ))}
-            </select>
-            <label className="floating-group__label">Birim</label>
-          </div>
-
-          <div className="floating-group floating-group--on-background">
-            <input
-              type="text"
-              className="input"
-              placeholder=" "
-              value={filters.search}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-            />
-            <label className="floating-group__label">Çalışan Adı Ara</label>
-          </div>
-        </div>
+      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
       
       <DynamicTable
-        columns={employeeColumns}
+        columns={employeeColumns(handleEdit, handleDelete)}
         data={filteredData}
         pageSize={10}
       />
-    </main>
+    </PageShell>
   );
 };
 

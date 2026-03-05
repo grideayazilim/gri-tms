@@ -1,0 +1,27 @@
+@use "../../styles/variables.scss" as *;
+
+.filter-bar {
+  display: flex;
+  gap: var(--space-md);
+
+  .floating-group {
+    flex: 1 1 250px;
+  }
+
+  @media (max-width: $bp-lg) {
+    flex-wrap: wrap;
+    
+    .floating-group {
+      flex: 1 1 200px;
+    }
+  }
+
+  @media (max-width: $bp-sm) {
+    flex-direction: column;
+    gap: var(--space-sm);
+
+    .floating-group {
+      flex: 1 1 100%;
+    }
+  }
+}

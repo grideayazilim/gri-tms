@@ -81,7 +81,7 @@
    ========================================== */
 
 .modal-header {
-  padding: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
@@ -164,3 +164,29 @@
   }
 }
 
+/* ==========================================
+   Confirm Dialog Content
+   ========================================== */
+
+.confirm-dialog-message {
+  margin-bottom: var(--space-lg);
+  color: var(--text-primary);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
+.confirm-dialog-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirm-dialog-spinner {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+}

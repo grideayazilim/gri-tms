@@ -1,0 +1,81 @@
+@use '../../../styles/variables.scss' as *;
+
+// Gün hücreleri wrapper — DynamicTable td'si içinde flex row olarak dizer
+.day-grid {
+    display: flex;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 5px;
+    padding: 2px 0;
+    // td'nin overflow:hidden'ini geç
+    overflow: visible;
+}
+
+.ts-day-cell {
+    position: relative;
+    width: 30px;
+    height: 30px;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color-strong);
+    border-radius: var(--radius-sm);
+    background-color: var(--surface-color);
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+        border-color: var(--brand-color);
+        box-shadow: 0 0 0 2px rgba(72, 128, 255, 0.15);
+    }
+
+    // ── Gün numarası ──────────────────────────────────────────────
+    &__num {
+        position: absolute;
+        font-size: 0.65rem;
+        font-weight: 500;
+        color: var(--text-faint);
+        line-height: 1;
+        transition: top 0.15s ease, font-size 0.15s ease, color 0.15s ease;
+
+        // Veri yok → ortada
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+
+        // Veri var → üste
+        &--top {
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.55rem;
+            color: var(--text-faint);
+        }
+    }
+
+    // ── Marker değeri ─────────────────────────────────────────────
+    &__value {
+        font-size: 0.7rem;
+        font-weight: 700;
+        line-height: 1;
+        color: var(--text-dark);
+        margin-top: 6px; // gün numarasının altında boşluk
+    }
+
+    // ── Veri girilmiş hücre ───────────────────────────────────────
+    // İşaretçi rengi yok — değerin var olması yeterli görsel ipucu
+    &--x, &--r, &--i, &--rt, &--dt {
+        border-color: var(--border-hover, #94a3b8);
+        background-color: var(--surface-alt);
+    }
+
+    // ── Değiştirilmiş (dirty) hücre — soluk mavi ──────────────────
+    &--dirty {
+        background-color: #e0eeff;
+        border-color: #93c5fd;
+        .ts-day-cell__value { color: #1e40af; }
+        .ts-day-cell__num   { color: #3b82f6; }
+    }
+}

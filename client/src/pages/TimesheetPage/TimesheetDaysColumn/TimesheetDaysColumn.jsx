@@ -1,4 +1,3 @@
-import React from 'react';
 import './TimesheetDaysColumn.scss';
 
 const getDayValue = (timesheetDays, day) => {

@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { userColumns } from './userColumns';
 import FilterBar from '../../components/FilterBar/FilterBar';
-import '../../styles/page-layout.scss';
+import PageShell from '../../components/PageShell/PageShell';
+import { useModal } from '../../components/Modal';
+import UserEditModal from './UserEditModal/UserEditModal';
+import { useFilter } from '../../hooks/data/useFilter';
+import { userFilterConfig } from './userFilters';
 import '../../styles/inputs.scss';
 
 const UsersPage = () => {
@@ -40,86 +44,57 @@ const UsersPage = () => {
     },
   ]);
 
-  const [filters, setFilters] = useState({
-    role: '',
-    status: '',
-    search: '',
-  });
+  const { showConfirm, showModal, closeModal } = useModal();
 
-  const [filteredUsers, setFilteredUsers] = useState(users);
+  const handleEdit = async (userId) => {
+    const userToEdit = users.find(u => u.id === userId);
+    if (!userToEdit) return;
 
-  const handleFilterChange = (field, value) => {
-    setFilters({ ...filters, [field]: value });
+    await showModal({
+      title: 'Kullanıcıyı Düzenle',
+      size: 'medium',
+      content: (closeModal) => (
+        <UserEditModal 
+          user={userToEdit}
+          onClose={() => closeModal(null)}
+          onSave={(data) => {
+            const updatedUsers = users.map(u => 
+              u.id === userId ? { ...u, ...data, lastLogin: data.validityDate } : u
+            );
+            setUsers(updatedUsers);
+            closeModal(data);
+          }}
+        />
+      )
+    });
   };
 
-  const handleEdit = (userId) => {
-    console.log('Edit user:', userId);
-    // TODO: Open edit modal
-  };
-
-  const handleDelete = (userId) => {
-    if (confirm('Bu kullanıcıyı silmek istediğinizden emin misiniz?')) {
+  const handleDelete = async (userId) => {
+    const confirmed = await showConfirm({
+      title: 'Kullanıcıyı Sil',
+      message: 'Bu kullanıcıyı silmek istediğinizden emin misiniz?',
+      type: 'danger',
+      confirmText: 'Sil',
+      cancelText: 'Vazgeç',
+    });
+    
+    if (confirmed) {
       setUsers(users.filter(u => u.id !== userId));
     }
   };
 
-  // Filter logic
-  useEffect(() => {
-    let result = users;
-    if (filters.role) result = result.filter(user => user.role === filters.role);
-    if (filters.status) result = result.filter(user => user.status === filters.status);
-    if (filters.search) result = result.filter(user => 
-      user.username.toLowerCase().includes(filters.search.toLowerCase())
-    );
-    setFilteredUsers(result);
-  }, [users, filters]);
-
-  const pendingUsers = users.filter(u => u.status === 'PENDING');
-
-  const filterConfig = [
-    { 
-      key: 'role', 
-      label: 'Rol', 
-      type: 'select', 
-      options: [
-        { value: 'ADMIN', label: 'Admin' }, 
-        { value: 'RESPONSIBLE', label: 'Sorumlu' }
-      ], 
-      defaultOption: 'Tüm Roller' 
-    },
-    { 
-      key: 'status', 
-      label: 'Durum', 
-      type: 'select', 
-      options: [
-        { value: 'ACTIVE', label: 'Aktif' }, 
-        { value: 'PENDING', label: 'Onay Bekliyor' }
-      ], 
-      defaultOption: 'Tüm Durumlar' 
-    },
-    { key: 'search', label: 'Kullanıcı Adı Ara', type: 'text' },
-  ];
+  const { filteredData: filteredUsers, filters, handleFilterChange } = useFilter(users, userFilterConfig, {
+    role: '',
+    status: '',
+    location: '',
+    unit: '',
+    search: '',
+  });
 
   return (
-    <main className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">Kullanıcı Yönetimi</h1>
-      </div>
-
-      {/* Pending Users Alert */}
-      {pendingUsers.length > 0 && (
-        <div className="pending-alert">
-          <div className="pending-alert__content">
-            <strong>{pendingUsers.length}</strong> kullanıcı onay bekliyor
-          </div>
-          <button className="btn btn--sm btn--primary">
-            Onay Bekleyenleri Görüntüle
-          </button>
-        </div>
-      )}
-
+    <PageShell title="Kullanıcılar">
       {/* Filters */}
-      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
+      <FilterBar config={userFilterConfig} filters={filters} onFilterChange={handleFilterChange} />
 
       {/* Users Table */}
       <DynamicTable
@@ -127,7 +102,7 @@ const UsersPage = () => {
         data={filteredUsers}
         pageSize={10}
       />
-    </main>
+    </PageShell>
   );
 };
 

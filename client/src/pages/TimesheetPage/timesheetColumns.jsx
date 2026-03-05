@@ -1,5 +1,4 @@
-import React from 'react';
-import TimesheetDaysColumn from './TimesheetDaysColumn';
+import TimesheetDaysColumn from './TimesheetDaysColumn/TimesheetDaysColumn';
 
 /**
  * @param {number}   daysInMonth    - ayın gün sayısı

@@ -1,16 +1,15 @@
-@use '../../styles/variables.scss' as *;
+@use '../../../styles/variables.scss' as *;
 
 // Gün hücreleri wrapper — DynamicTable td'si içinde flex row olarak dizer
 .day-grid {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     flex-wrap: nowrap;
-    gap: 3px;
+    gap: 5px;
     padding: 2px 0;
     // td'nin overflow:hidden'ini geç
     overflow: visible;
 }
-
 
 .ts-day-cell {
     position: relative;

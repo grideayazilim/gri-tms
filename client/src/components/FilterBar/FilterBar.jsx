@@ -1,4 +1,4 @@
-import React from 'react';
+import './FilterBar.scss';
 
 /**
  * @param {Array} config - Array of filter configurations. 
@@ -9,7 +9,7 @@ import React from 'react';
  */
 const FilterBar = ({ config, filters, onFilterChange }) => {
   return (
-    <div className="filter-area">
+    <div className="filter-bar">
       {config.map((field) => (
         <div key={field.key} className="floating-group floating-group--on-background">
           {field.type === 'select' ? (

@@ -4,26 +4,23 @@ import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { timesheetColumns } from './timesheetColumns';
 import { MOCK_DATA } from '../../components/DynamicTable/mockData';
 import { useModal } from '../../components/Modal';
+import { useAuth } from '../../context/AuthContext';
 import { AnnouncementList } from '../../components/Announcements';
 import MarkerSelector, { MARKERS } from './MarkerSelector/MarkerSelector';
 import FilterBar from '../../components/FilterBar/FilterBar';
-import '../../styles/page-layout.scss';
+import PageShell from '../../components/PageShell/PageShell';
+import { useFilter } from '../../hooks/data/useFilter';
+import { getTimesheetFilterConfig } from './timesheetFilters';
 import '../../styles/inputs.scss';
+import './TimesheetPage.scss';
 
 const TimesheetPage = () => {
+  const { user } = useAuth();
   const [data, setData] = useState(MOCK_DATA); // TODO: API fetch ile değiştir
   const [originalData, setOriginalData] = useState(MOCK_DATA); // To track dirty state natively
   const [selectedMarker, setSelectedMarker] = useState('X'); // Default selected marker
-  const [filters, setFilters] = useState({
-    period: '2026-02', // Default current period
-    location: '',
-    unit: '',
-    search: '',
-  });
-  const [filteredData, setFilteredData] = useState(data);
   const { showModal } = useModal();
 
-  // Filtreleme için unique değerler
   const locations = [...new Set(data.map(item => item.location))].filter(Boolean);
   const units = [...new Set(data.map(item => item.unit))].filter(Boolean);
 
@@ -35,22 +32,13 @@ const TimesheetPage = () => {
     { value: '2026-04', label: '2026 Nisan' },
   ];
 
-  // Filtre uygulaması
-  useEffect(() => {
-    let result = data;
-    // TODO: Period filtresini API'den gelen veriye göre uygula
-    if (filters.location) result = result.filter(item => item.location === filters.location);
-    if (filters.unit) result = result.filter(item => item.unit === filters.unit);
-    if (filters.search) result = result.filter(item => 
-      item.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-      item.tc.includes(filters.search)
-    );
-    setFilteredData(result);
-  }, [data, filters]);
-
-  const handleFilterChange = (field, value) => {
-    setFilters({ ...filters, [field]: value });
-  };
+  const filterConfig = getTimesheetFilterConfig(periods, locations, units);
+  const { filteredData, filters, handleFilterChange } = useFilter(data, filterConfig, {
+    period: '2026-02',
+    location: '',
+    unit: '',
+    search: '',
+  });
 
   const handleDayClick = (row, day) => {
     if (!selectedMarker) {
@@ -117,31 +105,32 @@ const TimesheetPage = () => {
   };
   const currentDaysInMonth = getDaysInMonth(filters.period);
 
-  const filterConfig = [
-    { key: 'period', label: 'Dönem', type: 'select', options: periods },
-    { key: 'location', label: 'Yerleşke', type: 'select', options: locations, defaultOption: 'Tüm Yerleşkeler' },
-    { key: 'unit', label: 'Birim', type: 'select', options: units, defaultOption: 'Tüm Birimler' },
-    { key: 'search', label: 'Çalışan Adı Ara', type: 'text' },
-  ];
+  const headerActions = (
+    <>
+      {hasGlobalChanges && (
+         <button className="btn btn--primary" onClick={handleSave}>
+           Değişiklikleri Kaydet
+         </button>
+      )}
+    </>
+  );
+
+  const userName = user?.name || user?.username || 'Kullanıcı';
 
   return (
-    <main className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">Puantaj İşaretleme</h1>
-        <div className="page-actions">
-          <button 
-            className="btn btn--icon-only" 
-            onClick={handleOpenAnnouncements}
-            title="Duyurular"
-          >
-            <AiOutlineBell />
-          </button>
-          {hasGlobalChanges && (
-             <button className="btn btn--primary" onClick={handleSave}>
-               Değişiklikleri Kaydet
-             </button>
-          )}
-        </div>
+    <PageShell title="Puantaj İşaretleme" headerActions={headerActions}>
+
+      <div className="ts-user-badge">
+        <button 
+          className="announcement-icon-btn" 
+          onClick={handleOpenAnnouncements}
+          title="Duyurular"
+        >
+          <AiOutlineBell />
+        </button>
+        <span className="user-info">
+          Kullanıcı: {userName}
+        </span>
       </div>
 
       {/* Filters */}
@@ -154,7 +143,7 @@ const TimesheetPage = () => {
         data={filteredData}
         pageSize={10}
       />
-    </main>
+    </PageShell>
   );
 };
 

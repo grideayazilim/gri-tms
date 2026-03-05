@@ -2,7 +2,9 @@ import { useState } from 'react';
 import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { logColumns } from './logColumns';
 import FilterBar from '../../components/FilterBar/FilterBar';
-import '../../styles/page-layout.scss';
+import PageShell from '../../components/PageShell/PageShell';
+import { useFilter } from '../../hooks/data/useFilter';
+import { logFilterConfig } from './logFilters';
 import '../../styles/inputs.scss';
 
 const LogsPage = () => {
@@ -45,63 +47,16 @@ const LogsPage = () => {
     },
   ]);
 
-  const [filters, setFilters] = useState({
+  const { filteredData: filteredLogs, filters, handleFilterChange } = useFilter(logs, logFilterConfig, {
     action: '',
-    entityType: '',
-    username: '',
+    beforeDate: new Date().toISOString().split('T')[0], // Default today
+    searchActor: '',
   });
-
-  const handleFilterChange = (field, value) => {
-    setFilters({ ...filters, [field]: value });
-  };
-
-  const filteredLogs = logs.filter(log => {
-    if (filters.action && log.action !== filters.action) return false;
-    if (filters.entityType && log.entityType !== filters.entityType) return false;
-    if (filters.username && !log.actorUsername.toLowerCase().includes(filters.username.toLowerCase())) return false;
-    return true;
-  });
-
-  const filterConfig = [
-    { 
-      key: 'action', 
-      label: 'İşlem Tipi', 
-      type: 'select', 
-      options: [
-        { value: 'CREATE', label: 'Oluştur' }, 
-        { value: 'UPDATE', label: 'Güncelle' },
-        { value: 'DELETE', label: 'Sil' },
-        { value: 'LOGIN', label: 'Giriş' },
-        { value: 'LOGOUT', label: 'Çıkış' }
-      ], 
-      defaultOption: 'Tüm İşlemler' 
-    },
-    { 
-      key: 'entityType', 
-      label: 'Varlık Tipi', 
-      type: 'select', 
-      options: [
-        { value: 'USER', label: 'Kullanıcı' }, 
-        { value: 'EMPLOYEE', label: 'Çalışan' },
-        { value: 'TIMESHEET', label: 'Puantaj' },
-        { value: 'LOCATION', label: 'Yerleşke' },
-        { value: 'UNIT', label: 'Birim' },
-        { value: 'ANNOUNCEMENT', label: 'Duyuru' },
-        { value: 'SETTINGS', label: 'Ayarlar' }
-      ], 
-      defaultOption: 'Tüm Varlıklar' 
-    },
-    { key: 'username', label: 'Kullanıcı Adı', type: 'text' },
-  ];
 
   return (
-    <main className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">Sistem Logları</h1>
-      </div>
-
+    <PageShell title="Sistem Logları">
       {/* Filters */}
-      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
+      <FilterBar config={logFilterConfig} filters={filters} onFilterChange={handleFilterChange} />
 
       {/* Logs List */}
       <DynamicTable
@@ -109,7 +64,7 @@ const LogsPage = () => {
         data={filteredLogs}
         pageSize={10}
       />
-    </main>
+    </PageShell>
   );
 };
 

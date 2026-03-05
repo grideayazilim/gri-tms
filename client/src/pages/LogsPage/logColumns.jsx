@@ -1,4 +1,5 @@
-import { AUDIT_EVENT_LABELS } from '../../constants/auditEvents';
+import { AUDIT_EVENTS } from '../../constants/auditEvents';
+import { USER_ROLES } from '../../constants/users';
 import PopUpColumn from './PopUpColumn/PopUpColumn';
 
 const ACTION_BADGE_MAP = {
@@ -9,35 +10,25 @@ const ACTION_BADGE_MAP = {
     LOGOUT: { label: 'Çıkış',   cls: 'logout' },
 };
 
-const ENTITY_TYPE_MAP = {
-    USER: 'Kullanıcı',
-    EMPLOYEE: 'Çalışan',
-    TIMESHEET: 'Puantaj',
-    LOCATION: 'Yerleşke',
-    UNIT: 'Birim',
-    ANNOUNCEMENT: 'Duyuru',
-    SETTINGS: 'Ayarlar',
-};
-
 export const logColumns = [
     {
         header: 'İşlem Tipi',
         render: (row) => {
             const badge = ACTION_BADGE_MAP[row.action] || { label: row.action, cls: 'default' };
-            const label = AUDIT_EVENT_LABELS[row.action] ?? badge.label;
+            const label = AUDIT_EVENTS[row.action]?.label ?? badge.label;
             return <span className={`badge badge--${badge.cls}`}>{label}</span>;
         },
     },
     {
-        header: 'Varlık Tipi',
-        render: (row) => {
-            const label = ENTITY_TYPE_MAP[row.entityType] || row.entityType;
-            return <span className="badge badge--entity">{label}</span>;
-        },
-    },
-    {
         header: 'İşlemi Yapan',
-        render: (row) => <strong>{row.actorUsername}</strong>,
+        render: (row) => {
+             const roleLabel = USER_ROLES[row.actorRole]?.label || row.actorRole;
+             return (
+                 <span>
+                     <strong>{row.actorName || row.actorUsername}</strong> ({roleLabel})
+                 </span>
+             );
+        }
     },
     {
         header: 'İşlem Açıklaması',

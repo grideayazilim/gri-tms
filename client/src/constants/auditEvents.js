@@ -1,21 +1,15 @@
-export const AUDIT_EVENT_TYPES = [
-    "LOGIN",
-    "USER",
-    "EMPLOYEE",
-    "TIMESHEET",
-    "ANNOUNCEMENT",
-    "LOCATION_UNIT",
-    "SETTINGS",
-    "SECURITY"
-];
-
-export const AUDIT_EVENT_LABELS = {
-    LOGIN: "GİRİŞ",
-    USER: "KULLANICI",
-    EMPLOYEE: "ÇALIŞAN",
-    TIMESHEET: "PUANTAJ",
-    ANNOUNCEMENT: "DUYURU",
-    LOCATION_UNIT: "YERLEŞKE/BİRİM",
-    SETTINGS: "AYARLAR",
-    SECURITY: "GÜVENLİK"
+export const AUDIT_EVENTS = {
+    LOGIN: { code: 'LOGIN', label: 'Giriş' },
+    LOGOUT: { code: 'LOGOUT', label: 'Çıkış' },
+    USER: { code: 'USER', label: 'Kullanıcı' },
+    EMPLOYEE: { code: 'EMPLOYEE', label: 'Çalışan' },
+    TIMESHEET: { code: 'TIMESHEET', label: 'Puantaj' },
+    ANNOUNCEMENT: { code: 'ANNOUNCEMENT', label: 'Duyuru' },
+    LOCATION: { code: 'LOCATION', label: 'Yerleşke' },
+    UNIT: { code: 'UNIT', label: 'Birim' },
+    SETTINGS: { code: 'SETTINGS', label: 'Ayarlar' },
+    SECURITY: { code: 'SECURITY', label: 'Güvenlik' }
 };
+
+// Yardımcı listeler
+export const AUDIT_EVENT_LIST = Object.values(AUDIT_EVENTS);

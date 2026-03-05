@@ -1,4 +1,4 @@
-export const employeeColumns = [
+export const employeeColumns = (handleEdit, handleDelete) => [
     { header: 'TC No',     accessor: 'tc'       },
     { header: 'Ad Soyad',  accessor: 'name'     },
     { header: 'Birim',     accessor: 'unit'     },
@@ -8,10 +8,10 @@ export const employeeColumns = [
     {
         header: 'İşlemler',
         width: '100px',
-        render: () => (
+        render: (row) => (
             <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="action-btn edit-btn">✎</button>
-                <button className="action-btn delete-btn">🗑</button>
+                <button className="action-btn edit-btn" onClick={() => handleEdit(row.id)}>✎</button>
+                <button className="action-btn delete-btn" onClick={() => handleDelete(row.id)}>🗑</button>
             </div>
         ),
     },

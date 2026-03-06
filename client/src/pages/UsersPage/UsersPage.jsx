@@ -83,7 +83,7 @@ const UsersPage = () => {
     }
   };
 
-  const { filteredData: filteredUsers, filters, handleFilterChange } = useFilter(users, userFilterConfig, {
+  const { filters, handleFilterChange } = useFilter(userFilterConfig, {
     role: '',
     status: '',
     location: '',
@@ -99,7 +99,7 @@ const UsersPage = () => {
       {/* Users Table */}
       <DynamicTable
         columns={userColumns(handleEdit, handleDelete)}
-        data={filteredUsers}
+        data={users}
         pageSize={10}
       />
     </PageShell>

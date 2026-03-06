@@ -33,8 +33,8 @@ export async function getAuditLogs(req, res) {
 
     // Filtreler
     if (username) {
-      query += ` AND username = $${paramIndex}`;
-      params.push(username);
+      query += ` AND username ILIKE $${paramIndex}`;
+      params.push(`%${username}%`);
       paramIndex++;
     }
 
@@ -51,14 +51,14 @@ export async function getAuditLogs(req, res) {
     }
 
     if (startDate) {
-      query += ` AND created_at >= $${paramIndex}`;
-      params.push(startDate);
+      query += ` AND created_at >= $${paramIndex}::timestamp`;
+      params.push(`${startDate} 00:00:00`);
       paramIndex++;
     }
 
     if (endDate) {
-      query += ` AND created_at <= $${paramIndex}`;
-      params.push(endDate);
+      query += ` AND created_at <= $${paramIndex}::timestamp`;
+      params.push(`${endDate} 23:59:59`);
       paramIndex++;
     }
 
@@ -73,8 +73,8 @@ export async function getAuditLogs(req, res) {
     let countParamIndex = 1;
 
     if (username) {
-      countQuery += ` AND username = $${countParamIndex}`;
-      countParams.push(username);
+      countQuery += ` AND username ILIKE $${countParamIndex}`;
+      countParams.push(`%${username}%`);
       countParamIndex++;
     }
 
@@ -91,14 +91,14 @@ export async function getAuditLogs(req, res) {
     }
 
     if (startDate) {
-      countQuery += ` AND created_at >= $${countParamIndex}`;
-      countParams.push(startDate);
+      countQuery += ` AND created_at >= $${countParamIndex}::timestamp`;
+      countParams.push(`${startDate} 00:00:00`);
       countParamIndex++;
     }
 
     if (endDate) {
-      countQuery += ` AND created_at <= $${countParamIndex}`;
-      countParams.push(endDate);
+      countQuery += ` AND created_at <= $${countParamIndex}::timestamp`;
+      countParams.push(`${endDate} 23:59:59`);
       countParamIndex++;
     }
 

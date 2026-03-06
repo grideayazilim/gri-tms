@@ -18,7 +18,12 @@ export const systemSettingsSchema = z.object({
     weeklyLimit: z.coerce.number().min(0, 'Geçerli bir limit giriniz').or(z.string().length(0)),
     programStart: z.string().optional().or(z.literal('')),
     programEnd: z.string().optional().or(z.literal('')),
-    markers: z.array(markerSchema),
 });
 
 export type SystemSettingsType = z.infer<typeof systemSettingsSchema>;
+
+export const markerSettingsSchema = z.object({
+    markers: z.array(markerSchema).min(1, 'En az bir işaretçi eklenmelidir'),
+});
+
+export type MarkerSettingsType = z.infer<typeof markerSettingsSchema>;

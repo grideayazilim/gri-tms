@@ -3,6 +3,10 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/authRoutes.js';
 import locationAndUnitRoutes from './routes/locationAndUnitRoutes.js';
+import timesheetRoutes from './routes/timesheetRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+import announcementRoutes from './routes/announcementRoutes.js';
+import auditLogRoutes from './routes/auditLogRoutes.js';
 
 const app = express();
 
@@ -22,6 +26,10 @@ app.use(cookieParser());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/locationAndUnits', locationAndUnitRoutes);
+app.use('/api/timesheets', timesheetRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

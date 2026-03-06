@@ -21,6 +21,14 @@ export const getMe = async () => {
   return response;
 };
 
+export const updateMe = async (username, password) => {
+  const payload = {};
+  if (username) payload.username = username;
+  if (password) payload.password = password;
+  const response = await api.put('/auth/me', payload);
+  return response;
+};
+
 export const logout = async () => {
   const response = await api.post('/auth/logout');
   return response;

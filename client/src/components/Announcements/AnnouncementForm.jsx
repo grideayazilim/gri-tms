@@ -1,4 +1,3 @@
-import { useAuth } from '../../context/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { announcementSchema } from '../../schemas/announcement.schema';
@@ -6,8 +5,6 @@ import '../../styles/inputs.scss';
 import './Announcements.scss';
 
 function AnnouncementForm({ onSubmit, onCancel }) {
-  const { user } = useAuth();
-  
   const {
     register,
     handleSubmit,
@@ -23,24 +20,8 @@ function AnnouncementForm({ onSubmit, onCancel }) {
 
   const contentValue = watch("content", "");
 
-  const onSubmitForm = async (data) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Create announcement object
-    const newAnnouncement = {
-      id: Date.now().toString(),
-      title: data.title.trim(),
-      content: data.content.trim(),
-      createdAt: new Date().toISOString(),
-      createdBy: user?.username || 'Bilinmeyen',
-    };
-
-    onSubmit(newAnnouncement);
-  };
-
   return (
-    <form className="announcement-form" onSubmit={handleSubmit(onSubmitForm)}>
+    <form className="announcement-form" onSubmit={handleSubmit(onSubmit)}>
       {/* Başlık */}
       <div className="floating-group">
         <input

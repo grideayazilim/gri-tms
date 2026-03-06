@@ -18,7 +18,7 @@ const EmployeesPage = () => {
   const units = [...new Set(data.map(item => item.unit))].filter(Boolean);
 
   const filterConfig = getEmployeeFilterConfig(locations, units);
-  const { filteredData, filters, handleFilterChange } = useFilter(data, filterConfig, {
+  const { filters, handleFilterChange } = useFilter(filterConfig, {
     location: '',
     unit: '',
     search: '',
@@ -97,7 +97,7 @@ const EmployeesPage = () => {
       
       <DynamicTable
         columns={employeeColumns(handleEdit, handleDelete)}
-        data={filteredData}
+        data={data}
         pageSize={10}
       />
     </PageShell>

@@ -1,42 +1,30 @@
-import { useState } from 'react';
-import { RiAddLine } from 'react-icons/ri';
+import { useEffect } from 'react';
+import { RiAddLine, RiLoader4Line } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import { useModal } from '../Modal';
 import { useToast } from '../ToastBar/ToastContext';
+import { useAnnouncements } from '../../hooks/data/useAnnouncements';
 import AnnouncementCard from './AnnouncementCard';
 import AnnouncementForm from './AnnouncementForm';
 import './Announcements.scss';
 
-// Mock data
-const MOCK_ANNOUNCEMENTS = [
-  {
-    id: '1',
-    title: 'Sistem Bakımı',
-    content: 'Yarın saat 22:00-23:00 arası sistem bakıma alınacaktır. Bu süre zarfında sisteme erişim sağlanamayacaktır.',
-    createdAt: '2026-02-20T10:00:00Z',
-    createdBy: 'admin_user'
-  },
-  {
-    id: '2',
-    title: 'Puantaj Onay Süresi',
-    content: 'Lütfen aylık puantajlarınızı her ayın son iş gününe kadar onaylayınız.',
-    createdAt: '2026-02-18T14:30:00Z',
-    createdBy: 'admin_user'
-  },
-  {
-    id: '3',
-    title: 'Yeni Özellik',
-    content: 'Artık puantaj kayıtlarınızı PDF olarak indirebilirsiniz.',
-    createdAt: '2026-02-15T09:00:00Z',
-    createdBy: 'admin_user'
-  },
-];
-
 function AnnouncementList({ onClose }) {
-  const [announcements, setAnnouncements] = useState(MOCK_ANNOUNCEMENTS);
+  const { 
+    announcements, 
+    isLoading, 
+    error, 
+    fetchAnnouncements, 
+    addAnnouncement, 
+    removeAnnouncement 
+  } = useAnnouncements();
+  
   const { isAdmin } = useAuth();
   const { showModal, showConfirm } = useModal();
   const toast = useToast();
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
 
   const handleAddAnnouncement = async () => {
     const result = await showModal({
@@ -44,13 +32,20 @@ function AnnouncementList({ onClose }) {
       size: 'medium',
       content: (closeModal) => (
         <AnnouncementForm
-          onSubmit={(newAnnouncement) => {
-            setAnnouncements(prev => [newAnnouncement, ...prev]);
-            toast({ 
-              type: 'success', 
-              message: 'Duyuru başarıyla oluşturuldu' 
-            });
-            closeModal(true);
+          onSubmit={async (newAnnouncement) => {
+            const res = await addAnnouncement(newAnnouncement.title, newAnnouncement.content);
+            if (res.success) {
+              toast({ 
+                type: 'success', 
+                message: 'Duyuru başarıyla oluşturuldu' 
+              });
+              closeModal(true);
+            } else {
+              toast({
+                type: 'error',
+                message: res.error || 'Duyuru oluşturulamadı'
+              });
+            }
           }}
           onCancel={() => closeModal(false)}
         />
@@ -68,13 +63,36 @@ function AnnouncementList({ onClose }) {
     });
 
     if (confirmed) {
-      setAnnouncements(prev => prev.filter(a => a.id !== id));
-      toast({ 
-        type: 'success', 
-        message: 'Duyuru silindi' 
-      });
+      const res = await removeAnnouncement(id);
+      if (res.success) {
+         toast({ 
+           type: 'success', 
+           message: 'Duyuru silindi' 
+         });
+      } else {
+         toast({
+           type: 'error',
+           message: res.error || 'Duyuru silinemedi'
+         });
+      }
     }
   };
+
+  if (isLoading && announcements.length === 0) {
+    return (
+      <div className="announcement-list__loading" style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
+        <RiLoader4Line className="spin-animation" size={32} color="#007bff" />
+      </div>
+    );
+  }
+
+  if (error && announcements.length === 0) {
+    return (
+      <div className="announcement-list__error" style={{ color: 'red', textAlign: 'center', padding: '2rem' }}>
+        İletişim Hatası: {error}
+      </div>
+    );
+  }
 
   return (
     <div className="announcement-list">

@@ -3,7 +3,7 @@
 import { AiOutlineFile } from "react-icons/ai";
 // Yerleşke ve Birimler
 import { PiBuildingOffice } from "react-icons/pi";
-// Birim sorumluları
+// Kullanıcılar
 import { LiaUserTieSolid } from "react-icons/lia";
 // Çalışanlar
 import { PiHardHat } from "react-icons/pi";
@@ -18,7 +18,7 @@ import SettingsPage from '../pages/SettingsPage/SettingsPage';
 import LocationsPage from '../pages/LocationsPage/LocationsPage';
 import EmployeesPage from '../pages/EmployeesPage/EmployeesPage';
 import UsersPage from '../pages/UsersPage/UsersPage';
-import LogsPage from '../pages/LogsPage/LogsPage';
+import AuditLogsPage from '../pages/AuditLogsPage/AuditLogsPage';
 import NotFoundPage from '../pages/NotFoundPage/NotFoundPage';
 import AuthPage from '../pages/AuthPage/AuthPage';
 
@@ -43,14 +43,14 @@ export const managementRoutes = [
   {
     path: '/locations',
     element: LocationsPage,
-    name: 'Yerleşke Birimler',
+    name: 'Yerleşke ve Birimler',
     icon: <PiBuildingOffice />,
     adminOnly: true, // Sadece admin
   },
   {
     path: '/users',
     element: UsersPage,
-    name: 'Birim Sorumluları',
+    name: 'Kullanıcılar',
     icon: <LiaUserTieSolid className="tie-icon" />,
     adminOnly: true,
   },
@@ -62,8 +62,8 @@ export const managementRoutes = [
     adminOnly: true,
   },
   {
-    path: '/logs',
-    element: LogsPage,
+    path: '/audit-logs',
+    element: AuditLogsPage,
     name: 'İşlem Kayıtları',
     icon: <RiFileList3Line />,
     adminOnly: true,

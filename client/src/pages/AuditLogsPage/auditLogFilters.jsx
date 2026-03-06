@@ -1,16 +1,18 @@
 import { AUDIT_EVENT_LIST } from '../../constants/auditEvents';
 
-export const logFilterConfig = [
+export const auditLogFilterConfig = [
   { 
     key: 'action', 
+    apiParam: 'eventType',
     label: 'İşlem Tipi', 
     type: 'select', 
     options: AUDIT_EVENT_LIST.map(e => ({ value: e.code, label: e.label })), 
     defaultOption: 'Tüm İşlemler',
-    apply: (log, value) => log.action === value
+    apply: (log, value) => log.eventType === value
   },
   { 
     key: 'beforeDate', 
+    apiParam: 'endDate',
     label: 'Şu Tarihten Önce', 
     type: 'date',
     apply: (log, value) => {
@@ -21,13 +23,13 @@ export const logFilterConfig = [
   },
   { 
     key: 'searchActor', 
+    apiParam: 'username',
     label: 'İşlem Yapan Ara', 
     type: 'text',
     apply: (log, value) => {
       const searchStr = value.toLowerCase();
-      const matchUsername = log.actorUsername && log.actorUsername.toLowerCase().includes(searchStr);
-      const matchName = log.actorName && log.actorName.toLowerCase().includes(searchStr);
-      return matchUsername || matchName;
+      const matchUsername = log.username && log.username.toLowerCase().includes(searchStr);
+      return matchUsername;
     }
   },
 ];

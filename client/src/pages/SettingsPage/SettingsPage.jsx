@@ -1,52 +1,75 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSettingsSchema, systemSettingsSchema } from "../../schemas/settings.schema";
+import { loginSettingsSchema, systemSettingsSchema, markerSettingsSchema } from "../../schemas/settings.schema";
 import "../../styles/inputs.scss";
 import PageShell from "../../components/PageShell/PageShell";
 import PendingUserList from "./PendingUserList/PendingUserList";
 import { useAuth } from "../../context/AuthContext";
 import { useModal } from "../../components/Modal";
+import { useToast } from "../../components/ToastBar/ToastContext";
+import { useSettings } from "../../hooks/data/useSettings";
+import { updateMe } from "../../api/authService";
 import "./SettingsPage.scss";
 
 function SettingsPage() {
+  const { isAdmin, user, updateProfile } = useAuth();
+  
   // GİRİŞ BİLGİLERİ FORM
   const {
     register: loginRegister,
     handleSubmit: handleLoginSubmit,
     formState: { errors: loginErrors, isDirty: isLoginDirty },
     reset: resetLogin,
+    setError: setLoginError,
   } = useForm({
     resolver: zodResolver(loginSettingsSchema),
-    defaultValues: { username: "", password: "" },
+    defaultValues: { username: user?.username || "", password: "" },
   });
 
-  const onLoginSubmit = (data) => {
-    console.log("Login Info Saved", data);
-    // After successful save:
-    resetLogin(data);
+  const onLoginSubmit = async (data) => {
+    try {
+      const res = await updateMe(data.username, data.password);
+      if (res.success || res.message === "Bilgiler güncellendi.") {
+        toast({ type: "success", message: "Giriş bilgileriniz güncellendi." });
+        updateProfile({ username: data.username });
+        resetLogin({ username: data.username, password: "" });
+      } else {
+        toast({ type: "error", message: res.message || "Güncelleme başarısız." });
+      }
+    } catch (error) {
+      if (error.status === 409) {
+        setLoginError('username', { type: 'manual', message: 'Bu kullanıcı adı zaten kullanımda.' });
+      } else {
+        toast({ type: "error", message: error.message || "Bilgiler güncellenirken hata oluştu." });
+      }
+    }
   };
 
-  const { isAdmin } = useAuth();
   const { showConfirm } = useModal();
+  const toast = useToast();
 
-  // Mock data for pending users
-  const [pendingUsers, setPendingUsers] = useState([
-    {
-      id: 3,
-      username: 'pending_user',
-      role: 'RESPONSIBLE',
-      status: 'PENDING',
-      location: 'Kuzey Kampüs',
-      unit: 'Yazılım Mühendisliği',
-      lastLogin: null,
-      createdAt: '2024-02-18',
-    },
-  ]);
+  const {
+    pendingUsers,
+    fetchPendingUsers,
+    systemSettings,
+    fetchSystemSettings,
+    markers,
+    fetchMarkers,
+    approveUser,
+    rejectUser,
+    updateSystemSettings,
+    updateMarkers: updateMarkersApi
+  } = useSettings();
 
-  const handleApprove = (userId) => {
-    setPendingUsers(pendingUsers.filter(u => u.id !== userId));
+  const handleApprove = async (userId) => {
+    const result = await approveUser(userId);
+    if (result.success) {
+      toast({ type: "success", message: "Kullanıcı başarıyla onaylandı." });
+    } else {
+      toast({ type: "error", message: result.error });
+    }
   };
 
   const handleReject = async (userId) => {
@@ -59,7 +82,12 @@ function SettingsPage() {
     });
 
     if (confirmed) {
-       setPendingUsers(pendingUsers.filter(u => u.id !== userId));
+      const result = await rejectUser(userId);
+      if (result.success) {
+        toast({ type: "success", message: "Kullanıcı reddedildi ve silindi." });
+      } else {
+        toast({ type: "error", message: result.error });
+      }
     }
   };
 
@@ -77,6 +105,48 @@ function SettingsPage() {
       weeklyLimit: "",
       programStart: "",
       programEnd: "",
+    },
+  });
+
+  const onSystemSubmit = async (data) => {
+    const result = await updateSystemSettings(data);
+    if (result.success) {
+      toast({ type: "success", message: "Sistem ayarları güncellendi." });
+      resetSystem(data);
+    } else {
+      if (result.code === 'CONFIRM_PERIOD_CHANGE') {
+        const confirmed = await showConfirm({
+          title: 'Tarih Değişimi Onayı',
+          message: 'Program tarihleri değiştiğinde mevcut dönemler silinip yeniden oluşturulacaktır. Yeni tarih aralığı dışında kalan aylara ait veriler silinebilir. Bu işlemi onaylıyor musunuz?',
+          type: 'warning',
+          confirmText: 'Onayla ve Güncelle',
+          cancelText: 'Vazgeç',
+        });
+        if (confirmed) {
+          const forceResult = await updateSystemSettings({ ...data, force: true });
+          if (forceResult.success) {
+            toast({ type: "success", message: "Sistem ayarları güncellendi ve dönemler yeniden oluşturuldu." });
+            resetSystem(data);
+          } else {
+            toast({ type: "error", message: forceResult.error });
+          }
+        }
+      } else {
+        toast({ type: "error", message: result.error });
+      }
+    }
+  };
+
+  // PUANTAJ İŞARETÇİLERİ FORM
+  const {
+    register: markerRegister,
+    control: markerControl,
+    handleSubmit: handleMarkerSubmit,
+    formState: { errors: markerErrors, isDirty: isMarkerDirty },
+    reset: resetMarker,
+  } = useForm({
+    resolver: zodResolver(markerSettingsSchema),
+    defaultValues: {
       markers: [
         { code: "X", label: "Geldi", isPaid: true },
         { code: "İ", label: "İzinli", isPaid: false },
@@ -88,15 +158,51 @@ function SettingsPage() {
   });
 
   const { fields: markerFields, append, remove } = useFieldArray({
-    control: systemControl,
+    control: markerControl,
     name: "markers",
   });
 
-  const onSystemSubmit = (data) => {
-    console.log("System Info Saved", data);
-    // After successful save:
-    resetSystem(data);
+  const onMarkerSubmit = async (data) => {
+    const result = await updateMarkersApi(data.markers);
+    if (result.success) {
+      toast({ type: "success", message: "İşaretçiler başarıyla güncellendi." });
+      resetMarker(data);
+    } else {
+      toast({ type: "error", message: result.error });
+    }
   };
+
+  useEffect(() => {
+    if (isAdmin()) {
+      fetchPendingUsers();
+      fetchSystemSettings();
+      fetchMarkers();
+    }
+  }, [isAdmin, fetchPendingUsers, fetchSystemSettings, fetchMarkers]);
+
+  useEffect(() => {
+    if (systemSettings) {
+      const formatDate = (dateStr) => {
+        if (!dateStr) return "";
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return "";
+        return d.toISOString().split('T')[0];
+      };
+      
+      resetSystem({
+        dailyAllowance: systemSettings.dailyAllowance || "",
+        weeklyLimit: systemSettings.weeklyLimit || "",
+        programStart: formatDate(systemSettings.programStart),
+        programEnd: formatDate(systemSettings.programEnd)
+      });
+    }
+  }, [systemSettings, resetSystem]);
+
+  useEffect(() => {
+    if (markers && markers.length > 0) {
+      resetMarker({ markers });
+    }
+  }, [markers, resetMarker]);
 
   return (
     <PageShell title="Ayarlar">
@@ -224,73 +330,6 @@ function SettingsPage() {
           </div>
         </div>
 
-        {/* --- PUANTAJ İŞARETÇİLERİ --- */}
-        <div className="marker-section">
-          <h3 className="marker-section__title">Puantaj İşaretçileri</h3>
-
-          <div className="marker-list">
-            {markerFields.map((field, index) => (
-              <div className="marker-item" key={field.id}>
-                <div className="floating-group marker-item__code">
-                  <input
-                    type="text"
-                    className={`input input--center ${systemErrors?.markers?.[index]?.code ? 'input--error' : ''}`}
-                    placeholder=" "
-                    maxLength={3}
-                    {...systemRegister(`markers.${index}.code`)}
-                  />
-                  <label className="floating-group__label">Kod</label>
-                  {systemErrors?.markers?.[index]?.code && (
-                    <span className="input-error-message">{systemErrors.markers[index].code.message}</span>
-                  )}
-                </div>
-
-                <div className="floating-group marker-item__label">
-                  <input
-                    type="text"
-                    className={`input ${systemErrors?.markers?.[index]?.label ? 'input--error' : ''}`}
-                    placeholder=" "
-                    {...systemRegister(`markers.${index}.label`)}
-                  />
-                  <label className="floating-group__label">Açıklama</label>
-                  {systemErrors?.markers?.[index]?.label && (
-                    <span className="input-error-message">{systemErrors.markers[index].label.message}</span>
-                  )}
-                </div>
-
-                <label className="checkbox-label marker-item__paid">
-                  <input
-                    type="checkbox"
-                    {...systemRegister(`markers.${index}.isPaid`)}
-                  />
-                  <span>Ücretli</span>
-                </label>
-
-                <button
-                  type="button"
-                  className="btn btn--danger btn--icon-only"
-                  onClick={() => remove(index)}
-                  title="Sil"
-                >
-                  <RiDeleteBinLine />
-                </button>
-              </div>
-            ))}
-
-            {systemErrors.markers && !Array.isArray(systemErrors.markers) && (
-              <span className="input-error-message">{systemErrors.markers.message}</span>
-            )}
-
-            <button
-              type="button"
-              className="add-marker-btn"
-              onClick={() => append({ code: "", label: "", isPaid: true })}
-            >
-              + Yeni İşaretçi Ekle
-            </button>
-          </div>
-        </div>
-
         <button
           type="submit"
           className="btn btn--primary settings-card__submit"
@@ -299,6 +338,85 @@ function SettingsPage() {
           Sistem Ayarlarını Güncelle
         </button>
       </form>
+      )}
+
+      {/* --- PUANTAJ İŞARETÇİLERİ --- */}
+      {isAdmin() && (
+        <form className="settings-card" onSubmit={handleMarkerSubmit(onMarkerSubmit)}>
+          <h2 className="settings-card__title">Puantaj İşaretçileri</h2>
+          
+          <div className="marker-section">
+            <div className="marker-list">
+              {markerFields.map((field, index) => (
+                <div className="marker-item" key={field.id}>
+                  <div className="floating-group marker-item__code">
+                    <input
+                      type="text"
+                      className={`input input--center ${markerErrors?.markers?.[index]?.code ? 'input--error' : ''}`}
+                      placeholder=" "
+                      maxLength={3}
+                      {...markerRegister(`markers.${index}.code`)}
+                    />
+                    <label className="floating-group__label">Kod</label>
+                    {markerErrors?.markers?.[index]?.code && (
+                      <span className="input-error-message">{markerErrors.markers[index].code.message}</span>
+                    )}
+                  </div>
+
+                  <div className="floating-group marker-item__label">
+                    <input
+                      type="text"
+                      className={`input ${markerErrors?.markers?.[index]?.label ? 'input--error' : ''}`}
+                      placeholder=" "
+                      {...markerRegister(`markers.${index}.label`)}
+                    />
+                    <label className="floating-group__label">Açıklama</label>
+                    {markerErrors?.markers?.[index]?.label && (
+                      <span className="input-error-message">{markerErrors.markers[index].label.message}</span>
+                    )}
+                  </div>
+
+                  <label className="checkbox-label marker-item__paid">
+                    <input
+                      type="checkbox"
+                      {...markerRegister(`markers.${index}.isPaid`)}
+                    />
+                    <span>Ücretli</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    className="btn btn--danger btn--icon-only"
+                    onClick={() => remove(index)}
+                    title="Sil"
+                  >
+                    <RiDeleteBinLine />
+                  </button>
+                </div>
+              ))}
+
+              {markerErrors.markers && !Array.isArray(markerErrors.markers) && (
+                <span className="input-error-message">{markerErrors.markers.message}</span>
+              )}
+
+              <button
+                type="button"
+                className="add-marker-btn"
+                onClick={() => append({ code: "", label: "", isPaid: true })}
+              >
+                + Yeni İşaretçi Ekle
+              </button>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="btn btn--primary settings-card__submit"
+            disabled={!isMarkerDirty}
+          >
+            İşaretçileri Güncelle
+          </button>
+        </form>
       )}
     </PageShell>
   );

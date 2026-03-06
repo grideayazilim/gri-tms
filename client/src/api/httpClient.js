@@ -36,8 +36,8 @@ httpClient.interceptors.response.use(
         // Orijinal isteği tekrar dene
         return httpClient(originalRequest);
       } catch (refreshError) {
-        // Refresh başarısız - login'e yönlendir
-        window.location.href = '/login';
+        // Refresh başarısız - auth'a yönlendir
+        window.location.href = '/auth';
         return Promise.reject(refreshError);
       }
     }

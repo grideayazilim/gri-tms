@@ -6,7 +6,7 @@ export * as userService from './userService';
 export * as locationAndUnitService from './locationAndUnitService';
 export * as settingsService from './settingsService';
 export * as announcementService from './announcementService';
-export * as logService from './logService';
+export * as auditLogService from './auditLogService';
 
 // Export httpClient for direct use if needed
 export { default as httpClient, api } from './httpClient';

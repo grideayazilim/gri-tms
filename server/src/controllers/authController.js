@@ -3,6 +3,8 @@ import { withTransaction } from '../config/database.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/tokenUtils.js';
 import { cookieConfig } from '../config/jwt.js';
 import { toCamelCase } from '../utils/caseMapper.js';
+import { createAuditLog } from '../utils/auditLogger.js';
+import { AUDIT_EVENT } from '../enums/auditEventTypes.js';
 
 export async function register(req, res) {
   try {
@@ -29,12 +31,26 @@ export async function register(req, res) {
 
     // Kullanıcıyı oluştur (TestLogin için direkt ACTIVE)
     const result = await withTransaction(async (client) => {
-      return await client.query(
+      const insertRes = await client.query(
         `INSERT INTO app.users (username, password_hash, role, status, unit_id, location_id)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, username, role, status, unit_id, location_id`,
-        [username, passwordHash, role, 'ACTIVE', unitId || null, locationId || null]
+        [username, passwordHash, role, 'PENDING', unitId || null, locationId || null]
       );
+
+      const newUser = insertRes.rows[0];
+
+      await createAuditLog(client, {
+        username: req.user?.username || 'SYSTEM',
+        userRole: req.user?.role || 'SYSTEM',
+        eventType: AUDIT_EVENT.USER,
+        description: `Yeni kullanıcı oluşturuldu: ${newUser.username}`,
+        tableName: 'users',
+        recordId: newUser.id,
+        newData: newUser
+      });
+
+      return insertRes;
     });
 
     res.status(201).json({
@@ -222,6 +238,17 @@ export async function logout(req, res) {
       secure: cookieConfig.secure,
     });
 
+    if (req.user) {
+      await withTransaction(async (client) => {
+        await createAuditLog(client, {
+          username: req.user.username,
+          userRole: req.user.role,
+          eventType: AUDIT_EVENT.LOGIN,
+          description: `${req.user.username} sistemden çıkış yaptı.`
+        });
+      });
+    }
+
     res.json({
       success: true,
       message: 'Çıkış yapıldı',
@@ -235,7 +262,80 @@ export async function logout(req, res) {
   }
 }
 
-// Mevcut kullanıcı bilgisi (protected route örneği)
+// Giriş yapan kullanıcının kendi bilgilerini güncelle (username / password)
+export async function updateMe(req, res) {
+  try {
+    const userId = req.user.id;
+    const { username, password } = req.body;
+
+    if (!username && !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Güncellenecek en az bir alan (username veya password) gönderilmeli.',
+      });
+    }
+
+    const result = await withTransaction(async (client) => {
+      const current = await client.query(
+        'SELECT id, username, password_hash FROM app.users WHERE id = $1',
+        [userId]
+      );
+
+      if (current.rows.length === 0) {
+        throw Object.assign(new Error('Kullanıcı bulunamadı'), { statusCode: 404 });
+      }
+
+      const newUsername = username || current.rows[0].username;
+      const newPasswordHash = password
+        ? await bcrypt.hash(password, 10)
+        : current.rows[0].password_hash;
+
+      const updateRes = await client.query(
+        `UPDATE app.users
+         SET username = $1, password_hash = $2, updated_at = NOW()
+         WHERE id = $3
+         RETURNING id, username, role, status`,
+        [newUsername, newPasswordHash, userId]
+      );
+
+      const updatedUser = updateRes.rows[0];
+
+      await createAuditLog(client, {
+        username: req.user.username,
+        userRole: req.user.role,
+        eventType: AUDIT_EVENT.USER,
+        description: `${current.rows[0].username} adlı kullanıcı profil bilgilerini güncelledi.`,
+        tableName: 'users',
+        recordId: userId,
+        oldData: { id: userId, username: current.rows[0].username },
+        newData: { id: userId, username: updatedUser.username }
+      });
+
+      return updateRes;
+    });
+
+    res.json({
+      success: true,
+      message: 'Bilgiler güncellendi.',
+      data: {
+        user: toCamelCase(result.rows[0]),
+      },
+    });
+  } catch (error) {
+    console.error('updateMe error:', error);
+
+    if (error.statusCode === 404) {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+
+    if (error.code === '23505') {
+      return res.status(409).json({ success: false, message: 'Bu kullanıcı adı zaten kullanımda.' });
+    }
+
+    res.status(500).json({ success: false, message: 'Bilgiler güncellenirken hata oluştu.' });
+  }
+}
+
 export async function getMe(req, res) {
   try {
     // req.user authMiddleware tarafından set edildi

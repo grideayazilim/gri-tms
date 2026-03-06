@@ -1,21 +1,39 @@
-// Backend'e istek gönder ve Veri/response çek. Veriyi frontend'in kullanabileceği şekilde map et
-
 import { api } from './httpClient';
 
-// Parametresiz istek
-/*
-export const getSomething = async (params = {}) => {
-  const response = await api.get('/route_path', { params });
-
-  return someMapper(response);
+// --- PENDING USERS ---
+export const getPendingUsers = async () => {
+  const response = await api.get('/settings/pending-users');
+  return response;
 };
-*/
 
-// Parametreli istek
-/*
-export const getSomething = async (param1, param2) => {
-  const response = await api.get('/route_path', { param1, param2 });
-
-  return someMapper(response);
+export const approvePendingUser = async (id) => {
+  const response = await api.post(`/settings/pending-users/${id}/approve`);
+  return response;
 };
-*/
+
+export const rejectPendingUser = async (id) => {
+  const response = await api.delete(`/settings/pending-users/${id}/reject`);
+  return response;
+};
+
+// --- SYSTEM SETTINGS ---
+export const getSystemSettings = async () => {
+  const response = await api.get('/settings/system');
+  return response;
+};
+
+export const updateSystemSettings = async (data) => {
+  const response = await api.put('/settings/system', data);
+  return response;
+};
+
+// --- MARKERS ---
+export const getMarkers = async () => {
+  const response = await api.get('/settings/markers');
+  return response;
+};
+
+export const updateMarkers = async (markers) => {
+  const response = await api.put('/settings/markers', { markers });
+  return response;
+};

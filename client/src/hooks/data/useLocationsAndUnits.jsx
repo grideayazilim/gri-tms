@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import * as locationAndUnitService from '../../api/locationAndUnitService';
 
 export const useLocationsAndUnits = () => {
@@ -8,7 +8,7 @@ export const useLocationsAndUnits = () => {
   const [error, setError] = useState(null);
 
   // Tüm yerleşkeleri getir
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -22,10 +22,10 @@ export const useLocationsAndUnits = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   // Bir yerleşkeye ait birimleri getir
-  const fetchUnitsByLocation = async (locationId) => {
+  const fetchUnitsByLocation = useCallback(async (locationId) => {
     setIsLoading(true);
     setError(null);
 
@@ -40,7 +40,7 @@ export const useLocationsAndUnits = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   return {
     locations,

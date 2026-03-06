@@ -5,6 +5,7 @@ import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signUpSchema } from "../../schemas/auth.schema";
+import { useToast } from "../../components/ToastBar/ToastContext";
 
 function SignUp({ onToggle }) {
   const [generalError, setGeneralError] = useState("");
@@ -12,6 +13,7 @@ function SignUp({ onToggle }) {
 
   const { register: authRegister } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
 
   const {
@@ -63,7 +65,11 @@ function SignUp({ onToggle }) {
     );
 
     if (result.success) {
-      navigate("/");
+      toast({
+        type: 'success',
+        message: 'Kayıt başarılı! Hesabınızın onaylanması için lütfen bekleyiniz.'
+      });
+      onToggle(); // Giriş ekranına dön
     } else {
       setGeneralError(result.error || "Kayıt başarısız");
     }

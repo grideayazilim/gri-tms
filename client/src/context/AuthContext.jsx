@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     try {
       const response = await authService.getMe();
-      setUser(response.data);
+      setUser(response.data.user);
       setIsAuthenticated(true);
     } catch (error) {
       // Authenticated değil - cookie'ler geçersiz veya expired
@@ -66,12 +66,7 @@ export const AuthProvider = ({ children }) => {
         throw new Error('Invalid response structure');
       }
       
-      const { user: userData } = response.data;
-
-      // Kayıt başarılı, otomatik login
-      setUser(userData);
-      setIsAuthenticated(true);
-
+      // Kayıt başarılı oldu, onay bekliyor. Otomatik login yapılmaz.
       return { success: true };
     } catch (error) {
       console.error('❌ Register error:', error);

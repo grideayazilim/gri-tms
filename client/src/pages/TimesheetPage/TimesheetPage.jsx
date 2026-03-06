@@ -33,7 +33,7 @@ const TimesheetPage = () => {
   ];
 
   const filterConfig = getTimesheetFilterConfig(periods, locations, units);
-  const { filteredData, filters, handleFilterChange } = useFilter(data, filterConfig, {
+  const { filters, handleFilterChange } = useFilter(filterConfig, {
     period: '2026-02',
     location: '',
     unit: '',
@@ -140,7 +140,7 @@ const TimesheetPage = () => {
 
       <DynamicTable
         columns={timesheetColumns(currentDaysInMonth, handleDayClick, isDayCellDirty)}
-        data={filteredData}
+        data={data}
         pageSize={10}
       />
     </PageShell>

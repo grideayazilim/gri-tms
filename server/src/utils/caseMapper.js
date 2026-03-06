@@ -9,6 +9,10 @@ export function toCamelCase(data) {
     return data;
   }
 
+  if (data instanceof Date) {
+    return data.toISOString(); // Or simply return data
+  }
+
   // Array ise her elemanı çevir
   if (Array.isArray(data)) {
     return data.map(toCamelCase);

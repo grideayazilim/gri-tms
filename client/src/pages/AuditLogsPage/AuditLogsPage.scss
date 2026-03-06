@@ -5,13 +5,13 @@
    Logs List
    ========================================== */
 
-.logs-list {
+.audit-logs-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
 }
 
-.log-card {
+.audit-log-card {
   background: var(--surface-color);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -28,7 +28,7 @@
   }
 }
 
-.log-card__header {
+.audit-log-card__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -42,26 +42,26 @@
   }
 }
 
-.log-card__badges {
+.audit-log-card__badges {
   display: flex;
   gap: var(--space-xs);
   flex-wrap: wrap;
 }
 
-.log-card__time {
+.audit-log-card__time {
   font-size: 12px;
   font-weight: var(--font-weight-normal-text);
   color: var(--text-faint);
   white-space: nowrap;
 }
 
-.log-card__body {
+.audit-log-card__body {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
 }
 
-.log-card__user {
+.audit-log-card__user {
   font-size: var(--font-size-normal-text);
   color: var(--text-dark);
 
@@ -71,7 +71,7 @@
   }
 }
 
-.log-card__metadata {
+.audit-log-card__metadata {
   display: flex;
   flex-direction: column;
   gap: 4px;

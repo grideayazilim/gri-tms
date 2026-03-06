@@ -7,6 +7,7 @@ import timesheetRoutes from './routes/timesheetRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use('/api/timesheets', timesheetRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

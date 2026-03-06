@@ -1,5 +1,3 @@
-import './DynamicTable.scss';
-
 /**
  * DynamicTable Bileşeni
  * 
@@ -49,6 +47,10 @@ import './DynamicTable.scss';
  *   );
  * };
  */
+
+import { useState } from 'react';
+import './DynamicTable.scss';
+
 const DynamicTable = ({ columns, data, loading, pageSize = 10 }) => {
     const [currentPage, setCurrentPage] = useState(1);
 

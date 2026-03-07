@@ -1,8 +1,13 @@
 import express from "express";
-// import { ... } from "../controllers/employeeController.js";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { adminMiddleware } from "../middlewares/adminMiddleware.js";
+import { getEmployees } from "../controllers/employeeController.js";
 
 const router = express.Router();
 
-// router.get("__route_yolu__", __gerekliyse_middleware'lar__, __controller_fonksiyonu__);
+// Tüm employee route'ları: önce giriş kontrolü, sonra admin kontrolü
+router.use(authMiddleware, adminMiddleware);
+
+router.get("/", getEmployees);
 
 export default router;

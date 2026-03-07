@@ -1,21 +1,25 @@
-// Backend'e istek gönder ve Veri/response çek. Veriyi frontend'in kullanabileceği şekilde map et
+import { api } from "./httpClient";
 
-import { api } from './httpClient';
-
-// Parametresiz istek
-/*
-export const getSomething = async (params = {}) => {
-  const response = await api.get('/route_path', { params });
-
-  return someMapper(response);
+// Çalışanları getir (filtreleme + sayfalama)
+export const getEmployees = async (params = {}) => {
+  const response = await api.get("/employees", { params });
+  return response;
 };
-*/
 
-// Parametreli istek
-/*
-export const getSomething = async (param1, param2) => {
-  const response = await api.get('/route_path', { param1, param2 });
-
-  return someMapper(response);
+// Yeni çalışan ekle
+export const createEmployee = async (data) => {
+  const response = await api.post("/employees", data);
+  return response;
 };
-*/
+
+// Çalışan güncelle
+export const updateEmployee = async (employeeId, data) => {
+  const response = await api.put(`/employees/${employeeId}`, data);
+  return response;
+};
+
+// Çalışan sil
+export const deleteEmployee = async (employeeId) => {
+  const response = await api.delete(`/employees/${employeeId}`);
+  return response;
+};

@@ -153,6 +153,16 @@ export async function login(req, res) {
       maxAge: cookieConfig.maxAge.refresh,
     });
 
+    // Audit log for login
+    await withTransaction(async (client) => {
+      await createAuditLog(client, {
+        username: user.username,
+        userRole: user.role,
+        eventType: AUDIT_EVENT.LOGIN,
+        description: `${user.username} sisteme giriş yaptı.`
+      });
+    });
+
     // User data döndür (token'lar DEĞİL)
     res.json({
       success: true,
@@ -237,17 +247,6 @@ export async function logout(req, res) {
       sameSite: cookieConfig.sameSite,
       secure: cookieConfig.secure,
     });
-
-    if (req.user) {
-      await withTransaction(async (client) => {
-        await createAuditLog(client, {
-          username: req.user.username,
-          userRole: req.user.role,
-          eventType: AUDIT_EVENT.LOGIN,
-          description: `${req.user.username} sistemden çıkış yaptı.`
-        });
-      });
-    }
 
     res.json({
       success: true,
@@ -358,7 +357,9 @@ export async function getMe(req, res) {
 
     res.json({
       success: true,
-      data: toCamelCase(result.rows[0]),
+      data: {
+        user: toCamelCase(result.rows[0]),
+      },
     });
   } catch (error) {
     console.error('Get me error:', error);

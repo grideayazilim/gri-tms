@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
   const checkAuth = async () => {
     try {
       const response = await authService.getMe();
-      setUser(response.data.user);
+      setUser(response.data);
       setIsAuthenticated(true);
     } catch (error) {
       // Authenticated değil - cookie'ler geçersiz veya expired

@@ -19,13 +19,13 @@ const router = express.Router();
 // ==================== OKUMA (GET) İŞLEMLERİ ====================
 
 // GET /api/locationAndUnits/locations -> Tüm yerleşke listesini döner
-router.get("/locations", authMiddleware, getLocations);
+router.get("/locations", getLocations);
 
 // GET /api/locationAndUnits/units -> Tüm birim listesini döner
 router.get("/units", authMiddleware, getUnits);
 
 // GET /api/locationAndUnits/locations/:locationId/units -> Sadece belirli bir yerleşkeye ait birimleri döner
-router.get("/locations/:locationId/units", authMiddleware, getUnitsByLocation);
+router.get("/locations/:locationId/units", getUnitsByLocation);
 
 
 

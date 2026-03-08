@@ -32,12 +32,14 @@ httpClient.interceptors.response.use(
       try {
         // Token'ı yenile
         await httpClient.post('/auth/refresh');
-        
+
         // Orijinal isteği tekrar dene
         return httpClient(originalRequest);
       } catch (refreshError) {
-        // Refresh başarısız - auth'a yönlendir
-        window.location.href = '/auth';
+        // Refresh başarısız - auth'a yönlendir (eğer zaten auth sayfasında değilsek)
+        if (window.location.pathname !== '/auth') {
+          window.location.href = '/auth';
+        }
         return Promise.reject(refreshError);
       }
     }

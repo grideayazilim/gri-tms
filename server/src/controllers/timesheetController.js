@@ -1,4 +1,4 @@
-import { withTransaction } from "../config/database.js";
+import { pool, withTransaction } from "../config/database.js";
 import { toCamelCase } from "../utils/caseMapper.js";
 import { createAuditLog } from "../utils/auditLogger.js";
 import { AUDIT_EVENT } from "../enums/auditEventTypes.js";
@@ -24,145 +24,153 @@ export async function getTimesheets(req, res) {
     }
 
     // Query parametreleri
-    const {
-      month,
-      year,
-      status,
-      search,
-      page = 1,
-      limit = 50,
-    } = req.query;
+    const { month, year, status, search, page = 1, limit = 50 } = req.query;
 
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 50));
     const offset = (pageNum - 1) * limitNum;
 
-    // Dinamik WHERE koşulları
-    const conditions = [];
-    const params = [];
-    let paramIndex = 1;
-
-    // Scope filtresi
-    if (scope) {
-      if (scope.unitId) {
-        conditions.push(`e.unit_id = $${paramIndex++}`);
-        params.push(scope.unitId);
-      }
-      if (scope.locationId) {
-        conditions.push(`u.location_id = $${paramIndex++}`);
-        params.push(scope.locationId);
-      }
-    }
-
-    // ADMIN için query'den gelen filtreler (scope null ise)
-    if (!scope && role === "ADMIN") {
-      const { unitId, locationId } = req.query;
-      if (unitId) {
-        conditions.push(`e.unit_id = $${paramIndex++}`);
-        params.push(unitId);
-      }
-      if (locationId) {
-        conditions.push(`u.location_id = $${paramIndex++}`);
-        params.push(locationId);
-      }
-    }
-
-    // Ay filtresi (YYYY-MM)
-    if (month) {
-      const [y, m] = month.split("-");
-      conditions.push(`p.year = $${paramIndex++}`);
-      params.push(parseInt(y, 10));
-      conditions.push(`p.month = $${paramIndex++}`);
-      params.push(parseInt(m, 10));
-    }
-
-    // Yıl filtresi
-    if (year && !month) {
-      conditions.push(`p.year = $${paramIndex++}`);
-      params.push(parseInt(year, 10));
-    }
-
-    // Durum filtresi
-    if (status === "locked") {
-      conditions.push(`p.is_locked = true`);
-    } else if (status === "unlocked") {
-      conditions.push(`p.is_locked = false`);
-    }
-
-    // Arama filtresi (ad, soyad, TC)
-    if (search) {
-      conditions.push(
-        `(e.first_name ILIKE $${paramIndex} OR e.last_name ILIKE $${paramIndex} OR e.tc_no ILIKE $${paramIndex})`
-      );
-      params.push(`%${search}%`);
-      paramIndex++;
-    }
-
-    const whereClause =
-      conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
-
     const result = await withTransaction(async (client) => {
-      // 1) Toplam kayıt sayısı
+      // ── 1) Dönem tespiti ───────────────────────────────────────────────────
+      const period = await findPeriod(client, { month, year });
+
+      // Dönem bulunamadıysa boş döndür
+      if (!period) {
+        return {
+          timesheets: [],
+          totalRecords: 0,
+        };
+      }
+
+      // status filtresi (locked/unlocked) dönem bazında kontrol
+      if (status === "locked" && !period.is_locked)
+        return { timesheets: [], totalRecords: 0 };
+      if (status === "unlocked" && period.is_locked)
+        return { timesheets: [], totalRecords: 0 };
+
+      // ── 2) Çalışan filtre koşulları (scope + query params) ────────────────
+      const empConditions = [];
+      const empParams = [];
+      let pi = 1;
+
+      // Scope filtresi (RESPONSIBLE rolü)
+      if (scope) {
+        if (scope.unitId) {
+          empConditions.push(`e.unit_id = $${pi++}`);
+          empParams.push(scope.unitId);
+        }
+        if (scope.locationId) {
+          empConditions.push(`u.location_id = $${pi++}`);
+          empParams.push(scope.locationId);
+        }
+      }
+
+      // ADMIN için query param filtreleri
+      if (!scope && role === "ADMIN") {
+        const { unitId, locationId } = req.query;
+        if (unitId) {
+          empConditions.push(`e.unit_id = $${pi++}`);
+          empParams.push(unitId);
+        }
+        if (locationId) {
+          empConditions.push(`u.location_id = $${pi++}`);
+          empParams.push(locationId);
+        }
+      }
+
+      // Arama filtresi
+      if (search) {
+        empConditions.push(
+          `(e.first_name ILIKE $${pi} OR e.last_name ILIKE $${pi} OR e.tc_no ILIKE $${pi})`,
+        );
+        empParams.push(`%${search}%`);
+        pi++;
+      }
+
+      const whereClause =
+        empConditions.length > 0 ? "WHERE " + empConditions.join(" AND ") : "";
+
+      // ── 3) Toplam çalışan sayısı ──────────────────────────────────────────
       const countQuery = `
         SELECT COUNT(*) AS total
-        FROM app.timesheets t
-        JOIN app.employees e ON e.id = t.employee_id
-        JOIN app.periods p ON p.id = t.period_id
+        FROM app.employees e
         JOIN app.units u ON u.id = e.unit_id
         ${whereClause}
       `;
-      const countResult = await client.query(countQuery, params);
+      const countResult = await client.query(countQuery, empParams);
       const totalRecords = parseInt(countResult.rows[0].total, 10);
 
-      // 2) Puantaj verilerini getir
+      // ── 4) Çalışanlar + LEFT JOIN timesheet verisi ────────────────────────
+      // periodId sabit olduğu için ayrı bir param olarak eklenir
+      const periodParamIdx = pi++;
+      const limitParamIdx = pi++;
+      const offsetParamIdx = pi++;
+
+      const yearParamIdx = pi++;
+      const monthParamIdx = pi++;
+      const startDateParamIdx = pi++;
+      const endDateParamIdx = pi++;
+      const isLockedParamIdx = pi++;
+
       const dataQuery = `
         SELECT
-          t.id            AS timesheet_id,
-          t.created_at    AS timesheet_created_at,
-          t.updated_at    AS timesheet_updated_at,
-          e.id            AS employee_id,
+          t.id              AS timesheet_id,
+          t.created_at      AS timesheet_created_at,
+          t.updated_at      AS timesheet_updated_at,
+          e.id              AS employee_id,
           e.first_name,
           e.last_name,
           e.tc_no,
           e.iban_no,
-          p.id            AS period_id,
-          p.year,
-          p.month,
-          TO_CHAR(p.start_date, 'YYYY-MM-DD') AS period_start_date,
-          TO_CHAR(p.end_date, 'YYYY-MM-DD')   AS period_end_date,
-          p.is_locked,
-          u.id            AS unit_id,
-          u.name          AS unit_name,
-          l.id            AS location_id,
-          l.name          AS location_name,
+          $${periodParamIdx}::uuid              AS period_id,
+          $${yearParamIdx}::int                 AS year,
+          $${monthParamIdx}::int                AS month,
+          $${startDateParamIdx}::text           AS period_start_date,
+          $${endDateParamIdx}::text             AS period_end_date,
+          $${isLockedParamIdx}::boolean         AS is_locked,
+          u.id              AS unit_id,
+          u.name            AS unit_name,
+          l.id              AS location_id,
+          l.name            AS location_name,
           l.program_no
-        FROM app.timesheets t
-        JOIN app.employees e ON e.id = t.employee_id
-        JOIN app.periods p ON p.id = t.period_id
-        JOIN app.units u ON u.id = e.unit_id
+        FROM app.employees e
+        JOIN app.units     u ON u.id = e.unit_id
         JOIN app.locations l ON l.id = u.location_id
+        LEFT JOIN app.timesheets t
+          ON t.employee_id = e.id AND t.period_id = $${periodParamIdx}::uuid
         ${whereClause}
-        ORDER BY e.last_name, e.first_name, p.year, p.month
-        LIMIT $${paramIndex++} OFFSET $${paramIndex++}
+        ORDER BY e.last_name, e.first_name
+        LIMIT  $${limitParamIdx}
+        OFFSET $${offsetParamIdx}
       `;
+
       const dataResult = await client.query(dataQuery, [
-        ...params,
+        ...empParams,
+        period.id,
         limitNum,
         offset,
+        period.year,
+        period.month,
+        period.start_date,
+        period.end_date,
+        period.is_locked,
       ]);
 
-      // Timesheet ID'leri topla
-      const timesheetIds = dataResult.rows.map((r) => r.timesheet_id);
+      // ── 5) Günleri toplu getir (sadece mevcut timesheet ID'leri için) ──────
+      const timesheetIds = dataResult.rows
+        .map((r) => r.timesheet_id)
+        .filter(Boolean);
 
-      // 3) Günleri toplu getir
       let daysMap = {};
       if (timesheetIds.length > 0) {
         const daysResult = await client.query(
-          `SELECT td.id, td.timesheet_id, TO_CHAR(td.day, 'YYYY-MM-DD') AS day, td.marker_code, td.note
+          `SELECT td.id, td.timesheet_id,
+                  TO_CHAR(td.day, 'YYYY-MM-DD') AS day,
+                  td.marker_code, td.note
            FROM app.timesheet_days td
            WHERE td.timesheet_id = ANY($1)
            ORDER BY td.day`,
-          [timesheetIds]
+          [timesheetIds],
         );
         for (const d of daysResult.rows) {
           if (!daysMap[d.timesheet_id]) daysMap[d.timesheet_id] = [];
@@ -171,23 +179,22 @@ export async function getTimesheets(req, res) {
         }
       }
 
-      // 4) is_paid marker code'larını al
+      // ── 6) Ücretli marker kodları ve günlük ücret ─────────────────────────
       const markerResult = await client.query(
-        `SELECT code FROM app.markers WHERE is_paid = true`
+        `SELECT code FROM app.markers WHERE is_paid = true`,
       );
       const paidCodes = new Set(markerResult.rows.map((r) => r.code));
 
-      // 5) daily_wage al
       const settingsResult = await client.query(
-        `SELECT daily_wage FROM app.settings LIMIT 1`
+        `SELECT daily_wage FROM app.settings LIMIT 1`,
       );
       const dailyWage = parseFloat(settingsResult.rows[0]?.daily_wage || 0);
 
-      // 6) Response'u oluştur
+      // ── 7) Response oluştur ───────────────────────────────────────────────
       const timesheets = dataResult.rows.map((row) => {
-        const days = daysMap[row.timesheet_id] || [];
+        const days = row.timesheet_id ? daysMap[row.timesheet_id] || [] : [];
         const totalWorkDays = days.filter((d) =>
-          paidCodes.has(d.markerCode)
+          paidCodes.has(d.markerCode),
         ).length;
 
         return toCamelCase({
@@ -219,8 +226,8 @@ export async function getTimesheets(req, res) {
           days,
           total_work_days: totalWorkDays,
           total_paid_amount: totalWorkDays * dailyWage,
-          created_at: row.timesheet_created_at?.toISOString(),
-          updated_at: row.timesheet_updated_at?.toISOString(),
+          created_at: row.timesheet_created_at?.toISOString?.() ?? null,
+          updated_at: row.timesheet_updated_at?.toISOString?.() ?? null,
         });
       });
 
@@ -249,7 +256,6 @@ export async function getTimesheets(req, res) {
     });
   }
 }
-
 // ======================== POST /timesheets ========================
 export async function createOrUpdateTimesheets(req, res) {
   try {
@@ -268,7 +274,7 @@ export async function createOrUpdateTimesheets(req, res) {
       const periodResult = await client.query(
         `SELECT id, year, month, start_date, end_date, is_locked
          FROM app.periods WHERE id = $1`,
-        [periodId]
+        [periodId],
       );
 
       if (periodResult.rows.length === 0) {
@@ -293,7 +299,7 @@ export async function createOrUpdateTimesheets(req, res) {
          FROM app.employees e
          JOIN app.units u ON u.id = e.unit_id
          WHERE e.id = ANY($1)`,
-        [employeeIds]
+        [employeeIds],
       );
 
       // Map: employeeId -> { unitId, locationId, firstName, lastName }
@@ -323,7 +329,7 @@ export async function createOrUpdateTimesheets(req, res) {
         const unauthorized = empInfoResult.rows.filter(
           (r) =>
             r.unit_id !== scope.unitId ||
-            (scope.locationId && r.location_id !== scope.locationId)
+            (scope.locationId && r.location_id !== scope.locationId),
         );
         if (unauthorized.length > 0) {
           return {
@@ -336,13 +342,13 @@ export async function createOrUpdateTimesheets(req, res) {
 
       // 4) settings — max_weekly_days
       const settingsResult = await client.query(
-        `SELECT max_weekly_days FROM app.settings LIMIT 1`
+        `SELECT max_weekly_days FROM app.settings LIMIT 1`,
       );
       const maxWeeklyDays = settingsResult.rows[0]?.max_weekly_days || 6;
 
       // is_paid marker code'ları
       const markerResult = await client.query(
-        `SELECT code FROM app.markers WHERE is_paid = true`
+        `SELECT code FROM app.markers WHERE is_paid = true`,
       );
       const paidCodes = new Set(markerResult.rows.map((r) => r.code));
 
@@ -377,7 +383,7 @@ export async function createOrUpdateTimesheets(req, res) {
       const existingResult = await client.query(
         `SELECT id, employee_id FROM app.timesheets
          WHERE employee_id = ANY($1) AND period_id = $2`,
-        [employeeIds, periodId]
+        [employeeIds, periodId],
       );
 
       // Map: employeeId -> timesheetId
@@ -389,9 +395,9 @@ export async function createOrUpdateTimesheets(req, res) {
       // 7) Timesheet kayıtlarını oluştur/güncelle (replace stratejisi)
       let totalDaysChanged = 0;
       const affectedEmployees = [];
-      const allTimesheetIds = [];  // batch DELETE için tüm timesheet ID'leri
-      const allDayValues = [];    // batch INSERT için tüm günler
-      const allDayParams = [];    // batch INSERT parametre listesi
+      const allTimesheetIds = []; // batch DELETE için tüm timesheet ID'leri
+      const allDayValues = []; // batch INSERT için tüm günler
+      const allDayParams = []; // batch INSERT parametre listesi
       let dayParamIndex = 1;
 
       for (const ts of timesheets) {
@@ -402,7 +408,7 @@ export async function createOrUpdateTimesheets(req, res) {
           // Mevcut — updated_at güncelle
           await client.query(
             `UPDATE app.timesheets SET updated_at = NOW() WHERE id = $1`,
-            [timesheetId]
+            [timesheetId],
           );
         } else {
           // Yeni — oluştur
@@ -410,7 +416,7 @@ export async function createOrUpdateTimesheets(req, res) {
             `INSERT INTO app.timesheets (employee_id, period_id, unit_id)
              VALUES ($1, $2, $3)
              RETURNING id`,
-            [ts.employeeId, periodId, emp.unitId]
+            [ts.employeeId, periodId, emp.unitId],
           );
           timesheetId = insertResult.rows[0].id;
         }
@@ -421,13 +427,13 @@ export async function createOrUpdateTimesheets(req, res) {
         if (ts.days && ts.days.length > 0) {
           for (const dayEntry of ts.days) {
             allDayValues.push(
-              `($${dayParamIndex++}, $${dayParamIndex++}, $${dayParamIndex++}, $${dayParamIndex++})`
+              `($${dayParamIndex++}, $${dayParamIndex++}, $${dayParamIndex++}, $${dayParamIndex++})`,
             );
             allDayParams.push(
               timesheetId,
               dayEntry.day,
               dayEntry.markerCode,
-              dayEntry.note || null
+              dayEntry.note || null,
             );
           }
           totalDaysChanged += ts.days.length;
@@ -447,7 +453,7 @@ export async function createOrUpdateTimesheets(req, res) {
       if (allTimesheetIds.length > 0) {
         await client.query(
           `DELETE FROM app.timesheet_days WHERE timesheet_id = ANY($1)`,
-          [allTimesheetIds]
+          [allTimesheetIds],
         );
       }
 
@@ -456,7 +462,7 @@ export async function createOrUpdateTimesheets(req, res) {
         await client.query(
           `INSERT INTO app.timesheet_days (timesheet_id, day, marker_code, note)
            VALUES ${allDayValues.join(", ")}`,
-          allDayParams
+          allDayParams,
         );
       }
 
@@ -506,7 +512,7 @@ export async function lockPeriod(req, res) {
       // Period var mı?
       const periodResult = await client.query(
         `SELECT id, year, month FROM app.periods WHERE id = $1`,
-        [periodId]
+        [periodId],
       );
 
       if (periodResult.rows.length === 0) {
@@ -518,7 +524,7 @@ export async function lockPeriod(req, res) {
       // Kilitle
       await client.query(
         `UPDATE app.periods SET is_locked = true WHERE id = $1`,
-        [periodId]
+        [periodId],
       );
 
       // Audit log
@@ -554,6 +560,22 @@ export async function lockPeriod(req, res) {
   }
 }
 
+// ======================== GET /timesheets/periods ========================
+export async function getPeriods(req, res) {
+  try {
+    const { rows } = await pool.query(
+      `${PERIOD_SELECT} ORDER BY year DESC, month DESC`,
+    );
+
+    res.json({ success: true, data: { periods: rows } });
+  } catch (error) {
+    console.error("Get periods error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Dönemler alınırken hata oluştu" });
+  }
+}
+
 // ======================== YARDIMCI FONKSİYONLAR ========================
 
 /**
@@ -562,11 +584,44 @@ export async function lockPeriod(req, res) {
  */
 function getISOWeekKey(date) {
   const d = new Date(
-    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
   );
   // Perşembe'ye kaydır (ISO hafta kuralı)
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
   return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, "0")}`;
+}
+
+// ======================== YARDIMCI: Dönem Bulma ========================
+
+const PERIOD_SELECT = `
+  SELECT id, year, month,
+         TO_CHAR(start_date,'YYYY-MM-DD') AS start_date,
+         TO_CHAR(end_date,  'YYYY-MM-DD') AS end_date,
+         is_locked
+  FROM app.periods`;
+
+async function findPeriod(client, { month, year }) {
+  if (month) {
+    const [y, m] = month.split("-");
+    const { rows } = await client.query(
+      `${PERIOD_SELECT} WHERE year = $1 AND month = $2 LIMIT 1`,
+      [parseInt(y, 10), parseInt(m, 10)],
+    );
+    return rows[0] || null;
+  }
+
+  if (year) {
+    const { rows } = await client.query(
+      `${PERIOD_SELECT} WHERE year = $1 ORDER BY month DESC LIMIT 1`,
+      [parseInt(year, 10)],
+    );
+    return rows[0] || null;
+  }
+
+  const { rows } = await client.query(
+    `${PERIOD_SELECT} ORDER BY year DESC, month DESC LIMIT 1`,
+  );
+  return rows[0] || null;
 }

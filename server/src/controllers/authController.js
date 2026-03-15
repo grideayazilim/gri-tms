@@ -10,7 +10,6 @@ export async function register(req, res) {
   try {
     const { username, password, role, unitId, locationId } = req.body;
 
-    // Input validasyon
     if (!username || !password || !role) {
       return res.status(400).json({
         success: false,
@@ -18,7 +17,6 @@ export async function register(req, res) {
       });
     }
 
-    // Role göre unit/location kontrolü
     if (role === 'RESPONSIBLE' && (!unitId || !locationId)) {
       return res.status(400).json({
         success: false,
@@ -26,10 +24,8 @@ export async function register(req, res) {
       });
     }
 
-    // Şifreyi hashle
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Kullanıcıyı oluştur (TestLogin için direkt ACTIVE)
     const result = await withTransaction(async (client) => {
       const insertRes = await client.query(
         `INSERT INTO app.users (username, password_hash, role, status, unit_id, location_id)
@@ -62,8 +58,7 @@ export async function register(req, res) {
     });
   } catch (error) {
     console.error('Register error:', error);
-    
-    // Unique constraint hatası
+
     if (error.code === '23505') {
       return res.status(409).json({
         success: false,
@@ -82,7 +77,6 @@ export async function login(req, res) {
   try {
     const { username, password } = req.body;
 
-    // Input validasyon
     if (!username || !password) {
       return res.status(400).json({
         success: false,
@@ -90,7 +84,6 @@ export async function login(req, res) {
       });
     }
 
-    // Kullanıcıyı bul
     const result = await withTransaction(async (client) => {
       return await client.query(
         'SELECT * FROM app.users WHERE username = $1',
@@ -107,7 +100,6 @@ export async function login(req, res) {
 
     const user = result.rows[0];
 
-    // Aktiflik kontrolü
     if (user.status !== 'ACTIVE') {
       return res.status(403).json({
         success: false,
@@ -115,7 +107,6 @@ export async function login(req, res) {
       });
     }
 
-    // Şifre kontrol
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
       return res.status(401).json({
@@ -124,7 +115,6 @@ export async function login(req, res) {
       });
     }
 
-    // Token payload (minimal data + scope bilgisi)
     const tokenPayload = {
       id: user.id,
       username: user.username,
@@ -133,11 +123,9 @@ export async function login(req, res) {
       locationId: user.location_id || null,
     };
 
-    // Token'ları oluştur
     const accessToken = generateAccessToken(tokenPayload);
     const refreshToken = generateRefreshToken(tokenPayload);
 
-    // Access token cookie
     res.cookie('accessToken', accessToken, {
       httpOnly: true,
       sameSite: cookieConfig.sameSite,
@@ -145,7 +133,6 @@ export async function login(req, res) {
       maxAge: cookieConfig.maxAge.access,
     });
 
-    // Refresh token cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       sameSite: cookieConfig.sameSite,
@@ -186,10 +173,8 @@ export async function login(req, res) {
   }
 }
 
-// Token yenile
 export async function refresh(req, res) {
   try {
-    // Cookie'den refresh token oku
     const refreshToken = req.cookies.refreshToken;
 
     if (!refreshToken) {
@@ -199,10 +184,8 @@ export async function refresh(req, res) {
       });
     }
 
-    // Token doğrula
     const decoded = verifyRefreshToken(refreshToken);
 
-    // Yeni access token oluştur
     const newAccessToken = generateAccessToken({
       id: decoded.id,
       username: decoded.username,
@@ -211,7 +194,6 @@ export async function refresh(req, res) {
       locationId: decoded.locationId || null,
     });
 
-    // Yeni access token cookie
     res.cookie('accessToken', newAccessToken, {
       httpOnly: true,
       sameSite: cookieConfig.sameSite,
@@ -232,10 +214,8 @@ export async function refresh(req, res) {
   }
 }
 
-// Çıkış
 export async function logout(req, res) {
   try {
-    // Her iki cookie'yi temizle
     res.clearCookie('accessToken', {
       httpOnly: true,
       sameSite: cookieConfig.sameSite,
@@ -337,10 +317,8 @@ export async function updateMe(req, res) {
 
 export async function getMe(req, res) {
   try {
-    // req.user authMiddleware tarafından set edildi
     const userId = req.user.id;
 
-    // Database'den kullanıcı bilgilerini getir
     const result = await withTransaction(async (client) => {
       return await client.query(
         'SELECT id, username, role, status, unit_id, location_id FROM app.users WHERE id = $1',

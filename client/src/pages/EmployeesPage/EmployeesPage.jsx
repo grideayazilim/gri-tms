@@ -1,28 +1,58 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { employeeColumns } from './employeeColumns';
-import { MOCK_DATA } from '../../components/DynamicTable/mockData';
 import FilterBar from '../../components/FilterBar/FilterBar';
 import PageShell from '../../components/PageShell/PageShell';
 import { useModal } from '../../components/Modal';
 import EmployeeModal from './EmployeeModal/EmployeeModal';
 import { useFilter } from '../../hooks/data/useFilter';
 import { getEmployeeFilterConfig } from './employeeFilters';
+import { useEmployees } from '../../hooks/data/useEmployees';
 import '../../styles/inputs.scss';
 
 const EmployeesPage = () => {
-  const [data, setData] = useState(MOCK_DATA); // TODO: API fetch ile değiştir
-  const { showConfirm, showModal, closeModal } = useModal();
+  const {
+    employees,
+    isLoading,
+    fetchEmployees,
+    addEmployee,
+    editEmployee,
+    removeEmployee,
+  } = useEmployees();
+  const { showConfirm, showModal } = useModal();
 
-  const locations = [...new Set(data.map(item => item.location))].filter(Boolean);
-  const units = [...new Set(data.map(item => item.unit))].filter(Boolean);
+  // İlk yüklemede çalışanları getir
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
 
-  const filterConfig = getEmployeeFilterConfig(locations, units);
+  // Filtre seçeneklerini gerçek veriden türet
+  const locationOptions = useMemo(
+    () => [...new Set(employees.map(e => e.unit?.location?.name).filter(Boolean))],
+    [employees]
+  );
+  const unitOptions = useMemo(
+    () => [...new Set(employees.map(e => e.unit?.name).filter(Boolean))],
+    [employees]
+  );
+
+  const filterConfig = getEmployeeFilterConfig(locationOptions, unitOptions);
   const { filters, handleFilterChange } = useFilter(filterConfig, {
-    location: '',
-    unit: '',
+    locationName: '',
+    unitName: '',
     search: '',
   });
+
+  // Client-side filtering: apply each filter's `apply` function
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp =>
+      filterConfig.every(config => {
+        const value = filters[config.key];
+        if (!value || !config.apply) return true;
+        return config.apply(emp, value);
+      })
+    );
+  }, [employees, filters, filterConfig]);
 
   const handleDelete = async (employeeId) => {
     const confirmed = await showConfirm({
@@ -32,32 +62,29 @@ const EmployeesPage = () => {
       confirmText: 'Sil',
       cancelText: 'Vazgeç',
     });
-    
     if (confirmed) {
-      setData(data.filter(e => e.id !== employeeId));
+      await removeEmployee(employeeId);
     }
   };
 
   const handleEdit = async (employeeId) => {
-    const employeeToEdit = data.find(e => e.id === employeeId);
+    const employeeToEdit = employees.find(e => e.id === employeeId);
     if (!employeeToEdit) return;
 
     await showModal({
       title: 'Çalışan Düzenle',
       size: 'medium',
       content: (closeModal) => (
-        <EmployeeModal 
+        <EmployeeModal
           employee={employeeToEdit}
           onClose={() => closeModal(null)}
-          onSave={(updatedData) => {
-            const newEmployees = data.map(e => 
-              e.id === employeeId ? { ...e, ...updatedData } : e
-            );
-            setData(newEmployees);
-            closeModal(updatedData);
+          onSave={async (updatedData) => {
+            const result = await editEmployee(employeeId, updatedData);
+            if (result.success) closeModal(updatedData);
+            return result;
           }}
         />
-      )
+      ),
     });
   };
 
@@ -66,19 +93,15 @@ const EmployeesPage = () => {
       title: 'Yeni Çalışan Ekle',
       size: 'medium',
       content: (closeModal) => (
-        <EmployeeModal 
+        <EmployeeModal
           onClose={() => closeModal(null)}
-          onSave={(newData, mode) => {
-            if (mode === 'SINGLE') {
-                const newId = Math.max(...data.map(d => d.id || 0)) + 1;
-                setData([...data, { id: newId, ...newData }]);
-            } else {
-                // Bulk logic handled in bulk mode internally or by API
-            }
-            closeModal(newData);
+          onSave={async (newData) => {
+            const result = await addEmployee(newData);
+            if (result.success) closeModal(newData);
+            return result;
           }}
         />
-      )
+      ),
     });
   };
 
@@ -92,12 +115,11 @@ const EmployeesPage = () => {
 
   return (
     <PageShell title="Çalışanlar" headerActions={headerActions}>
-      {/* Filters */}
       <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
-      
       <DynamicTable
         columns={employeeColumns(handleEdit, handleDelete)}
-        data={data}
+        data={filteredEmployees}
+        loading={isLoading}
         pageSize={10}
       />
     </PageShell>
@@ -105,4 +127,3 @@ const EmployeesPage = () => {
 };
 
 export default EmployeesPage;
-

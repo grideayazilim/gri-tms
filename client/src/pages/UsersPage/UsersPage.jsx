@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { userColumns } from './userColumns';
 import FilterBar from '../../components/FilterBar/FilterBar';
@@ -7,42 +7,15 @@ import { useModal } from '../../components/Modal';
 import UserEditModal from './UserEditModal/UserEditModal';
 import { useFilter } from '../../hooks/data/useFilter';
 import { userFilterConfig } from './userFilters';
+import { useUsers } from '../../hooks/data/useUsers';
 import '../../styles/inputs.scss';
 
 const UsersPage = () => {
-  // Mock data - TODO: API'den fetch et
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      username: 'admin_user',
-      role: 'ADMIN',
-      status: 'ACTIVE',
-      location: null,
-      unit: null,
-      lastLogin: '2024-02-20 09:15',
-      createdAt: '2024-01-01',
-    },
-    {
-      id: 2,
-      username: 'responsible_user',
-      role: 'RESPONSIBLE',
-      status: 'ACTIVE',
-      location: 'Merkez Kampüs',
-      unit: 'Bilgisayar Mühendisliği',
-      lastLogin: '2024-02-19 14:30',
-      createdAt: '2024-01-15',
-    },
-    {
-      id: 3,
-      username: 'pending_user',
-      role: 'RESPONSIBLE',
-      status: 'PENDING',
-      location: 'Kuzey Kampüs',
-      unit: 'Yazılım Mühendisliği',
-      lastLogin: null,
-      createdAt: '2024-02-18',
-    },
-  ]);
+  const { users, isLoading, error, fetchUsers, editUser, removeUser } = useUsers();
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   const { showConfirm, showModal, closeModal } = useModal();
 
@@ -57,12 +30,14 @@ const UsersPage = () => {
         <UserEditModal 
           user={userToEdit}
           onClose={() => closeModal(null)}
-          onSave={(data) => {
-            const updatedUsers = users.map(u => 
-              u.id === userId ? { ...u, ...data, lastLogin: data.validityDate } : u
-            );
-            setUsers(updatedUsers);
-            closeModal(data);
+          onSave={async (data) => {
+            const result = await editUser(userId, data);
+            if (result.success) {
+              await fetchUsers(); // Tabloyu güncelle
+              closeModal(data);
+            } else {
+              alert(result.error || 'Güncelleme başarısız');
+            }
           }}
         />
       )
@@ -79,7 +54,12 @@ const UsersPage = () => {
     });
     
     if (confirmed) {
-      setUsers(users.filter(u => u.id !== userId));
+      const result = await removeUser(userId);
+      if (result.success) {
+        await fetchUsers(); // Tabloyu güncelle
+      } else {
+        alert(result.error || 'Silme başarısız');
+      }
     }
   };
 

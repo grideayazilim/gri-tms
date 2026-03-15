@@ -1,21 +1,17 @@
-// Backend'e istek gönder ve Veri/response çek. Veriyi frontend'in kullanabileceği şekilde map et
-
 import { api } from './httpClient';
 
-// Parametresiz istek
-/*
-export const getSomething = async (params = {}) => {
-  const response = await api.get('/route_path', { params });
-
-  return someMapper(response);
+export const getUsers = async (params = {}) => {
+  return await api.get('/users', { params });
 };
-*/
 
-// Parametreli istek
-/*
-export const getSomething = async (param1, param2) => {
-  const response = await api.get('/route_path', { param1, param2 });
-
-  return someMapper(response);
+export const updateUser = async (userId, userData) => {
+  return await api.put(`/users/${userId}`, userData);
 };
-*/
+
+export const deleteUser = async (userId) => {
+  return await api.delete(`/users/${userId}`);
+};
+
+export const updateProfile = async (profileData) => {
+  return await api.put('/users/me', profileData);
+};

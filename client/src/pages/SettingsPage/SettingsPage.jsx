@@ -11,6 +11,7 @@ import { useModal } from "../../components/Modal";
 import { useToast } from "../../components/ToastBar/ToastContext";
 import { useSettings } from "../../hooks/data/useSettings";
 import { updateMe } from "../../api/authService";
+import { useUsers } from "../../hooks/data/useUsers";
 import "./SettingsPage.scss";
 
 function SettingsPage() {
@@ -29,46 +30,44 @@ function SettingsPage() {
   });
 
   const onLoginSubmit = async (data) => {
-    try {
-      const res = await updateMe(data.username, data.password);
-      if (res.success || res.message === "Bilgiler güncellendi.") {
-        toast({ type: "success", message: "Giriş bilgileriniz güncellendi." });
-        updateProfile({ username: data.username });
-        resetLogin({ username: data.username, password: "" });
-      } else {
-        toast({ type: "error", message: res.message || "Güncelleme başarısız." });
-      }
-    } catch (error) {
-      if (error.status === 409) {
-        setLoginError('username', { type: 'manual', message: 'Bu kullanıcı adı zaten kullanımda.' });
-      } else {
-        toast({ type: "error", message: error.message || "Bilgiler güncellenirken hata oluştu." });
-      }
+    const payload = { 
+      username: data.username,
+      ...(data.password ? { newPassword: data.password } : {}) 
+    };
+
+    const result = await editProfile(payload);
+    if (result.success) {
+      alert("Giriş bilgileri başarıyla güncellendi.");
+      resetLogin({ username: result.data?.username || data.username, password: "" });
+    } else {
+      alert(result.error || "Giriş bilgileri güncellenemedi.");
     }
   };
 
   const { showConfirm } = useModal();
   const toast = useToast();
 
-  const {
-    pendingUsers,
-    fetchPendingUsers,
-    systemSettings,
-    fetchSystemSettings,
-    markers,
-    fetchMarkers,
-    approveUser,
-    rejectUser,
-    updateSystemSettings,
-    updateMarkers: updateMarkersApi
-  } = useSettings();
+  // Pending users logic
+  const { 
+    users: pendingUsers, 
+    fetchUsers: fetchPendingUsers, 
+    editProfile, 
+    editUser: approveUser, 
+    removeUser: rejectUser 
+  } = useUsers();
+
+  useEffect(() => {
+    if (isAdmin()) {
+      fetchPendingUsers({ status: 'PENDING' });
+    }
+  }, [isAdmin, fetchPendingUsers]);
 
   const handleApprove = async (userId) => {
-    const result = await approveUser(userId);
+    const result = await approveUser(userId, { status: 'ACTIVE' });
     if (result.success) {
-      toast({ type: "success", message: "Kullanıcı başarıyla onaylandı." });
+      fetchPendingUsers({ status: 'PENDING' });
     } else {
-      toast({ type: "error", message: result.error });
+      alert(result.error || 'Kullanıcı onaylanamadı.');
     }
   };
 
@@ -84,9 +83,9 @@ function SettingsPage() {
     if (confirmed) {
       const result = await rejectUser(userId);
       if (result.success) {
-        toast({ type: "success", message: "Kullanıcı reddedildi ve silindi." });
+        fetchPendingUsers({ status: 'PENDING' });
       } else {
-        toast({ type: "error", message: result.error });
+        alert(result.error || 'Kullanıcı reddedilemedi.');
       }
     }
   };

@@ -142,3 +142,198 @@ export async function getEmployees(req, res) {
       .json({ success: false, message: "Çalışanlar alınırken hata oluştu" });
   }
 }
+
+// POST /employees — Yeni Çalışan Ekle
+export async function createEmployee(req, res) {
+  try {
+    const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate } =
+      req.body;
+
+    if (!tcNo || !firstName || !lastName || !unitId || !startDate) {
+      return res.status(400).json({
+        success: false,
+        message: "TC No, Ad, Soyad, Birim ve İşe Giriş tarihi zorunludur",
+      });
+    }
+
+    const result = await withTransaction(async (client) => {
+      const query = `
+        INSERT INTO app.employees (tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, created_at, updated_at
+      `;
+      const { rows } = await client.query(query, [
+        tcNo,
+        firstName,
+        lastName,
+        ibanNo || null,
+        unitId,
+        startDate,
+        endDate || null,
+      ]);
+
+      // Birimi ve yerleşkeyi de getir
+      const unitQuery = `
+        SELECT u.id, u.name, l.id AS location_id, l.name AS location_name
+        FROM app.units u
+        JOIN app.locations l ON u.location_id = l.id
+        WHERE u.id = $1
+      `;
+      const unitResult = await client.query(unitQuery, [unitId]);
+      return { employee: rows[0], unit: unitResult.rows[0] };
+    });
+
+    const row = result.employee;
+    const unit = result.unit;
+
+    res.status(201).json({
+      success: true,
+      data: {
+        employee: {
+          id: row.id,
+          tcNo: row.tc_no,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          ibanNo: row.iban_no,
+          startDate: row.start_date,
+          endDate: row.end_date,
+          isActive: !row.end_date || new Date(row.end_date) >= new Date(),
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          unit: {
+            id: unit.id,
+            name: unit.name,
+            location: { id: unit.location_id, name: unit.location_name },
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Create employee error:", error);
+    if (error.code === "23505") {
+      return res
+        .status(409)
+        .json({ success: false, message: "Bu TC No zaten kayıtlı" });
+    }
+    res
+      .status(500)
+      .json({ success: false, message: "Çalışan eklenirken hata oluştu" });
+  }
+}
+
+// PUT /employees/:id — Çalışan Güncelle
+export async function updateEmployee(req, res) {
+  try {
+    const { id } = req.params;
+    const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate } =
+      req.body;
+
+    const result = await withTransaction(async (client) => {
+      const query = `
+        UPDATE app.employees
+        SET
+          tc_no      = COALESCE($1, tc_no),
+          first_name = COALESCE($2, first_name),
+          last_name  = COALESCE($3, last_name),
+          iban_no    = COALESCE($4, iban_no),
+          unit_id    = COALESCE($5, unit_id),
+          start_date = COALESCE($6, start_date),
+          end_date   = $7,
+          updated_at = NOW()
+        WHERE id = $8
+        RETURNING id, tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, created_at, updated_at
+      `;
+      const { rows } = await client.query(query, [
+        tcNo || null,
+        firstName || null,
+        lastName || null,
+        ibanNo !== undefined ? ibanNo : null,
+        unitId || null,
+        startDate || null,
+        endDate || null,
+        id,
+      ]);
+
+      if (rows.length === 0) return null;
+
+      const unitQuery = `
+        SELECT u.id, u.name, l.id AS location_id, l.name AS location_name
+        FROM app.units u
+        JOIN app.locations l ON u.location_id = l.id
+        WHERE u.id = $1
+      `;
+      const unitResult = await client.query(unitQuery, [rows[0].unit_id]);
+      return { employee: rows[0], unit: unitResult.rows[0] };
+    });
+
+    if (!result) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Çalışan bulunamadı" });
+    }
+
+    const row = result.employee;
+    const unit = result.unit;
+
+    res.json({
+      success: true,
+      data: {
+        employee: {
+          id: row.id,
+          tcNo: row.tc_no,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          ibanNo: row.iban_no,
+          startDate: row.start_date,
+          endDate: row.end_date,
+          isActive: !row.end_date || new Date(row.end_date) >= new Date(),
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+          unit: {
+            id: unit.id,
+            name: unit.name,
+            location: { id: unit.location_id, name: unit.location_name },
+          },
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Update employee error:", error);
+    if (error.code === "23505") {
+      return res
+        .status(409)
+        .json({ success: false, message: "Bu TC No zaten kayıtlı" });
+    }
+    res
+      .status(500)
+      .json({ success: false, message: "Çalışan güncellenirken hata oluştu" });
+  }
+}
+
+// DELETE /employees/:id — Çalışan Sil
+export async function deleteEmployee(req, res) {
+  try {
+    const { id } = req.params;
+
+    const result = await withTransaction(async (client) => {
+      const { rows } = await client.query(
+        "DELETE FROM app.employees WHERE id = $1 RETURNING id",
+        [id]
+      );
+      return rows[0];
+    });
+
+    if (!result) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Çalışan bulunamadı" });
+    }
+
+    res.json({ success: true, message: "Çalışan başarıyla silindi" });
+  } catch (error) {
+    console.error("Delete employee error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Çalışan silinirken hata oluştu" });
+  }
+}

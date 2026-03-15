@@ -1,7 +1,12 @@
 import express from "express";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { adminMiddleware } from "../middlewares/adminMiddleware.js";
-import { getEmployees } from "../controllers/employeeController.js";
+import {
+  getEmployees,
+  createEmployee,
+  updateEmployee,
+  deleteEmployee,
+} from "../controllers/employeeController.js";
 
 const router = express.Router();
 
@@ -9,5 +14,8 @@ const router = express.Router();
 router.use(authMiddleware, adminMiddleware);
 
 router.get("/", getEmployees);
+router.post("/", createEmployee);
+router.put("/:id", updateEmployee);
+router.delete("/:id", deleteEmployee);
 
 export default router;

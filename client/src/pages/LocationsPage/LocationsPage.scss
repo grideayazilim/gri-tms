@@ -60,7 +60,7 @@ $line-color: var(--border-color);
 
   .input {
     font-weight: 700;
-    
+
   }
 
   // Yerleşke yatay çizgisi
@@ -74,10 +74,39 @@ $line-color: var(--border-color);
     background-color: $line-color;
     z-index: 0;
   }
+
+  .toggle-btn {
+    position: absolute;
+    left: calc(-#{$tree-indent} / 2);
+    transform: translateX(-50%);
+    background-color: transparent;
+    border: none;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    z-index: 10;
+    padding: 0;
+    cursor: pointer;
+    transition: none !important;
+
+    &:hover {
+      color: #fff;
+      background-color: var(--brand-color);
+      border-radius: var(--radius-sm);
+    }
+
+    svg {
+      font-size: 20px;
+    }
+  }
 }
 
 // --- BİRİM (LEVEL 2) ---
 .unit-row {
+
   // Birim yatay çizgisi
   &::before {
     content: "";
@@ -115,6 +144,12 @@ $line-color: var(--border-color);
     width: 2px;
     background-color: $line-color;
     z-index: 0;
+  }
+
+  &.is-collapsed {
+    &::after {
+      display: none;
+    }
   }
 }
 
@@ -180,6 +215,7 @@ $line-color: var(--border-color);
 
 // === RESPONSIVE ===
 @media (max-width: $bp-sm) {
+
   // Mobilde çizgileri gizle
   .tree-root-line,
   .location-row::before,
@@ -199,4 +235,3 @@ $line-color: var(--border-color);
     border-left: 2px solid $line-color;
   }
 }
-

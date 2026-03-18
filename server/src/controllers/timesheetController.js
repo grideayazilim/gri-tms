@@ -564,7 +564,7 @@ export async function lockPeriod(req, res) {
 export async function getPeriods(req, res) {
   try {
     const { rows } = await pool.query(
-      `${PERIOD_SELECT} ORDER BY year DESC, month DESC`,
+      `${PERIOD_SELECT} WHERE is_deleted = false ORDER BY year DESC, month DESC`,
     );
 
     res.json({ success: true, data: { periods: rows } });
@@ -594,7 +594,6 @@ function getISOWeekKey(date) {
 }
 
 // ======================== YARDIMCI: Dönem Bulma ========================
-
 const PERIOD_SELECT = `
   SELECT id, year, month,
          TO_CHAR(start_date,'YYYY-MM-DD') AS start_date,
@@ -606,7 +605,7 @@ async function findPeriod(client, { month, year }) {
   if (month) {
     const [y, m] = month.split("-");
     const { rows } = await client.query(
-      `${PERIOD_SELECT} WHERE year = $1 AND month = $2 LIMIT 1`,
+      `${PERIOD_SELECT} WHERE year = $1 AND month = $2 AND is_deleted = false LIMIT 1`,
       [parseInt(y, 10), parseInt(m, 10)],
     );
     return rows[0] || null;
@@ -614,14 +613,14 @@ async function findPeriod(client, { month, year }) {
 
   if (year) {
     const { rows } = await client.query(
-      `${PERIOD_SELECT} WHERE year = $1 ORDER BY month DESC LIMIT 1`,
+      `${PERIOD_SELECT} WHERE year = $1 AND is_deleted = false ORDER BY month DESC LIMIT 1`,
       [parseInt(year, 10)],
     );
     return rows[0] || null;
   }
 
   const { rows } = await client.query(
-    `${PERIOD_SELECT} ORDER BY year DESC, month DESC LIMIT 1`,
+    `${PERIOD_SELECT} WHERE is_deleted = false ORDER BY year DESC, month DESC LIMIT 1`,
   );
   return rows[0] || null;
 }

@@ -8,7 +8,7 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import markerRoutes from './routes/markerRoutes.js';
+//import markerRoutes from './routes/markerRoutes.js';
 
 const app = express();
 
@@ -33,7 +33,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/markers', markerRoutes);
+//app.use('/api/markers', markerRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

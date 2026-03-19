@@ -71,34 +71,57 @@
 
 .marker-item {
   display: grid;
-  grid-template-columns: 80px 1fr 100px 40px;
+  grid-template-columns: 30px 80px 1fr 100px 40px;
   gap: var(--space-sm);
   align-items: center;
 
   @media (max-width: $bp-md) {
-    grid-template-columns: 60px 1fr 80px 40px;
+    grid-template-columns: 30px 60px 1fr 80px 40px;
   }
 
   @media (max-width: $bp-sm) {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 30px 1fr 1fr;
     gap: var(--space-xs);
 
     .marker-item__code {
-      grid-column: 1 / 2;
+      grid-column: 2 / 3;
     }
 
     .marker-item__label {
-      grid-column: 2 / 3;
+      grid-column: 3 / 4;
     }
 
     .marker-item__paid {
-      grid-column: 1 / 2;
+      grid-column: 2 / 3;
     }
 
     .btn--icon-only {
-      grid-column: 2 / 3;
+      grid-column: 3 / 4;
       justify-self: end;
     }
+  }
+}
+
+.marker-item__drag-handle {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs);
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease;
+  font-size: 18px;
+
+  &:hover {
+    color: var(--text-primary);
+    background: var(--background-color);
+  }
+
+  &:active {
+    cursor: grabbing;
   }
 }
 

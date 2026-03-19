@@ -12,6 +12,7 @@ import PageShell from "../../components/PageShell/PageShell";
 import { useFilter } from "../../hooks/data/useFilter";
 import { useTimesheets } from "../../hooks/data/useTimesheets";
 import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
+import { useAnnouncements } from "../../hooks/data/useAnnouncements";
 import { useToast } from "../../components/ToastBar/ToastContext";
 import { getTimesheetFilterConfig } from "./timesheetFilters";
 import { timesheetService } from "../../api";
@@ -48,6 +49,11 @@ const TimesheetPage = () => {
   const { user } = useAuth();
   const { showModal } = useModal();
   const toast = useToast();
+  const { unreadCount, fetchUnreadCount } = useAnnouncements();
+
+  useEffect(() => {
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
 
   // ── Puantaj verisi ve işlemleri ──────────────────────────────────────────
   const {
@@ -296,6 +302,7 @@ const TimesheetPage = () => {
       size: "large",
       content: (onClose) => <AnnouncementList onClose={onClose} />,
     });
+    fetchUnreadCount(); // Modal kapandıktan sonra okunmamış sayısını güncelle
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -336,6 +343,9 @@ const TimesheetPage = () => {
           title="Duyurular"
         >
           <AiOutlineBell />
+          {unreadCount > 0 && (
+            <span className="announcement-badge">{unreadCount}</span>
+          )}
         </button>
         <span className="user-info">Kullanıcı: {userName}</span>
       </div>

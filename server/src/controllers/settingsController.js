@@ -142,6 +142,7 @@ export async function getSystemSettings(req, res) {
 export async function updateSystemSettings(req, res) {
   try {
     const { dailyAllowance, weeklyLimit, programStart, programEnd, force } = req.body;
+    const dailyAllowanceFloat = dailyAllowance !== undefined && dailyAllowance !== '' ? parseFloat(dailyAllowance) : null;
 
     await withTransaction(async (client) => {
       const currentRes = await client.query(`SELECT * FROM app.settings LIMIT 1`);
@@ -176,14 +177,14 @@ export async function updateSystemSettings(req, res) {
           SET daily_wage = $1, max_weekly_days = $2, program_start_date = $3, program_end_date = $4, updated_at = NOW()
           WHERE id = $5
           RETURNING *
-        `, [dailyAllowance, weeklyLimit, newStart, newEnd, current.id]);
+        `, [dailyAllowanceFloat, weeklyLimit, newStart, newEnd, current.id]);
         updatedSettings = updateRes.rows[0];
       } else {
         const insertRes = await client.query(`
           INSERT INTO app.settings (id, daily_wage, max_weekly_days, program_start_date, program_end_date)
           VALUES (1, $1, $2, $3, $4)
           RETURNING *
-        `, [dailyAllowance, weeklyLimit, newStart, newEnd]);
+        `, [dailyAllowanceFloat, weeklyLimit, newStart, newEnd]);
         updatedSettings = insertRes.rows[0];
       }
 
@@ -244,7 +245,7 @@ export async function updateSystemSettings(req, res) {
 export async function getMarkers(req, res) {
   try {
     const result = await withTransaction(async (client) => {
-      return await client.query(`SELECT * FROM app.markers ORDER BY code ASC`);
+      return await client.query(`SELECT * FROM app.markers ORDER BY display_order ASC, code ASC`);
     });
 
     res.json({
@@ -281,13 +282,15 @@ export async function updateMarkers(req, res) {
       }
 
       // Upsert
-      for (const m of markers) {
-         await client.query(`
-           INSERT INTO app.markers (code, label, is_paid)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (code) DO UPDATE 
-           SET label = EXCLUDED.label, is_paid = EXCLUDED.is_paid
-         `, [m.code, m.label, !!m.isPaid]);
+      for (let i = 0; i < markers.length; i++) {
+        const m = markers[i];
+        const displayOrder = m.displayOrder ?? (i + 1);
+        await client.query(`
+          INSERT INTO app.markers (code, label, is_paid, display_order)
+          VALUES ($1, $2, $3, $4)
+          ON CONFLICT (code) DO UPDATE 
+          SET label = EXCLUDED.label, is_paid = EXCLUDED.is_paid, display_order = EXCLUDED.display_order
+        `, [m.code, m.label, !!m.isPaid, displayOrder]);
       }
 
       // Fetch the updated markers to store in audit log
@@ -296,7 +299,7 @@ export async function updateMarkers(req, res) {
       await createAuditLog(client, {
         username: req.user?.username || 'System',
         userRole: req.user?.role || 'SYSTEM',
-        eventType: AUDIT_EVENT.MARKER,
+        eventType: AUDIT_EVENT.SETTINGS,
         description: `Puantaj işaretçileri toplu olarak güncellendi.`,
         tableName: 'markers',
         oldData: currentRes.rows,
@@ -309,5 +312,46 @@ export async function updateMarkers(req, res) {
   } catch (error) {
     console.error('updateMarkers error:', error);
     res.status(500).json({ success: false, message: 'İşaretçiler güncellenirken hata oluştu' });
+  }
+}
+
+export async function reorderMarkers(req, res) {
+  try {
+    const { order } = req.body;
+
+    if (!Array.isArray(order)) {
+      return res.status(400).json({ success: false, message: 'Geçersiz sıralama verisi' });
+    }
+
+    await withTransaction(async (client) => {
+      // Fetch current state for audit log
+      const beforeRes = await client.query(`SELECT * FROM app.markers ORDER BY display_order ASC`);
+
+      for (const item of order) {
+        await client.query(
+          `UPDATE app.markers SET display_order = $1 WHERE id = $2`,
+          [item.display_order, item.id]
+        );
+      }
+
+      // Fetch updated state for audit log
+      const afterRes = await client.query(`SELECT * FROM app.markers ORDER BY display_order ASC`);
+
+      await createAuditLog(client, {
+        username: req.user?.username || 'System',
+        userRole: req.user?.role || 'SYSTEM',
+        eventType: AUDIT_EVENT.SETTINGS,
+        description: `Puantaj işaretçileri sıralaması güncellendi.`,
+        tableName: 'markers',
+        oldData: beforeRes.rows,
+        newData: afterRes.rows
+      });
+    });
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('reorderMarkers error:', error);
+    res.status(500).json({ success: false, message: 'Sıralama güncellenirken hata oluştu' });
   }
 }

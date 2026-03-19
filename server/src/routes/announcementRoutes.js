@@ -1,17 +1,25 @@
 import express from "express";
 import {
     getAnnouncements,
+    getUnreadCount,
     createAnnouncement,
     updateAnnouncement,
-    deleteAnnouncement
+    deleteAnnouncement,
+    markAsRead
 } from "../controllers/announcementController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { adminMiddleware } from "../middlewares/adminMiddleware.js";
 
 const router = express.Router();
 
+// GET /api/announcements/unread-count -> Okunmamış duyuru sayısını getir
+router.get("/unread-count", authMiddleware, getUnreadCount);
+
 // GET /api/announcements -> Duyuruları getir (Sayfalama destekli)
 router.get("/", authMiddleware, getAnnouncements);
+
+// POST /api/announcements/:id/read -> Duyuruyu okundu olarak işaretle
+router.post("/:id/read", authMiddleware, markAsRead);
 
 // POST /api/announcements -> Yeni duyuru ekle (Admin yetkisi gerekir)
 router.post("/", authMiddleware, adminMiddleware, createAnnouncement);

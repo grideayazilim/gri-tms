@@ -19,3 +19,13 @@ export const deleteAnnouncement = async (id) => {
   const response = await api.delete(`/announcements/${id}`);
   return response;
 };
+
+export const getUnreadCount = async () => {
+  const response = await api.get('/announcements/unread-count');
+  return response;
+};
+
+export const markAsRead = async (id) => {
+  const response = await api.post(`/announcements/${id}/read`);
+  return response;
+};

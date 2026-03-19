@@ -16,6 +16,7 @@
     border: none;
     color: inherit;
     font-size: 20px;
+    position: relative;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -27,6 +28,22 @@
     &:hover {
       background: var(--background-color);
       color: var(--text-primary);
+    }
+
+    .announcement-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      background-color: var(--button-red-color, #dc3545);
+      color: white;
+      font-size: 10px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 10px;
+      min-width: 16px;
+      text-align: center;
+      line-height: 1;
+      border: 2px solid var(--surface-color, #fff);
     }
   }
 

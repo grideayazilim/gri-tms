@@ -58,7 +58,10 @@ export const useSettings = () => {
     try {
       const response = await settingsService.getMarkers();
       if (response && response.data && response.data.markers) {
-        setMarkers(response.data.markers);
+        const sorted = [...response.data.markers].sort(
+          (a, b) => (a.displayOrder ?? Infinity) - (b.displayOrder ?? Infinity)
+        );
+        setMarkers(sorted);
       }
       return { success: true, data: response.data };
     } catch (err) {
@@ -118,6 +121,26 @@ export const useSettings = () => {
     }
   };
 
+  const reorderMarkers = async (reorderedMarkers) => {
+    // Save previous state for rollback
+    const prevMarkers = markers;
+    // Optimistic update
+    setMarkers(reorderedMarkers);
+
+    try {
+      const order = reorderedMarkers.map((m, idx) => ({
+        id: m.id,
+        display_order: idx + 1
+      }));
+      await settingsService.reorderMarkers(order);
+      return { success: true };
+    } catch (err) {
+      // Rollback on error
+      setMarkers(prevMarkers);
+      return { success: false, error: err.message || 'Sıralama güncellenemedi' };
+    }
+  };
+
   return {
     // States
     pendingUsers,
@@ -138,5 +161,6 @@ export const useSettings = () => {
     rejectUser,
     updateSystemSettings,
     updateMarkers: updateMarkersList,
+    reorderMarkers,
   };
 };

@@ -20,14 +20,16 @@ export async function getAnnouncements(req, res) {
       // Verileri çek
       const dataResult = await client.query(
         `SELECT 
-          id, 
-          title, 
-          content,
-          to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
-        FROM app.announcements
-        ORDER BY created_at DESC
-        LIMIT $1 OFFSET $2`,
-        [limit, offset]
+          a.id, 
+          a.title, 
+          a.content,
+          to_char(a.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
+          CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS is_read
+        FROM app.announcements a
+        LEFT JOIN app.announcement_reads r ON r.announcement_id = a.id AND r.user_id = $1
+        ORDER BY a.created_at DESC
+        LIMIT $2 OFFSET $3`,
+        [req.user.id, limit, offset]
       );
 
       return {
@@ -50,6 +52,60 @@ export async function getAnnouncements(req, res) {
     res.status(500).json({
       success: false,
       message: 'Duyurular alınırken hata oluştu'
+    });
+  }
+}
+
+// Okunmamış duyuru sayısını getirir
+export async function getUnreadCount(req, res) {
+  try {
+    const result = await withTransaction(async (client) => {
+      const dataResult = await client.query(
+        `SELECT COUNT(*) FROM app.announcements a
+         WHERE NOT EXISTS (
+           SELECT 1 FROM app.announcement_reads r
+           WHERE r.announcement_id = a.id AND r.user_id = $1
+         )`,
+        [req.user.id]
+      );
+      return parseInt(dataResult.rows[0].count);
+    });
+
+    res.json({
+      success: true,
+      data: { count: result }
+    });
+  } catch (error) {
+    console.error('Get unread count error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Okunmamış duyuru sayısı alınırken hata oluştu'
+    });
+  }
+}
+
+// Bir duyuruyu okundu olarak işaretler
+export async function markAsRead(req, res) {
+  try {
+    const { id } = req.params;
+
+    await withTransaction(async (client) => {
+      await client.query(
+        `INSERT INTO app.announcement_reads (user_id, announcement_id)
+         VALUES ($1, $2)
+         ON CONFLICT DO NOTHING`,
+        [req.user.id, id]
+      );
+    });
+
+    res.json({
+      success: true
+    });
+  } catch (error) {
+    console.error('Mark as read error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Duyuru okundu işaretlenirken hata oluştu'
     });
   }
 }

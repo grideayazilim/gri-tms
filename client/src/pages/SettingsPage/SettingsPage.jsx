@@ -1,5 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { RiDeleteBinLine } from "react-icons/ri";
+import { RxDragHandleDots2 } from "react-icons/rx";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSettingsSchema, systemSettingsSchema, markerSettingsSchema } from "../../schemas/settings.schema";
@@ -12,6 +16,83 @@ import { useToast } from "../../components/ToastBar/ToastContext";
 import { useSettings } from "../../hooks/data/useSettings";
 import { useUsers } from "../../hooks/data/useUsers";
 import "./SettingsPage.scss";
+
+// ── Draggable Marker Row ──────────────────────────────────────────────────────
+function SortableMarkerItem({ id, index, register, markerErrors, remove }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div className="marker-item" ref={setNodeRef} style={style}>
+      <button
+        type="button"
+        className="marker-item__drag-handle"
+        {...attributes}
+        {...listeners}
+        tabIndex={-1}
+        title="Sürükle"
+      >
+        <RxDragHandleDots2 />
+      </button>
+
+      <div className="floating-group marker-item__code">
+        <input
+          type="text"
+          className={`input input--center ${markerErrors?.markers?.[index]?.code ? 'input--error' : ''}`}
+          placeholder=" "
+          maxLength={3}
+          {...register(`markers.${index}.code`)}
+        />
+        <label className="floating-group__label">Kod</label>
+        {markerErrors?.markers?.[index]?.code && (
+          <span className="input-error-message">{markerErrors.markers[index].code.message}</span>
+        )}
+      </div>
+
+      <div className="floating-group marker-item__label">
+        <input
+          type="text"
+          className={`input ${markerErrors?.markers?.[index]?.label ? 'input--error' : ''}`}
+          placeholder=" "
+          {...register(`markers.${index}.label`)}
+        />
+        <label className="floating-group__label">Açıklama</label>
+        {markerErrors?.markers?.[index]?.label && (
+          <span className="input-error-message">{markerErrors.markers[index].label.message}</span>
+        )}
+      </div>
+
+      <label className="checkbox-label marker-item__paid">
+        <input
+          type="checkbox"
+          {...register(`markers.${index}.isPaid`)}
+        />
+        <span>Ücretli</span>
+      </label>
+
+      <button
+        type="button"
+        className="btn btn--danger btn--icon-only"
+        onClick={() => remove(index)}
+        title="Sil"
+      >
+        <RiDeleteBinLine />
+      </button>
+    </div>
+  );
+}
 
 function SettingsPage() {
   const { isAdmin, user, updateProfile } = useAuth();
@@ -56,8 +137,13 @@ function SettingsPage() {
     markers,
     fetchMarkers,
     updateSystemSettings,
-    updateMarkers: updateMarkersApi
+    updateMarkers: updateMarkersApi,
+    reorderMarkers
   } = useSettings();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   // Onay bekleyen kullanıcı işlemleri
   const { 
@@ -170,16 +256,40 @@ function SettingsPage() {
     },
   });
 
-  const { fields: markerFields, append, remove } = useFieldArray({
+  const { fields: markerFields, append, remove, move } = useFieldArray({
     control: markerControl,
     name: "markers",
   });
+
+  const [isOrderDirty, setIsOrderDirty] = useState(false);
+
+  const handleDragEnd = useCallback(async (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = markerFields.findIndex(f => f.id === active.id);
+    const newIndex = markerFields.findIndex(f => f.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    // Move items in the form field array
+    move(oldIndex, newIndex);
+
+    // Optimistic reorder: rebuild based on the new field order
+    const reordered = arrayMove(markers, oldIndex, newIndex);
+    const result = await reorderMarkers(reordered);
+    if (!result.success) {
+      toast({ type: 'error', message: result.error || 'Sıralama kaydedilemedi' });
+    } else {
+      setIsOrderDirty(true);
+    }
+  }, [markerFields, markers, move, reorderMarkers, toast]);
 
   const onMarkerSubmit = async (data) => {
     const result = await updateMarkersApi(data.markers);
     if (result.success) {
       toast({ type: "success", message: "İşaretçiler başarıyla güncellendi." });
       resetMarker(data);
+      setIsOrderDirty(false);
     } else {
       toast({ type: "error", message: result.error });
     }
@@ -280,6 +390,7 @@ function SettingsPage() {
           <input
             type="number"
             id="dailyAllowance"
+            step="0.01"
             className={`input ${systemErrors.dailyAllowance ? 'input--error' : ''}`}
             placeholder=" "
             {...systemRegister('dailyAllowance')}
@@ -359,53 +470,20 @@ function SettingsPage() {
           
           <div className="marker-section">
             <div className="marker-list">
-              {markerFields.map((field, index) => (
-                <div className="marker-item" key={field.id}>
-                  <div className="floating-group marker-item__code">
-                    <input
-                      type="text"
-                      className={`input input--center ${markerErrors?.markers?.[index]?.code ? 'input--error' : ''}`}
-                      placeholder=" "
-                      maxLength={3}
-                      {...markerRegister(`markers.${index}.code`)}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={markerFields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                  {markerFields.map((field, index) => (
+                    <SortableMarkerItem
+                      key={field.id}
+                      id={field.id}
+                      index={index}
+                      register={markerRegister}
+                      markerErrors={markerErrors}
+                      remove={remove}
                     />
-                    <label className="floating-group__label">Kod</label>
-                    {markerErrors?.markers?.[index]?.code && (
-                      <span className="input-error-message">{markerErrors.markers[index].code.message}</span>
-                    )}
-                  </div>
-
-                  <div className="floating-group marker-item__label">
-                    <input
-                      type="text"
-                      className={`input ${markerErrors?.markers?.[index]?.label ? 'input--error' : ''}`}
-                      placeholder=" "
-                      {...markerRegister(`markers.${index}.label`)}
-                    />
-                    <label className="floating-group__label">Açıklama</label>
-                    {markerErrors?.markers?.[index]?.label && (
-                      <span className="input-error-message">{markerErrors.markers[index].label.message}</span>
-                    )}
-                  </div>
-
-                  <label className="checkbox-label marker-item__paid">
-                    <input
-                      type="checkbox"
-                      {...markerRegister(`markers.${index}.isPaid`)}
-                    />
-                    <span>Ücretli</span>
-                  </label>
-
-                  <button
-                    type="button"
-                    className="btn btn--danger btn--icon-only"
-                    onClick={() => remove(index)}
-                    title="Sil"
-                  >
-                    <RiDeleteBinLine />
-                  </button>
-                </div>
-              ))}
+                  ))}
+                </SortableContext>
+              </DndContext>
 
               {markerErrors.markers && !Array.isArray(markerErrors.markers) && (
                 <span className="input-error-message">{markerErrors.markers.message}</span>
@@ -424,7 +502,7 @@ function SettingsPage() {
           <button
             type="submit"
             className="btn btn--primary settings-card__submit"
-            disabled={!isMarkerDirty}
+            disabled={!isMarkerDirty && !isOrderDirty}
           >
             İşaretçileri Güncelle
           </button>

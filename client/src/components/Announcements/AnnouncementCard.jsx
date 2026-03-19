@@ -1,7 +1,14 @@
 import { RiDeleteBinLine } from 'react-icons/ri';
 import './Announcements.scss';
 
-function AnnouncementCard({ announcement, onDelete, isAdmin }) {
+function AnnouncementCard({ announcement, onDelete, onRead, isAdmin }) {
+  const isUnread = announcement.isRead === false || announcement.is_read === false;
+
+  const handleMouseEnter = () => {
+    if (isUnread && onRead) {
+      onRead(announcement.id);
+    }
+  };
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('tr-TR', {
@@ -14,7 +21,10 @@ function AnnouncementCard({ announcement, onDelete, isAdmin }) {
   };
 
   return (
-    <div className="announcement-card">
+    <div 
+      className={`announcement-card ${isUnread ? 'announcement-card--unread' : ''}`}
+      onMouseEnter={handleMouseEnter}
+    >
       <div className="announcement-card__header">
         <h4 className="announcement-card__title">{announcement.title}</h4>
         {isAdmin && (
@@ -31,8 +41,7 @@ function AnnouncementCard({ announcement, onDelete, isAdmin }) {
       <p className="announcement-card__content">{announcement.content}</p>
       
       <div className="announcement-card__footer">
-        <span className="announcement-card__author">{announcement.createdBy}</span>
-        <span className="announcement-card__date">{formatDate(announcement.createdAt)}</span>
+        <span className="announcement-card__date">{formatDate(announcement.createdAt || announcement.created_at)}</span>
       </div>
     </div>
   );

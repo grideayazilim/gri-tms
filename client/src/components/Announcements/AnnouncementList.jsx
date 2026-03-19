@@ -14,6 +14,7 @@ function AnnouncementList({ onClose }) {
     isLoading, 
     error, 
     fetchAnnouncements, 
+    markAsRead,
     addAnnouncement, 
     removeAnnouncement 
   } = useAnnouncements();
@@ -123,6 +124,7 @@ function AnnouncementList({ onClose }) {
               key={announcement.id}
               announcement={announcement}
               onDelete={handleDeleteAnnouncement}
+              onRead={markAsRead}
               isAdmin={isAdmin()}
             />
           ))}

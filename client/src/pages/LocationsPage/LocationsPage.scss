@@ -79,10 +79,11 @@ $line-color: var(--border-color);
     position: absolute;
     left: calc(-#{$tree-indent} / 2);
     transform: translateX(-50%);
-    background-color: transparent;
-    border: none;
-    width: 24px;
-    height: 24px;
+    background-color: var(--surface-color);
+    border: 1px solid $line-color;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -90,16 +91,32 @@ $line-color: var(--border-color);
     z-index: 10;
     padding: 0;
     cursor: pointer;
-    transition: none !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
     &:hover {
-      color: #fff;
+      color: var(--brand-color);
+      border-color: var(--brand-color);
+      background-color: color-mix(in srgb, var(--brand-color) 10%, var(--surface-color));
+    }
+
+    &.is-expanded {
       background-color: var(--brand-color);
-      border-radius: var(--radius-sm);
+      border-color: var(--brand-color);
+      color: #fff;
+
+      &:hover {
+        background-color: color-mix(in srgb, var(--brand-color), black 10%);
+      }
+
+      svg {
+        transform: rotate(90deg);
+      }
     }
 
     svg {
       font-size: 20px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
   }
 }
@@ -121,9 +138,26 @@ $line-color: var(--border-color);
 }
 
 // --- ÇOCUK ELEMANLAR KAPSAYICISI ---
+.node-children-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  
+  &.is-expanded {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+}
+
+.node-children-inner {
+  overflow: hidden;
+}
+
 .node-children {
   margin-top: var(--space-sm);
   padding-left: $tree-indent;
+  padding-bottom: var(--space-sm);
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
@@ -144,12 +178,6 @@ $line-color: var(--border-color);
     width: 2px;
     background-color: $line-color;
     z-index: 0;
-  }
-
-  &.is-collapsed {
-    &::after {
-      display: none;
-    }
   }
 }
 

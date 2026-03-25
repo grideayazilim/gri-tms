@@ -9,9 +9,10 @@ import "./LocationsPage.scss";
 function LocationsPage() {
   // === STATE ===
   const [locations, setLocations] = useState([]);
+  const [initialLocations, setInitialLocations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletedLocationIds, setDeletedLocationIds] = useState([]);
-  const [collapsedLocations, setCollapsedLocations] = useState([]);
+  const [expandedLocations, setExpandedLocations] = useState([]);
   const toast = useToast();
 
   // === FETCH DATA ===
@@ -19,9 +20,9 @@ function LocationsPage() {
     fetchData();
   }, []);
 
-  // === TOGGLE COLLAPSE ===
+  // === TOGGLE EXPAND ===
   const toggleLocationCollapse = (id) => {
-    setCollapsedLocations((prev) =>
+    setExpandedLocations((prev) =>
       prev.includes(id) ? prev.filter((locId) => locId !== id) : [...prev, id]
     );
   };
@@ -43,6 +44,7 @@ function LocationsPage() {
       }));
 
       setLocations(enrichedLocations);
+      setInitialLocations(JSON.parse(JSON.stringify(enrichedLocations)));
     } catch (error) {
       console.error("Error fetching locations:", error);
       toast({ type: "error", message: "Veriler yüklenirken bir hata oluştu" });
@@ -59,13 +61,15 @@ function LocationsPage() {
   };
 
   const addLocation = () => {
+    const newId = Date.now();
     const newLocation = {
-      id: Date.now(),
+      id: newId,
       name: "",
       programNo: "",
-      units: [{ id: Date.now() + 1, name: "" }],
+      units: [],
     };
     setLocations((prev) => [...prev, newLocation]);
+    setExpandedLocations((prev) => [...prev, newId]);
   };
 
   const removeLocation = (id) => {
@@ -163,11 +167,13 @@ function LocationsPage() {
     }
   };
 
-  const headerActions = (
+  const hasUnsavedChanges = deletedLocationIds.length > 0 || JSON.stringify(locations) !== JSON.stringify(initialLocations);
+
+  const headerActions = hasUnsavedChanges ? (
     <button type="button" className="btn btn--primary" onClick={handleSave}>
       Değişiklikleri Kaydet
     </button>
-  );
+  ) : null;
 
   if (isLoading) {
     return (
@@ -186,18 +192,18 @@ function LocationsPage() {
         <div className="tree-root-line" />
 
         {locations.map((location) => {
-          const isCollapsed = collapsedLocations.includes(location.id);
+          const isExpanded = expandedLocations.includes(location.id);
           return (
-            <div key={location.id} className={`tree-node location-node ${isCollapsed ? 'is-collapsed' : ''}`}>
+            <div key={location.id} className={`tree-node location-node ${!isExpanded ? 'is-collapsed' : ''}`}>
               {/* LEVEL 1: YERLEŞKE */}
               <div className="node-row location-row">
                 <button
                   type="button"
-                  className="toggle-btn"
+                  className={`toggle-btn ${isExpanded ? 'is-expanded' : ''}`}
                   onClick={() => toggleLocationCollapse(location.id)}
-                  title={isCollapsed ? "Genişlet" : "Gizle"}
+                  title={isExpanded ? "Gizle" : "Genişlet"}
                 >
-                  {isCollapsed ? <RiArrowRightSLine /> : <RiArrowDownSLine />}
+                  <RiArrowRightSLine />
                 </button>
 
                 <div className="location-inputs">
@@ -238,47 +244,49 @@ function LocationsPage() {
                 </button>
               </div>
 
-              {/* LEVEL 2: BİRİMLER - Conditional Rendering */}
-              {!isCollapsed && (
-                <div className="node-children">
-                  {location.units.map((unit) => (
-                    <div key={unit.id} className="tree-node unit-node">
-                      <div className="node-row unit-row">
-                        <div className="floating-group floating-group--on-background">
-                          <input
-                            type="text"
-                            className="input"
-                            placeholder=" "
-                            value={unit.name}
-                            onChange={(e) =>
-                              handleUnitChange(location.id, unit.id, e.target.value)
-                            }
-                          />
-                          <label className="floating-group__label">Birim Adı</label>
+              {/* LEVEL 2: BİRİMLER - Animated */}
+              <div className={`node-children-wrapper ${isExpanded ? 'is-expanded' : ''}`}>
+                <div className="node-children-inner">
+                  <div className="node-children">
+                    {location.units.map((unit) => (
+                      <div key={unit.id} className="tree-node unit-node">
+                        <div className="node-row unit-row">
+                          <div className="floating-group floating-group--on-background">
+                            <input
+                              type="text"
+                              className="input"
+                              placeholder=" "
+                              value={unit.name}
+                              onChange={(e) =>
+                                handleUnitChange(location.id, unit.id, e.target.value)
+                              }
+                            />
+                            <label className="floating-group__label">Birim Adı</label>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="btn btn--danger btn--icon-only"
+                            onClick={() => removeUnit(location.id, unit.id)}
+                            title="Birimi Sil"
+                          >
+                            <RiDeleteBinLine />
+                          </button>
                         </div>
-
-                        <button
-                          type="button"
-                          className="btn btn--danger btn--icon-only"
-                          onClick={() => removeUnit(location.id, unit.id)}
-                          title="Birimi Sil"
-                        >
-                          <RiDeleteBinLine />
-                        </button>
                       </div>
-                    </div>
-                  ))}
+                    ))}
 
-                  {/* Birim Ekleme Butonu */}
-                  <button
-                    type="button"
-                    className="add-btn add-unit-btn"
-                    onClick={() => addUnit(location.id)}
-                  >
-                    + Yeni Birim Ekle
-                  </button>
+                    {/* Birim Ekleme Butonu */}
+                    <button
+                      type="button"
+                      className="add-btn add-unit-btn"
+                      onClick={() => addUnit(location.id)}
+                    >
+                      + Yeni Birim Ekle
+                    </button>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           );
         })}

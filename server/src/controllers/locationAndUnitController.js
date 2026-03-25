@@ -450,6 +450,10 @@ export async function syncLocationWithUnits(req, res) {
       const processedUnitIds = [];
 
       for (const unit of units) {
+        if (!unit.name || !unit.name.trim()) {
+          throw new Error('EMPTY_UNIT_NAME');
+        }
+
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(unit.id);
 
         if (isUuid && dbUnitIds.includes(unit.id)) {
@@ -509,6 +513,9 @@ export async function syncLocationWithUnits(req, res) {
     });
 
   } catch (error) {
+    if (error.message === 'EMPTY_UNIT_NAME') {
+      return res.status(400).json({ success: false, message: 'Birim adı boş bırakılamaz.' });
+    }
     if (error.message === 'LOCATION_NOT_FOUND') {
       return res.status(404).json({ success: false, message: 'Yerleşke bulunamadı.' });
     }

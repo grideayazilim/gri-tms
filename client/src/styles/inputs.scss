@@ -8,8 +8,8 @@
    ======================================================================== */
 
 // Yerel Değişkenler
-$control-height: 48px;
-$control-height-sm: 40px;
+$control-height: 40px;
+$control-height-sm: 32px;
 
 /* ============================================
    1. STANDART INPUT
@@ -130,6 +130,11 @@ $control-height-sm: 40px;
       padding: 0 4px;
       z-index: 15;
     }
+
+    // Textarea kullanıldığında label her zaman input'un yüksekliğinin tam ortasında durmasın
+    textarea.input ~ &__label {
+      top: 20px;
+    }
   
     // --- Label Animasyonu (Hata durumu dahil)
     .input:focus ~ .floating-group__label,
@@ -146,6 +151,9 @@ $control-height-sm: 40px;
 
     .input:not(:focus):not(:placeholder-shown) ~ .floating-group__label {
       color: var(--text-secondary);
+    }
+    .input--error ~ .floating-group__label {
+        color: #ff4d4f !important;
     }
   
     // --- ON-BACKGROUND VARIANT ---
@@ -168,7 +176,7 @@ $control-height-sm: 40px;
 
       // Error durumunda label kırmızı olsun
       .input--error ~ .floating-group__label {
-        color: #ff4d4f;
+        color: #ff4d4f !important;
       }
     }
   }
@@ -182,7 +190,7 @@ $control-height-sm: 40px;
    <div className="floating-group">
       <input className="input input--error" placeholder=" " />
       <label className="floating-group__label">Email</label>
-      <span className="input-error">Bu alan zorunludur</span>
+      <span className="input-error-message">Bu alan zorunludur</span>
    </div>
    
    Örnek HTML (Form error box):

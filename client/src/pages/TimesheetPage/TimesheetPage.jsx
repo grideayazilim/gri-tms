@@ -11,6 +11,7 @@ import FilterBar from "../../components/FilterBar/FilterBar";
 import PageShell from "../../components/PageShell/PageShell";
 import { useFilter } from "../../hooks/data/useFilter";
 import { useTimesheets } from "../../hooks/data/useTimesheets";
+import { usePublicHolidays } from "../../hooks/data/usePublicHolidays";
 import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
 import { useAnnouncements } from "../../hooks/data/useAnnouncements";
 import { useToast } from "../../components/ToastBar/ToastContext";
@@ -47,6 +48,9 @@ const mapPeriod = (p) => ({
 
 const TimesheetPage = () => {
   const { user } = useAuth();
+  const isResponsibleUser = user?.role === "RESPONSIBLE";
+  const responsibleLocationId = user?.locationId ? String(user.locationId) : "";
+  const responsibleUnitId = user?.unitId ? String(user.unitId) : "";
   const { showModal } = useModal();
   const toast = useToast();
   const { unreadCount, fetchUnreadCount } = useAnnouncements();
@@ -117,18 +121,41 @@ const TimesheetPage = () => {
 
   // ── Filtre dropdown seçenekleri ──────────────────────────────────────────
   // API'den gelen { id, name } shape'ini FilterBar'ın beklediği { value, label } shape'ine çevir
-  const locationOptions = useMemo(
-    () => apiLocations.map((l) => ({ value: l.id, label: l.name })),
-    [apiLocations],
-  );
-  const unitOptions = useMemo(
-    () => apiUnits.map((u) => ({ value: u.id, label: u.name })),
-    [apiUnits],
-  );
-  const filterConfig = useMemo(
-    () => getTimesheetFilterConfig(periods, locationOptions, unitOptions),
-    [periods, locationOptions, unitOptions],
-  );
+  const locationOptions = useMemo(() => {
+    const mapped = apiLocations.map((l) => ({ value: l.id, label: l.name }));
+
+    if (!isResponsibleUser || !responsibleLocationId) return mapped;
+
+    return mapped.filter(
+      (location) => String(location.value) === responsibleLocationId,
+    );
+  }, [apiLocations, isResponsibleUser, responsibleLocationId]);
+
+  const unitOptions = useMemo(() => {
+    const mapped = apiUnits.map((u) => ({ value: u.id, label: u.name }));
+
+    if (!isResponsibleUser || !responsibleUnitId) return mapped;
+
+    return mapped.filter((unit) => String(unit.value) === responsibleUnitId);
+  }, [apiUnits, isResponsibleUser, responsibleUnitId]);
+
+  const filterConfig = useMemo(() => {
+    const baseConfig = getTimesheetFilterConfig(
+      periods,
+      locationOptions,
+      unitOptions,
+    );
+
+    if (!isResponsibleUser) return baseConfig;
+
+    return baseConfig.map((field) => {
+      if (field.key === "location" || field.key === "unit") {
+        const { defaultOption, ...rest } = field;
+        return rest;
+      }
+      return field;
+    });
+  }, [periods, locationOptions, unitOptions, isResponsibleUser]);
 
   // ── Filtreler ─────────────────────────────────────────────────────────────
   const { filters, apiParams, handleFilterChange, setFilters } = useFilter(
@@ -140,6 +167,29 @@ const TimesheetPage = () => {
       search: "",
     },
   );
+
+  // ── Resmi tatiller ──────────────────────────────────────────────────────
+  const { isPublicHoliday, getHolidayName } = usePublicHolidays(filters.period);
+
+  // Birim sorumlusu için yerleşke/birim filtreleri sabitlenir
+  useEffect(() => {
+    if (!isResponsibleUser) return;
+
+    setFilters((prev) => {
+      const nextLocation = responsibleLocationId || prev.location;
+      const nextUnit = responsibleUnitId || prev.unit;
+
+      if (prev.location === nextLocation && prev.unit === nextUnit) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        location: nextLocation,
+        unit: nextUnit,
+      };
+    });
+  }, [isResponsibleUser, responsibleLocationId, responsibleUnitId, setFilters]);
 
   // Dönemler yüklenince en güncel dönemi otomatik seç
   useEffect(() => {
@@ -177,6 +227,16 @@ const TimesheetPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   const handleDayClick = useCallback(
     (row, day) => {
+      // Resmi tatilde değişiklik yapılmasın
+      if (isPublicHoliday(day)) {
+        const holidayName = getHolidayName(day) || "Resmi tatil";
+        toast({
+          type: "warning",
+          message: `${holidayName} — bu gün resmi tatildir, işaretçi girilemez.`,
+        });
+        return;
+      }
+
       // Kilitli dönemde değişiklik yapılmasın
       if (row.isLocked) {
         toast({
@@ -220,7 +280,7 @@ const TimesheetPage = () => {
         }),
       );
     },
-    [selectedMarker, filters.period, setTimesheets, toast, markers],
+    [selectedMarker, filters.period, setTimesheets, toast, markers, isPublicHoliday, getHolidayName],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -332,7 +392,7 @@ const TimesheetPage = () => {
 
   return (
     <PageShell
-      title="Puantaj İşaretleme"
+      title={<span className="ts-page-title">Puantaj İşaretleme</span>}
       headerActions={headerActions}
       isLoading={isLoading}
     >
@@ -367,6 +427,8 @@ const TimesheetPage = () => {
           currentDaysInMonth,
           handleDayClick,
           isDayCellDirty,
+          filters.period,
+          isPublicHoliday,
         )}
         data={timesheets}
         loading={isLoading}

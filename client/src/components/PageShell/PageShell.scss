@@ -11,6 +11,14 @@
   flex-direction: column;
   row-gap: 1rem;
   position: relative;
+
+  @media (max-width: $bp-md) {
+    padding: 70px 24px;
+  }
+
+  @media (max-width: $bp-sm) {
+    padding: 64px 14px;
+  }
 }
 
 /* ==========================================
@@ -69,7 +77,6 @@
     border-radius: var(--radius-sm);
   }
 }
-
 
 /* ==========================================
    Empty State
@@ -159,4 +166,3 @@
     color: #991b1b;
   }
 }
-

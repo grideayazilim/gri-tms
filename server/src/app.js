@@ -9,6 +9,7 @@ import announcementRoutes from './routes/announcementRoutes.js';
 import auditLogRoutes from './routes/auditLogRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import employeeRoutes from './routes/employeeRoutes.js';
+import holidayRoutes from './routes/holidayRoutes.js';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/employees', employeeRoutes);
+app.use('/api/holidays', holidayRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

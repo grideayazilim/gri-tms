@@ -59,11 +59,30 @@ $control-height-sm: 32px;
   // Select oku yerine özel ikon koymak için
   &--select {
     appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    color: var(--text-primary);
+    background-color: var(--surface-color);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23979797' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 12px center;
+    background-size: 16px 16px;
     padding-right: 32px;
     cursor: pointer;
+
+    option {
+      color: var(--text-primary);
+      background-color: var(--surface-color);
+    }
+
+    option:checked {
+      background-color: color-mix(
+        in srgb,
+        var(--brand-color) 16%,
+        var(--surface-color)
+      );
+      color: var(--text-primary);
+    }
   }
 }
 
@@ -92,94 +111,94 @@ $control-height-sm: 32px;
       <label className="floating-group__label">Adınız</label>
    </div>
    ============================================ */
-   .floating-group {
-    position: relative;
-    width: 100%;
-    isolation: isolate;
-  
-    // Floating label kullanırken input'un kendi placeholder'ını gizliyoruz
-    .input {
-      &::placeholder {
-        color: transparent;
-      }
+.floating-group {
+  position: relative;
+  width: 100%;
+  isolation: isolate;
 
-      // Hata durumunda text ve border'ın rengini kırmızı yap
-      &--error {
+  // Floating label kullanırken input'un kendi placeholder'ını gizliyoruz
+  .input {
+    &::placeholder {
+      color: transparent;
+    }
+
+    // Hata durumunda text ve border'ın rengini kırmızı yap
+    &--error {
+      border-color: #ff4d4f !important;
+
+      &:focus {
         border-color: #ff4d4f !important;
-        
-        &:focus {
-          border-color: #ff4d4f !important;
-          box-shadow: 0 0 0 1px #ff4d4f !important;
-        }
-      }
-    }
-  
-    &__label {
-      position: absolute;
-      left: var(--space-sm);
-      top: 50%;
-      transform: translateY(-50%);
-  
-      font-family: var(--font-family-base);
-      font-size: var(--font-size-normal-text);
-      color: var(--text-secondary);
-  
-      pointer-events: none;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  
-      padding: 0 4px;
-      z-index: 15;
-    }
-
-    // Textarea kullanıldığında label her zaman input'un yüksekliğinin tam ortasında durmasın
-    textarea.input ~ &__label {
-      top: 20px;
-    }
-  
-    // --- Label Animasyonu (Hata durumu dahil)
-    .input:focus ~ .floating-group__label,
-    .input:not(:placeholder-shown) ~ .floating-group__label,
-    .input--error ~ .floating-group__label {
-      top: 0;
-      font-size: 12px;
-      color: var(--brand-color);
-      font-weight: 600;
-  
-      background-color: var(--surface-color); // Beyaz arkaplan
-      margin-left: -4px;
-    }
-
-    .input:not(:focus):not(:placeholder-shown) ~ .floating-group__label {
-      color: var(--text-secondary);
-    }
-    .input--error ~ .floating-group__label {
-        color: #ff4d4f !important;
-    }
-  
-    // --- ON-BACKGROUND VARIANT ---
-    &--on-background {
-      .input {
-        background-color: var(--background-color);
-        
-        &:focus {
-          background-color: var(--background-color);
-          border-color: var(--brand-color);
-          box-shadow: 0 0 0 1px var(--brand-color);
-        }
-      }
-  
-      .input:focus ~ .floating-group__label,
-      .input:not(:placeholder-shown) ~ .floating-group__label,
-      .input--error ~ .floating-group__label {
-        background-color: var(--background-color);
-      }
-
-      // Error durumunda label kırmızı olsun
-      .input--error ~ .floating-group__label {
-        color: #ff4d4f !important;
+        box-shadow: 0 0 0 1px #ff4d4f !important;
       }
     }
   }
+
+  &__label {
+    position: absolute;
+    left: var(--space-sm);
+    top: 50%;
+    transform: translateY(-50%);
+
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-normal-text);
+    color: var(--text-secondary);
+
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+    padding: 0 4px;
+    z-index: 15;
+  }
+
+  // Textarea kullanıldığında label her zaman input'un yüksekliğinin tam ortasında durmasın
+  textarea.input ~ &__label {
+    top: 20px;
+  }
+
+  // --- Label Animasyonu (Hata durumu dahil)
+  .input:focus ~ .floating-group__label,
+  .input:not(:placeholder-shown) ~ .floating-group__label,
+  .input--error ~ .floating-group__label {
+    top: 0;
+    font-size: 12px;
+    color: var(--brand-color);
+    font-weight: 600;
+
+    background-color: var(--surface-color); // Beyaz arkaplan
+    margin-left: -4px;
+  }
+
+  .input:not(:focus):not(:placeholder-shown) ~ .floating-group__label {
+    color: var(--text-secondary);
+  }
+  .input--error ~ .floating-group__label {
+    color: #ff4d4f !important;
+  }
+
+  // --- ON-BACKGROUND VARIANT ---
+  &--on-background {
+    .input {
+      background-color: var(--background-color);
+
+      &:focus {
+        background-color: var(--background-color);
+        border-color: var(--brand-color);
+        box-shadow: 0 0 0 1px var(--brand-color);
+      }
+    }
+
+    .input:focus ~ .floating-group__label,
+    .input:not(:placeholder-shown) ~ .floating-group__label,
+    .input--error ~ .floating-group__label {
+      background-color: var(--background-color);
+    }
+
+    // Error durumunda label kırmızı olsun
+    .input--error ~ .floating-group__label {
+      color: #ff4d4f !important;
+    }
+  }
+}
 
 /* ============================================
    3. INPUT ERROR STATES & MESSAGES
@@ -198,7 +217,6 @@ $control-height-sm: 32px;
       Giriş bilgileri hatalı
    </div>
    ============================================ */
-
 
 // Field-level error message (input altında küçük metin)
 .input-error-message {

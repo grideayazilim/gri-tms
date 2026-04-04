@@ -23,11 +23,12 @@ export const timesheetColumns = (
         timesheetDays={row.timesheet_days}
         daysInMonth={daysInMonth}
         period={period}
-        onDayClick={(day) => onDayClick(row, day)}
+        onDayClick={(day, markerCode) => onDayClick(row, day, markerCode)}
         isDayCellDirty={
           isDayCellDirty ? (day) => isDayCellDirty(row.id, day) : undefined
         }
         isPublicHoliday={isPublicHoliday}
+        isLocked={row.isLocked}
       />
     ),
   },

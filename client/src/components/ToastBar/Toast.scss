@@ -32,6 +32,10 @@
     background: var(--brand-color);
   }
 
+  &--warning {
+    background: #f59e0b;
+  }
+
   &__icon {
     display: flex;
     align-items: center;

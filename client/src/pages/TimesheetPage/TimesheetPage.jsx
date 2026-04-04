@@ -5,8 +5,6 @@ import { timesheetColumns } from "./timesheetColumns";
 import { useModal } from "../../components/Modal";
 import { useAuth } from "../../context/AuthContext";
 import { AnnouncementList } from "../../components/Announcements";
-import MarkerSelector from "./MarkerSelector/MarkerSelector";
-import { settingsService } from "../../api";
 import FilterBar from "../../components/FilterBar/FilterBar";
 import PageShell from "../../components/PageShell/PageShell";
 import { useFilter } from "../../hooks/data/useFilter";
@@ -17,6 +15,7 @@ import { useAnnouncements } from "../../hooks/data/useAnnouncements";
 import { useToast } from "../../components/ToastBar/ToastContext";
 import { getTimesheetFilterConfig } from "./timesheetFilters";
 import { timesheetService } from "../../api";
+import { PAID_CODES } from "../../constants/markers";
 import "../../styles/inputs.scss";
 import "./TimesheetPage.scss";
 
@@ -47,17 +46,28 @@ const mapPeriod = (p) => ({
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TimesheetPage = () => {
-  const { user } = useAuth();
-  const isResponsibleUser = user?.role === "RESPONSIBLE";
+  const { user, isAdmin } = useAuth();
   const responsibleLocationId = user?.locationId ? String(user.locationId) : "";
   const responsibleUnitId = user?.unitId ? String(user.unitId) : "";
   const { showModal } = useModal();
   const toast = useToast();
   const { unreadCount, fetchUnreadCount } = useAnnouncements();
 
+  // ── Okunmamış duyuru sayacı ve giriş tooltip'i ─────────────────────────
+  const [showUnreadTip, setShowUnreadTip] = useState(false);
+
   useEffect(() => {
     fetchUnreadCount();
   }, [fetchUnreadCount]);
+
+  // Sayfa ilk açıldığında okunmamış duyuru varsa birkaç saniye tooltip göster
+  useEffect(() => {
+    if (unreadCount > 0) {
+      setShowUnreadTip(true);
+      const t = setTimeout(() => setShowUnreadTip(false), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [unreadCount]);
 
   // ── Puantaj verisi ve işlemleri ──────────────────────────────────────────
   const {
@@ -68,6 +78,7 @@ const TimesheetPage = () => {
     error,
     fetchTimesheets,
     saveTimesheets,
+    toggleLockPeriod,
   } = useTimesheets();
 
   // ── Yerleşke / Birim listeleri (filtre dropdown'ları için) ───────────────
@@ -78,30 +89,11 @@ const TimesheetPage = () => {
     fetchUnitsByLocation,
   } = useLocationsAndUnits();
 
-  // ── Marker listesi ─────────────────────────────────────
-  const [markers, setMarkers] = useState([]);
-
-  useEffect(() => {
-    settingsService
-      .getMarkers()
-      .then((res) => {
-        if (res?.data?.markers) {
-          setMarkers(res.data.markers);
-          // İlk ücretli marker'ı varsayılan seç
-          const firstPaid = res.data.markers.find((m) => m.isPaid);
-          if (firstPaid) setSelectedMarker(firstPaid.code);
-        }
-      })
-      .catch((err) =>
-        console.error("[TimesheetPage] Marker listesi alınamadı:", err),
-      );
-  }, []);
-
-  // ── Seçili işaretçi ──────────────────────────────────────────────────────
-  const [selectedMarker, setSelectedMarker] = useState("");
-
   // ── Dirty state takibi (kaydet butonu gösterimi + isDayCellDirty) ────────
   const [originalSnapshot, setOriginalSnapshot] = useState([]);
+
+  // ── Dönem kilit durumu (ADMIN tarafından toggle edilir) ─────────────────
+  const [periodIsLocked, setPeriodIsLocked] = useState(false);
 
   // ── Dönem listesi ──────────────────────────────────────
   const [periods, setPeriods] = useState([]);
@@ -124,20 +116,20 @@ const TimesheetPage = () => {
   const locationOptions = useMemo(() => {
     const mapped = apiLocations.map((l) => ({ value: l.id, label: l.name }));
 
-    if (!isResponsibleUser || !responsibleLocationId) return mapped;
+    if (!!isAdmin() || !responsibleLocationId) return mapped;
 
     return mapped.filter(
       (location) => String(location.value) === responsibleLocationId,
     );
-  }, [apiLocations, isResponsibleUser, responsibleLocationId]);
+  }, [apiLocations, !isAdmin(), responsibleLocationId]);
 
   const unitOptions = useMemo(() => {
     const mapped = apiUnits.map((u) => ({ value: u.id, label: u.name }));
 
-    if (!isResponsibleUser || !responsibleUnitId) return mapped;
+    if (!!isAdmin() || !responsibleUnitId) return mapped;
 
     return mapped.filter((unit) => String(unit.value) === responsibleUnitId);
-  }, [apiUnits, isResponsibleUser, responsibleUnitId]);
+  }, [apiUnits, !isAdmin(), responsibleUnitId]);
 
   const filterConfig = useMemo(() => {
     const baseConfig = getTimesheetFilterConfig(
@@ -146,7 +138,7 @@ const TimesheetPage = () => {
       unitOptions,
     );
 
-    if (!isResponsibleUser) return baseConfig;
+    if (!!isAdmin()) return baseConfig;
 
     return baseConfig.map((field) => {
       if (field.key === "location" || field.key === "unit") {
@@ -155,7 +147,7 @@ const TimesheetPage = () => {
       }
       return field;
     });
-  }, [periods, locationOptions, unitOptions, isResponsibleUser]);
+  }, [periods, locationOptions, unitOptions, !isAdmin()]);
 
   // ── Filtreler ─────────────────────────────────────────────────────────────
   const { filters, apiParams, handleFilterChange, setFilters } = useFilter(
@@ -173,7 +165,7 @@ const TimesheetPage = () => {
 
   // Birim sorumlusu için yerleşke/birim filtreleri sabitlenir
   useEffect(() => {
-    if (!isResponsibleUser) return;
+    if (!!isAdmin()) return;
 
     setFilters((prev) => {
       const nextLocation = responsibleLocationId || prev.location;
@@ -189,12 +181,15 @@ const TimesheetPage = () => {
         unit: nextUnit,
       };
     });
-  }, [isResponsibleUser, responsibleLocationId, responsibleUnitId, setFilters]);
+  }, [!isAdmin(), responsibleLocationId, responsibleUnitId, setFilters]);
 
-  // Dönemler yüklenince en güncel dönemi otomatik seç
+  // Dönemler yüklenince mevcut ayı seç, yoksa listedeki ilk dönemi seç
   useEffect(() => {
     if (periods.length > 0 && !filters.period) {
-      setFilters((prev) => ({ ...prev, period: periods[0].value }));
+      const now = new Date();
+      const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const match = periods.find((p) => p.value === currentPeriod);
+      setFilters((prev) => ({ ...prev, period: match ? match.value : periods[0].value }));
     }
   }, [periods, setFilters, filters.period]);
 
@@ -218,15 +213,18 @@ const TimesheetPage = () => {
     fetchTimesheets(apiParams).then((result) => {
       if (result.success && result.rows) {
         setOriginalSnapshot(JSON.parse(JSON.stringify(result.rows)));
+        // İlk satırdan dönemin kilit durumunu al
+        const locked = result.rows[0]?.isLocked ?? false;
+        setPeriodIsLocked(locked);
       }
     });
   }, [fetchTimesheets, apiParams]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // HÜCRE TIKLAMA — tek satırı günceller, totali yeniden hesaplar
+  // HÜCRE TIKLAMA — sol tık: X, sağ tık: diğer işaretçiler (markerCode ile gelir)
   // ─────────────────────────────────────────────────────────────────────────
   const handleDayClick = useCallback(
-    (row, day) => {
+    (row, day, markerCode) => {
       // Resmi tatilde değişiklik yapılmasın
       if (isPublicHoliday(day)) {
         const holidayName = getHolidayName(day) || "Resmi tatil";
@@ -237,19 +235,12 @@ const TimesheetPage = () => {
         return;
       }
 
+
       // Kilitli dönemde değişiklik yapılmasın
       if (row.isLocked) {
         toast({
           type: "warning",
           message: "Bu dönem kilitlenmiş, değişiklik yapılamaz.",
-        });
-        return;
-      }
-
-      if (!selectedMarker) {
-        toast({
-          type: "warning",
-          message: "Lütfen önce bir işaretçi seçiniz!",
         });
         return;
       }
@@ -262,25 +253,23 @@ const TimesheetPage = () => {
           const key = `${filters.period}-${dayStr}`;
 
           const newDays = { ...r.timesheet_days };
-          if (newDays[key] === selectedMarker) {
+          // Aynı marker tekrar tıklanırsa kaldır (toggle)
+          if (newDays[key] === markerCode) {
             delete newDays[key];
           } else {
-            newDays[key] = selectedMarker;
+            newDays[key] = markerCode;
           }
 
-          // Ücretli marker kodlarını DB'den gelen markers state'inden al
-          const paidCodes = new Set(
-            markers.filter((m) => m.isPaid).map((m) => m.code),
-          );
+          // Sabit ücretli kodlardan toplam hesapla
           const work_days_count = Object.values(newDays).filter((v) =>
-            paidCodes.has(v),
+            PAID_CODES.has(v),
           ).length;
 
           return { ...r, timesheet_days: newDays, work_days_count };
         }),
       );
     },
-    [selectedMarker, filters.period, setTimesheets, toast, markers, isPublicHoliday, getHolidayName],
+    [filters.period, setTimesheets, toast, isPublicHoliday, getHolidayName],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -354,6 +343,35 @@ const TimesheetPage = () => {
   };
 
   // ─────────────────────────────────────────────────────────────────────────
+  // DÖNEM KİLİTLEME / AÇMA (sadece ADMIN)
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleToggleLock = async () => {
+    const periodId = timesheets.find((r) => r.periodId)?.periodId;
+    if (!periodId) return;
+
+    const result = await toggleLockPeriod(periodId);
+    if (result.success) {
+      const newState = result.data?.isLocked;
+      setPeriodIsLocked(newState);
+      // Satırlardaki isLocked bilgisini de güncelle
+      setTimesheets((prev) =>
+        prev.map((r) => ({ ...r, isLocked: newState })),
+      );
+      toast({
+        type: "success",
+        message: newState
+          ? "Dönem kilitlendi — veri girişi engellendi."
+          : "Dönem kilidi açıldı — veri girişi serbest.",
+      });
+    } else {
+      toast({
+        type: "error",
+        message: result.error || "Kilit durumu değiştirilemedi.",
+      });
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
   // DUYURULAR MODALİ
   // ─────────────────────────────────────────────────────────────────────────
   const handleOpenAnnouncements = async () => {
@@ -392,21 +410,27 @@ const TimesheetPage = () => {
 
   return (
     <PageShell
-      title={<span className="ts-page-title">Puantaj İşaretleme</span>}
+      title={"Puantaj İşaretleme"}
       headerActions={headerActions}
       isLoading={isLoading}
     >
       <div className="ts-user-badge">
         <button
-          className="announcement-icon-btn"
+          className={`announcement-icon-btn${unreadCount > 0 ? " announcement-icon-btn--has-unread" : ""}`}
           onClick={handleOpenAnnouncements}
           title="Duyurular"
         >
+          {unreadCount > 0 && <span className="announcement-pulse" />}
           <AiOutlineBell />
           {unreadCount > 0 && (
             <span className="announcement-badge">{unreadCount}</span>
           )}
         </button>
+        {showUnreadTip && (
+          <span className="unread-tooltip">
+            {unreadCount} okunmamış duyurunuz var
+          </span>
+        )}
         <span className="user-info">Kullanıcı: {userName}</span>
       </div>
 
@@ -416,11 +440,20 @@ const TimesheetPage = () => {
         filters={filters}
         onFilterChange={handleFilterChange}
       />
-      <MarkerSelector
-        markers={markers}
-        selected={selectedMarker}
-        onSelect={setSelectedMarker}
-      />
+
+      {/* Dönem kilitleme — sadece ADMIN görür */}
+      {isAdmin() && (
+        <div className="ts-lock-row">
+          <label className="ts-lock-row__label">
+            <input
+              type="checkbox"
+              checked={periodIsLocked}
+              onChange={handleToggleLock}
+            />
+            <span>Veri Girişini Kilitle</span>
+          </label>
+        </div>
+      )}
 
       <DynamicTable
         columns={timesheetColumns(

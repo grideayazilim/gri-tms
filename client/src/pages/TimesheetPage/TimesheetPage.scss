@@ -1,9 +1,5 @@
 @use "../../styles/variables.scss" as *;
 
-.ts-page-title {
-  color: var(--brand-color);
-}
-
 .ts-user-badge {
   position: absolute;
   top: 30px;
@@ -19,8 +15,8 @@
   .announcement-icon-btn {
     background: none;
     border: none;
-    color: inherit;
-    font-size: 20px;
+    color: var(--text-muted);
+    font-size: 28px;
     position: relative;
     cursor: pointer;
     display: flex;
@@ -32,13 +28,14 @@
 
     &:hover {
       background: var(--background-color);
-      color: var(--text-primary);
+      color: #000;
     }
 
+    // ── Okunmamış sayısı badge ──────────────────────────────────────
     .announcement-badge {
       position: absolute;
-      top: -4px;
-      right: -4px;
+      top: -6px;
+      right: -6px;
       background-color: var(--button-red-color, #dc3545);
       color: white;
       font-size: 10px;
@@ -49,6 +46,25 @@
       text-align: center;
       line-height: 1;
       border: 2px solid var(--surface-color, #fff);
+      z-index: 2;
+    }
+
+    // ── Dikkat çekici pulse animasyonu (okunmamış duyuru varken) ──────
+    &--has-unread {
+      .announcement-pulse {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 40px;
+        height: 40px;
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        background-color: var(--button-red-color, #dc3545);
+        opacity: 0;
+        animation: pulse-ring 2s ease-out infinite;
+        pointer-events: none;
+        z-index: 0;
+      }
     }
   }
 
@@ -59,6 +75,88 @@
     align-items: center;
     gap: var(--space-xs);
     white-space: nowrap;
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.6);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.6);
+  }
+}
+
+// ── Okunmamış duyuru uyarı tooltip'i ──────────────────────────────────
+.unread-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color-strong);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 8px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  white-space: nowrap;
+  animation: tooltip-fade-in 0.3s ease;
+  pointer-events: none;
+  z-index: 100;
+
+  // Üstteki ok işareti
+  &::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    right: 14px;
+    width: 10px;
+    height: 10px;
+    background-color: var(--surface-color);
+    border-left: 1px solid var(--border-color-strong);
+    border-top: 1px solid var(--border-color-strong);
+    transform: rotate(45deg);
+  }
+}
+
+@keyframes tooltip-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ── Dönem kilitleme satırı (ADMIN) ──────────────────────────────────
+.ts-lock-row {
+  display: flex;
+  align-items: center;
+  padding: var(--space-xs) 0;
+
+  &__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+
+    input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--brand-color);
+      cursor: pointer;
+    }
   }
 }
 

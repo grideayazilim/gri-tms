@@ -8,7 +8,8 @@ export const getTimesheets = (params = {}) =>
 export const saveTimesheets = (periodId, timesheets) =>
   api.post("/timesheets", { periodId, timesheets });
 
-export const lockPeriod = (periodId) =>
+// Dönem kilit durumunu toggle eder (kilitli ise açar, açık ise kilitler)
+export const toggleLockPeriod = (periodId) =>
   api.patch(`/timesheets/${periodId}/lock`);
 
 export const getPeriods = () => api.get("/timesheets/periods");

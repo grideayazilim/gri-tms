@@ -4,6 +4,7 @@ const toastIcons = {
   success: "✓",
   error: "✕",
   info: "i",
+  warning: "!",
 };
 
 function ToastContainer({ toasts }) {

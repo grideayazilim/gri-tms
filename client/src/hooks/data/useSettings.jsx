@@ -10,10 +10,6 @@ export const useSettings = () => {
   const [systemSettings, setSystemSettings] = useState(null);
   const [isSystemSettingsLoading, setIsSystemSettingsLoading] = useState(false);
 
-  // States for Markers
-  const [markers, setMarkers] = useState([]);
-  const [isMarkersLoading, setIsMarkersLoading] = useState(false);
-
   const [error, setError] = useState(null);
 
   // --- FETCHING ---
@@ -49,26 +45,6 @@ export const useSettings = () => {
       return { success: false, error: err.message };
     } finally {
       setIsSystemSettingsLoading(false);
-    }
-  }, []);
-
-  const fetchMarkers = useCallback(async () => {
-    setIsMarkersLoading(true);
-    setError(null);
-    try {
-      const response = await settingsService.getMarkers();
-      if (response && response.data && response.data.markers) {
-        const sorted = [...response.data.markers].sort(
-          (a, b) => (a.displayOrder ?? Infinity) - (b.displayOrder ?? Infinity)
-        );
-        setMarkers(sorted);
-      }
-      return { success: true, data: response.data };
-    } catch (err) {
-      setError(err.message || 'İşaretçiler alınırken hata oluştu');
-      return { success: false, error: err.message };
-    } finally {
-      setIsMarkersLoading(false);
     }
   }, []);
 
@@ -111,56 +87,21 @@ export const useSettings = () => {
     }
   };
 
-  const updateMarkersList = async (newMarkers) => {
-    try {
-      const response = await settingsService.updateMarkers(newMarkers);
-      await fetchMarkers();
-      return { success: true, data: response.data };
-    } catch (err) {
-      return { success: false, error: err.message || 'İşaretçiler güncellenemedi' };
-    }
-  };
-
-  const reorderMarkers = async (reorderedMarkers) => {
-    // Save previous state for rollback
-    const prevMarkers = markers;
-    // Optimistic update
-    setMarkers(reorderedMarkers);
-
-    try {
-      const order = reorderedMarkers.map((m, idx) => ({
-        id: m.id,
-        display_order: idx + 1
-      }));
-      await settingsService.reorderMarkers(order);
-      return { success: true };
-    } catch (err) {
-      // Rollback on error
-      setMarkers(prevMarkers);
-      return { success: false, error: err.message || 'Sıralama güncellenemedi' };
-    }
-  };
-
   return {
     // States
     pendingUsers,
     isPendingUsersLoading,
     systemSettings,
     isSystemSettingsLoading,
-    markers,
-    isMarkersLoading,
     error,
 
     // Fetch methods
     fetchPendingUsers,
     fetchSystemSettings,
-    fetchMarkers,
 
     // Mutation methods
     approveUser,
     rejectUser,
     updateSystemSettings,
-    updateMarkers: updateMarkersList,
-    reorderMarkers,
   };
 };

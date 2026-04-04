@@ -94,6 +94,19 @@ export const useTimesheets = () => {
     }
   }, []);
 
+  // Dönem kilit durumunu toggle eder (kilitli ↔ açık)
+  const toggleLockPeriod = useCallback(async (periodId) => {
+    try {
+      const response = await timesheetService.toggleLockPeriod(periodId);
+      return { success: true, data: response.data };
+    } catch (err) {
+      return {
+        success: false,
+        error: err.message || "Kilit durumu değiştirilemedi",
+      };
+    }
+  }, []);
+
   return {
     timesheets,
     setTimesheets,
@@ -103,5 +116,6 @@ export const useTimesheets = () => {
     error,
     fetchTimesheets,
     saveTimesheets,
+    toggleLockPeriod,
   };
 };

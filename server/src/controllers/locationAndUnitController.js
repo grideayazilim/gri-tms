@@ -538,27 +538,51 @@ export async function syncLocationWithUnits(req, res) {
 
 // ==================== SİLME (DELETE) İŞLEMLERİ ====================
 
-// Bir yerleşkeyi veritabanından siler
+// Bir yerleşkeyi ve ona bağlı tüm alt verileri (birimler, çalışanlar, puantajlar) veritabanından siler
 export async function deleteLocation(req, res) {
   try {
     const { locationId } = req.params;
 
     await withTransaction(async (client) => {
-      // 1. Bağımlılık Kontrolü (Business Logic):
-      // Eğer bu yerleşkeye bağlı birimler (units) varsa silme işlemini engelliyoruz.
-      // SQL: SELECT 1 ile sadece varlık kontrolü yapıyoruz (performans için).
-      const unitCheck = await client.query('SELECT 1 FROM app.units WHERE location_id = $1 LIMIT 1', [locationId]);
-      if (unitCheck.rows.length > 0) {
-        throw new Error('HAS_DEPENDENTS');
-      }
-
-      // 2. Eski veriyi al (Audit log için)
+      // 1. Önce yerleşkenin varlığını kontrol et ve veriyi al (Audit log ve isim için)
       const oldResult = await client.query('SELECT * FROM app.locations WHERE id = $1', [locationId]);
       if (oldResult.rows.length === 0) {
         throw new Error('NOT_FOUND');
       }
+      const locationName = oldResult.rows[0].name;
 
-      // 3. Silme işlemini yap
+      // 2. KASKAD SİLME (CASCADING DELETE) - Kod seviyesinde bağımlılıkları temizliyoruz:
+      // Sıralama önemlidir (Yabancıl anahtar kısıtlamaları nedeniyle en alttan başlanır):
+
+      // a) Bu yerleşkeye bağlı birimlerin ID listesini al
+      const unitsRes = await client.query('SELECT id FROM app.units WHERE location_id = $1', [locationId]);
+      const unitIds = unitsRes.rows.map(r => r.id);
+
+      if (unitIds.length > 0) {
+        // b) Bu birimlere bağlı çalışanların ID listesini al
+        const empRes = await client.query('SELECT id FROM app.employees WHERE unit_id = ANY($1)', [unitIds]);
+        const empIds = empRes.rows.map(r => r.id);
+
+        if (empIds.length > 0) {
+          // c) Çalışanlara bağlı puantaj günlerini (timesheet_days) sil
+          const tsRes = await client.query('SELECT id FROM app.timesheets WHERE employee_id = ANY($1)', [empIds]);
+          const tsIds = tsRes.rows.map(r => r.id);
+
+          if (tsIds.length > 0) {
+            await client.query('DELETE FROM app.timesheet_days WHERE timesheet_id = ANY($1)', [tsIds]);
+            // d) Puantaj üst kayıtlarını (timesheets) sil
+            await client.query('DELETE FROM app.timesheets WHERE id = ANY($1)', [tsIds]);
+          }
+
+          // e) Çalışanları (employees) sil
+          await client.query('DELETE FROM app.employees WHERE id = ANY($1)', [empIds]);
+        }
+
+        // f) Birimleri (units) sil
+        await client.query('DELETE FROM app.units WHERE location_id = $1', [locationId]);
+      }
+
+      // 3. Yerleşkeyi (locations) sil
       await client.query('DELETE FROM app.locations WHERE id = $1', [locationId]);
 
       // 4. İşlem Kaydı (Audit Log)
@@ -566,24 +590,18 @@ export async function deleteLocation(req, res) {
         username: req.user.username,
         userRole: req.user.role,
         eventType: AUDIT_EVENT.LOCATION_UNIT,
-        description: `${oldResult.rows[0].name} adlı yerleşke silindi.`,
+        description: `${locationName} adlı yerleşke ve bağlı tüm alt veriler (birim, çalışan, puantaj) silindi.`,
         tableName: 'locations',
         recordId: locationId,
-        oldData: oldResult.rows[0] // Silinen verinin son hali
+        oldData: oldResult.rows[0]
       });
     });
 
     res.json({
       success: true,
-      message: 'Yerleşke başarıyla silindi.',
+      message: 'Yerleşke ve bağlı tüm alt veriler başarıyla silindi.',
     });
   } catch (error) {
-    if (error.message === 'HAS_DEPENDENTS') {
-      return res.status(400).json({
-        success: false,
-        message: 'Bu yerleşkeye bağlı birimler olduğu için silinemez. Önce yerleşkedeki birimleri silmelisiniz.'
-      });
-    }
     if (error.message === 'NOT_FOUND') {
       return res.status(404).json({ success: false, message: 'Yerleşke bulunamadı.' });
     }
@@ -595,34 +613,49 @@ export async function deleteLocation(req, res) {
   }
 }
 
-// Bir birimi veritabanından siler
+// Bir birimi ve ona bağlı tüm alt verileri (çalışanlar, puantajlar) veritabanından siler
 export async function deleteUnit(req, res) {
   try {
     const { unitId } = req.params;
 
     await withTransaction(async (client) => {
-      // 1. Bağımlılık Kontrolü:
-      // Eğer bu birime kayıtlı çalışanlar (employees) varsa silme işlemini engelliyoruz.
-      const employeeCheck = await client.query('SELECT 1 FROM app.employees WHERE unit_id = $1 LIMIT 1', [unitId]);
-      if (employeeCheck.rows.length > 0) {
-        throw new Error('HAS_DEPENDENTS');
-      }
-
-      // 2. Eski veriyi al
+      // 1. Önce birimin varlığını kontrol et ve veriyi al (Audit log için)
       const oldResult = await client.query('SELECT * FROM app.units WHERE id = $1', [unitId]);
       if (oldResult.rows.length === 0) {
         throw new Error('NOT_FOUND');
       }
+      const unitName = oldResult.rows[0].name;
 
-      // 3. Silme işlemini yap
+      // 2. KASKAD SİLME (CASCADING DELETE):
+
+      // a) Bu birime bağlı çalışanların ID listesini al
+      const empRes = await client.query('SELECT id FROM app.employees WHERE unit_id = $1', [unitId]);
+      const empIds = empRes.rows.map(r => r.id);
+
+      if (empIds.length > 0) {
+        // b) Çalışanlara bağlı puantaj günlerini (timesheet_days) sil
+        const tsRes = await client.query('SELECT id FROM app.timesheets WHERE employee_id = ANY($1)', [empIds]);
+        const tsIds = tsRes.rows.map(r => r.id);
+
+        if (tsIds.length > 0) {
+          await client.query('DELETE FROM app.timesheet_days WHERE timesheet_id = ANY($1)', [tsIds]);
+          // c) Puantaj üst kayıtlarını (timesheets) sil
+          await client.query('DELETE FROM app.timesheets WHERE id = ANY($1)', [tsIds]);
+        }
+
+        // d) Çalışanları (employees) sil
+        await client.query('DELETE FROM app.employees WHERE id = ANY($1)', [empIds]);
+      }
+
+      // 3. Birimi (units) sil
       await client.query('DELETE FROM app.units WHERE id = $1', [unitId]);
 
-      // 4. İşlem Kaydı
+      // 4. İşlem Kaydı (Audit Log)
       await createAuditLog(client, {
         username: req.user.username,
         userRole: req.user.role,
         eventType: AUDIT_EVENT.LOCATION_UNIT,
-        description: `${oldResult.rows[0].name} adlı birim silindi.`,
+        description: `${unitName} adlı birim ve bağlı tüm veriler (çalışan, puantaj) silindi.`,
         tableName: 'units',
         recordId: unitId,
         oldData: oldResult.rows[0]
@@ -631,15 +664,9 @@ export async function deleteUnit(req, res) {
 
     res.json({
       success: true,
-      message: 'Birim başarıyla silindi.',
+      message: 'Birim ve bağlı tüm veriler başarıyla silindi.',
     });
   } catch (error) {
-    if (error.message === 'HAS_DEPENDENTS') {
-      return res.status(400).json({
-        success: false,
-        message: 'Bu birime bağlı çalışanlar olduğu için silinemez. Önce çalışanları transfer etmeli veya silmelisiniz.'
-      });
-    }
     if (error.message === 'NOT_FOUND') {
       return res.status(404).json({ success: false, message: 'Birim bulunamadı.' });
     }

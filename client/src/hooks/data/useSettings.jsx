@@ -141,6 +141,15 @@ export const useSettings = () => {
     }
   };
 
+  const resetSystem = async () => {
+    try {
+      const response = await settingsService.resetSystem();
+      return { success: true, data: response.data };
+    } catch (err) {
+      return { success: false, error: err.message || 'Sistem sıfırlanamadı' };
+    }
+  };
+
   return {
     // States
     pendingUsers,
@@ -162,5 +171,6 @@ export const useSettings = () => {
     updateSystemSettings,
     updateMarkers: updateMarkersList,
     reorderMarkers,
+    resetSystem,
   };
 };

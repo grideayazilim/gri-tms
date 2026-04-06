@@ -42,3 +42,8 @@ export const reorderMarkers = async (order) => {
   const response = await api.patch('/settings/markers/reorder', { order });
   return response;
 };
+
+export const resetSystem = async () => {
+  const response = await api.delete('/settings/system/reset');
+  return response;
+};

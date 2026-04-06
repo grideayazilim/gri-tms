@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
 import { withTransaction } from "../config/database.js";
 import { toCamelCase } from "../utils/caseMapper.js";
+import { createAuditLog } from "../utils/auditLogger.js";
+import { AUDIT_EVENT } from "../enums/auditEventTypes.js";
 
 // GET /users
 export async function getUsers(req, res) {
@@ -170,7 +172,7 @@ export async function updateUser(req, res) {
         RETURNING *
       `;
 
-            return await client.query(updateQuery, [
+            const updated = await client.query(updateQuery, [
                 newRole,
                 newStatus,
                 newUnitId,
@@ -178,6 +180,19 @@ export async function updateUser(req, res) {
                 newExpiryDate,
                 userId
             ]);
+
+            await createAuditLog(client, {
+                username: req.user.username,
+                userRole: req.user.role,
+                eventType: AUDIT_EVENT.USER,
+                description: `${existingUser.username} adlı kullanıcının rol/durum/birim bilgileri güncellendi.`,
+                tableName: 'users',
+                recordId: userId,
+                oldData: existingUser,
+                newData: updated.rows[0]
+            });
+
+            return updated;
         });
 
         if (!result) {
@@ -207,10 +222,26 @@ export async function deleteUser(req, res) {
         const { userId } = req.params;
 
         const result = await withTransaction(async (client) => {
-            return await client.query(
+            const oldRes = await client.query('SELECT * FROM app.users WHERE id = $1', [userId]);
+            if (oldRes.rows.length === 0) return { rowCount: 0 };
+            const oldData = oldRes.rows[0];
+
+            const delRes = await client.query(
                 'DELETE FROM app.users WHERE id = $1 RETURNING id',
                 [userId]
             );
+
+            await createAuditLog(client, {
+                username: req.user.username,
+                userRole: req.user.role,
+                eventType: AUDIT_EVENT.USER,
+                description: `${oldData.username} adlı kullanıcı silindi.`,
+                tableName: 'users',
+                recordId: userId,
+                oldData: oldData
+            });
+
+            return delRes;
         });
 
         if (result.rowCount === 0) {
@@ -276,6 +307,17 @@ export async function updateProfile(req, res) {
          RETURNING id, username, role, status, unit_id, location_id, created_at, updated_at`,
                 [username || null, newPasswordHash, userId]
             );
+
+            await createAuditLog(client, {
+                username: req.user.username,
+                userRole: req.user.role,
+                eventType: AUDIT_EVENT.USER,
+                description: `${user.username} adlı kullanıcı profil bilgilerini güncelledi.`,
+                tableName: 'users',
+                recordId: userId,
+                oldData: { id: userId, username: user.username },
+                newData: { id: userId, username: updateResult.rows[0].username }
+            });
 
             return { user: updateResult.rows[0] };
         });

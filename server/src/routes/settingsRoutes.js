@@ -7,7 +7,8 @@ import {
   updateSystemSettings,
   getMarkers,
   updateMarkers,
-  reorderMarkers
+  reorderMarkers,
+  resetSystem
 } from '../controllers/settingsController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { adminMiddleware } from '../middlewares/adminMiddleware.js';
@@ -22,6 +23,7 @@ router.delete('/pending-users/:id/reject', authMiddleware, adminMiddleware, reje
 // 2. System Settings
 router.get('/system', authMiddleware, adminMiddleware, getSystemSettings);
 router.put('/system', authMiddleware, adminMiddleware, updateSystemSettings);
+router.delete('/system/reset', authMiddleware, adminMiddleware, resetSystem);
 
 // 3. Markers
 router.get('/markers', authMiddleware, getMarkers);

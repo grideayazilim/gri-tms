@@ -355,3 +355,41 @@ export async function reorderMarkers(req, res) {
     res.status(500).json({ success: false, message: 'Sıralama güncellenirken hata oluştu' });
   }
 }
+
+// --- SYSTEM RESET ---
+
+export async function resetSystem(req, res) {
+  try {
+    await withTransaction(async (client) => {
+      // 1. Delete timesheet_days
+      await client.query('DELETE FROM app.timesheet_days');
+      
+      // 2. Delete timesheets
+      await client.query('DELETE FROM app.timesheets');
+      
+      // 3. Delete periods
+      await client.query('DELETE FROM app.periods');
+      
+      // 4. Delete employees
+      await client.query('DELETE FROM app.employees');
+      
+      // 5. Delete non-admin users
+      await client.query("DELETE FROM app.users WHERE role != 'ADMIN'");
+      
+      // 6. Audit log
+      await createAuditLog(client, {
+        username: req.user?.username || 'System',
+        userRole: req.user?.role || 'SYSTEM',
+        eventType: AUDIT_EVENT.SECURITY,
+        description: 'Sistemdeki tüm puantajlar, dönemler, çalışanlar ve admin olmayan kullanıcılar silinerek sistem sıfırlandı.',
+        tableName: 'multiple'
+      });
+    });
+
+    res.json({ success: true, message: 'Sistem başarıyla sıfırlandı' });
+  } catch (error) {
+    console.error('resetSystem error:', error);
+    res.status(500).json({ success: false, message: 'Sistem sıfırlanırken hata oluştu' });
+  }
+}
+

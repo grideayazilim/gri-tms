@@ -138,7 +138,8 @@ function SettingsPage() {
     fetchMarkers,
     updateSystemSettings,
     updateMarkers: updateMarkersApi,
-    reorderMarkers
+    reorderMarkers,
+    resetSystem: performSystemReset
   } = useSettings();
 
   const sensors = useSensors(
@@ -507,6 +508,40 @@ function SettingsPage() {
             İşaretçileri Güncelle
           </button>
         </form>
+      )}
+
+      {/* --- SİSTEM SIFIRLAMA --- */}
+      {isAdmin() && (
+        <div className="settings-card" style={{ border: '1px solid var(--color-danger)', backgroundColor: 'rgba(255,0,0,0.02)' }}>
+          <h2 className="settings-card__title" style={{ color: 'var(--color-danger)' }}>Tehlikeli Alan</h2>
+          <p style={{ marginBottom: '1rem', color: 'var(--color-text-light)', lineHeight: '1.5' }}>
+            Sistemi sıfırlamak; tüm dönemleri, puantaj kayıtlarını, çalışanları ve admin olmayan kullanıcıları kalıcı olarak siler. Bu işlem <strong>GERİ ALINAMAZ</strong>. Lütfen dikkatli kullanın!
+          </p>
+          <button
+            type="button"
+            className="btn btn--danger"
+            onClick={async () => {
+              const confirmed = await showConfirm({
+                title: 'Sistemi Sıfırla (DİKKAT!)',
+                message: 'Tüm dönemler, puantajlar, çalışanlar ve admin olmayan kullanıcılar kalıcı olarak silinecektir. Bu işlemi onaylıyor musunuz? (BU İŞLEM GERİ ALINAMAZ!)',
+                type: 'danger',
+                confirmText: 'Evet, Her Şeyi Sil',
+                cancelText: 'Vazgeç',
+              });
+              
+              if (confirmed) {
+                const result = await performSystemReset();
+                if (result.success) {
+                  toast({ type: 'success', message: 'Sistem başarıyla sıfırlandı.' });
+                } else {
+                  toast({ type: 'error', message: result.error || 'Sistem sıfırlanamadı.' });
+                }
+              }
+            }}
+          >
+            Sistemi Sıfırla
+          </button>
+        </div>
       )}
     </PageShell>
   );

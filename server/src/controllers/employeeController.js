@@ -1,5 +1,7 @@
 import { withTransaction } from "../config/database.js";
 import { toCamelCase } from "../utils/caseMapper.js";
+import { createAuditLog } from "../utils/auditLogger.js";
+import { AUDIT_EVENT } from "../enums/auditEventTypes.js";
 
 /*export async function fonksiyonAdi(req, res) {
   try {
@@ -180,6 +182,17 @@ export async function createEmployee(req, res) {
         WHERE u.id = $1
       `;
       const unitResult = await client.query(unitQuery, [unitId]);
+
+      await createAuditLog(client, {
+        username: req.user.username,
+        userRole: req.user.role,
+        eventType: AUDIT_EVENT.EMPLOYEE,
+        description: `${rows[0].first_name} ${rows[0].last_name} isimli yeni çalışan (TC: ${rows[0].tc_no}) eklendi.`,
+        tableName: 'employees',
+        recordId: rows[0].id,
+        newData: rows[0]
+      });
+
       return { employee: rows[0], unit: unitResult.rows[0] };
     });
 
@@ -229,6 +242,10 @@ export async function updateEmployee(req, res) {
       req.body;
 
     const result = await withTransaction(async (client) => {
+      const oldRes = await client.query('SELECT * FROM app.employees WHERE id = $1', [id]);
+      if (oldRes.rows.length === 0) return null;
+      const oldData = oldRes.rows[0];
+
       const query = `
         UPDATE app.employees
         SET
@@ -263,6 +280,18 @@ export async function updateEmployee(req, res) {
         WHERE u.id = $1
       `;
       const unitResult = await client.query(unitQuery, [rows[0].unit_id]);
+
+      await createAuditLog(client, {
+        username: req.user.username,
+        userRole: req.user.role,
+        eventType: AUDIT_EVENT.EMPLOYEE,
+        description: `${rows[0].first_name} ${rows[0].last_name} isimli çalışanın (TC: ${rows[0].tc_no}) bilgileri güncellendi.`,
+        tableName: 'employees',
+        recordId: id,
+        oldData: oldData,
+        newData: rows[0]
+      });
+
       return { employee: rows[0], unit: unitResult.rows[0] };
     });
 
@@ -316,10 +345,25 @@ export async function deleteEmployee(req, res) {
     const { id } = req.params;
 
     const result = await withTransaction(async (client) => {
+      const oldRes = await client.query('SELECT * FROM app.employees WHERE id = $1', [id]);
+      if (oldRes.rows.length === 0) return null;
+      const oldData = oldRes.rows[0];
+
       const { rows } = await client.query(
         "DELETE FROM app.employees WHERE id = $1 RETURNING id",
         [id]
       );
+
+      await createAuditLog(client, {
+        username: req.user.username,
+        userRole: req.user.role,
+        eventType: AUDIT_EVENT.EMPLOYEE,
+        description: `${oldData.first_name} ${oldData.last_name} isimli çalışan (TC: ${oldData.tc_no}) silindi.`,
+        tableName: 'employees',
+        recordId: id,
+        oldData: oldData
+      });
+
       return rows[0];
     });
 

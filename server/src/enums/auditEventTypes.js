@@ -11,7 +11,7 @@ export const AUDIT_EVENT = Object.freeze({
   LOCATION_UNIT: "LOCATION_UNIT",
 
   // ==================== SYSTEM ====================
-  SETTINGS: "SETTINGS",  // Periods ve Marker da buraya dahil
+  SETTINGS: "SETTINGS",
 
   // ==================== SECURITY ====================
   SECURITY: "SECURITY",

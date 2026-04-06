@@ -1,81 +1,303 @@
-@use '../../../styles/variables.scss' as *;
+@use "../../../styles/variables.scss" as *;
 
 // Gün hücreleri wrapper — DynamicTable td'si içinde flex row olarak dizer
 .day-grid {
-    display: flex;
-    justify-content: center;
-    flex-wrap: nowrap;
-    gap: 5px;
-    padding: 2px 0;
-    // td'nin overflow:hidden'ini geç
-    overflow: visible;
+  display: flex;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  padding: 3px 0;
+  overflow: visible;
 }
 
 .ts-day-cell {
-    position: relative;
-    width: 30px;
-    height: 30px;
-    flex-shrink: 0;
-    border: 1px solid var(--border-color-strong);
-    border-radius: var(--radius-sm);
-    background-color: var(--surface-color);
-    cursor: pointer;
+  position: relative;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-color-strong);
+  border-radius: 4px;
+  background-color: var(--surface-color);
+  cursor: pointer;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    border-color: var(--brand-color);
+    box-shadow: 0 0 0 2px rgba(72, 128, 255, 0.15);
+  }
+
+  // ── Seçilemeyen hücre (kilitli dönem + resmi tatil) — tek kırmızı stil ──
+  &:disabled {
+    cursor: not-allowed;
+    pointer-events: auto;
+    border-color: var(--error-color, #ef4444);
+    background-image: repeating-linear-gradient(45deg,
+        rgba(239, 68, 68, 0.28) 0px,
+        rgba(239, 68, 68, 0.28) 1px,
+        transparent 1px,
+        transparent 4px);
+
+    .ts-day-cell__num,
+    .ts-day-cell__value {
+      color: var(--error-color, #ef4444);
+    }
+
+    &:hover {
+      border-color: var(--error-color, #ef4444);
+      box-shadow: none;
+    }
+  }
+
+  // ── Gün numarası ──────────────────────────────────────────────
+  // transform her zaman translateX(-50%) — böylece Y geçişi düzgün animasyon yapar
+  &__num {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
     user-select: none;
-    transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+    -webkit-user-select: none;
+    font-size: 0.62rem;
+    font-weight: 500;
+    color: var(--text-faint);
+    line-height: 1;
+
+    // Veri yok → dikey ortala (top + negatif margin ile translate olmadan)
+    top: calc(50% - 0.35em);
+    transition:
+      top 0.25s ease,
+      font-size 0.25s ease,
+      color 0.25s ease;
+
+    // Veri var → üste kay
+    &--top {
+      top: 3px;
+      font-size: 0.5rem;
+    }
+  }
+
+  // ── Marker değeri ─────────────────────────────────────────────
+  &__value {
+    position: absolute;
+    left: 50%;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--text-dark);
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  // ── İşaretlenmiş hücre — soluk gri
+  &--marked {
+    border-color: var(--border-hover, #94a3b8);
+    background-color: var(--surface-alt);
+  }
+
+  // ── Değiştirilmiş (dirty) hücre — soluk mavi
+  &--dirty {
+    background-color: #e0eeff;
+    border-color: #93c5fd;
+
+    .ts-day-cell__value {
+      color: #1e40af;
+    }
+
+    .ts-day-cell__num {
+      color: #3b82f6;
+    }
+  }
+
+  // ── Hafta sonu — border rengiyle diyagonal taralı, seçilebilir
+  &--weekend {
+    background-image: repeating-linear-gradient(45deg,
+        var(--border-color-strong) 0px,
+        var(--border-color-strong) 1px,
+        transparent 1px,
+        transparent 4px);
+  }
+}
+
+// ── Sağ tık / long press marker tooltip menüsü ──────────────────────────
+.marker-tooltip {
+  position: fixed;
+  z-index: 9998;
+  transform: translateX(-50%);
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  animation: marker-tooltip-in 0.15s ease-out;
+
+  &--closing {
+    animation: marker-tooltip-out 0.15s ease-in forwards;
+  }
+
+  // ── Üst ok ──────────────────────────────────────────────────
+  &__arrow {
+    position: absolute;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 9px;
+    height: 9px;
+    background-color: var(--surface-color);
+    border-left: 1px solid var(--border-color-strong);
+    border-top: 1px solid var(--border-color-strong);
+  }
+
+  // ── Mobilde tarih bilgisi (long press) ────────────────────────
+  &__date {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 2px 4px 6px;
+    border-bottom: 1px solid var(--border-color-strong);
+    margin-bottom: 6px;
+    white-space: nowrap;
+  }
+
+  // ── Marker butonları — kutucukla aynı boyut ──────────────────
+  &__items {
+    display: flex;
+    gap: 4px;
+  }
+
+  &__btn {
+    position: relative;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color-strong);
+    background-color: var(--surface-color);
+    color: var(--text-dark);
+    font-size: 0.6rem;
+    font-weight: 700;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: border-color 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+    font-family: var(--font-family-base);
 
     &:hover {
-        border-color: var(--brand-color);
-        box-shadow: 0 0 0 2px rgba(72, 128, 255, 0.15);
-    }
+      border-color: var(--brand-color);
+      background-color: color-mix(in srgb, var(--brand-color) 8%, transparent);
+      color: var(--brand-color);
 
-    // ── Gün numarası ──────────────────────────────────────────────
-    &__num {
+      &::after {
+        content: attr(data-label);
         position: absolute;
-        font-size: 0.65rem;
-        font-weight: 500;
-        color: var(--text-faint);
-        line-height: 1;
-        transition: top 0.15s ease, font-size 0.15s ease, color 0.15s ease;
-
-        // Veri yok → ortada
-        top: 50%;
+        bottom: calc(100% + 5px);
         left: 50%;
-        transform: translate(-50%, -50%);
-
-        // Veri var → üste
-        &--top {
-            top: 4px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.55rem;
-            color: var(--text-faint);
-        }
+        transform: translateX(-50%);
+        background-color: var(--text-dark);
+        color: #fff;
+        font-size: 0.65rem;
+        font-weight: 600;
+        padding: 3px 7px;
+        border-radius: var(--radius-sm);
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 9999;
+      }
     }
+  }
+}
 
-    // ── Marker değeri ─────────────────────────────────────────────
-    &__value {
-        font-size: 0.7rem;
-        font-weight: 700;
-        line-height: 1;
-        color: var(--text-dark);
-        margin-top: 6px; // gün numarasının altında boşluk
-    }
+@keyframes marker-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
 
-    // ── Veri girilmiş hücre ───────────────────────────────────────
-    // İşaretçi rengi yok — değerin var olması yeterli görsel ipucu
-    &--x, &--r, &--i, &--rt, &--dt {
-        border-color: var(--border-hover, #94a3b8);
-        background-color: var(--surface-alt);
-    }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
 
-    // ── Değiştirilmiş (dirty) hücre — soluk mavi ──────────────────
-    &--dirty {
-        background-color: #e0eeff;
-        border-color: #93c5fd;
-        .ts-day-cell__value { color: #1e40af; }
-        .ts-day-cell__num   { color: #3b82f6; }
-    }
+@keyframes marker-tooltip-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+}
+
+// ── Sadece tarih gösteren tooltip (Hover) ──────────────────────────────────
+.date-tooltip {
+  position: fixed;
+  z-index: 9998;
+  // Kutuyu üstte hizala (height + arrow payı kadar yukarı çıkar)
+  transform: translate(-50%, calc(-100% - 8px));
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 6px;
+  pointer-events: none; // hover yaparken titreşim yapmaması için
+  animation: date-tooltip-in 0.15s ease-out;
+
+  &--closing {
+    animation: date-tooltip-out 0.15s ease-in forwards;
+  }
+
+  &__arrow {
+    position: absolute;
+    bottom: -5px;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    width: 9px;
+    height: 9px;
+    background-color: var(--surface-color);
+    border-right: 1px solid var(--border-color-strong);
+    border-bottom: 1px solid var(--border-color-strong);
+  }
+
+  &__text {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    white-space: nowrap;
+    padding: 2px 4px;
+    font-family: var(--font-family-base);
+  }
+}
+
+@keyframes date-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 2px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 8px));
+  }
+}
+
+@keyframes date-tooltip-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 8px));
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 2px));
+  }
 }

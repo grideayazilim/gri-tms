@@ -2,7 +2,7 @@ import express from "express";
 import {
   getTimesheets,
   createOrUpdateTimesheets,
-  lockPeriod,
+  toggleLockPeriod,
   getPeriods,
 } from "../controllers/timesheetController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
@@ -14,6 +14,6 @@ const router = express.Router();
 router.get("/periods", authMiddleware, getPeriods);
 router.get("/", authMiddleware, scopeMiddleware, getTimesheets);
 router.post("/", authMiddleware, scopeMiddleware, createOrUpdateTimesheets);
-router.patch("/:periodId/lock", authMiddleware, adminMiddleware, lockPeriod);
+router.patch("/:periodId/lock", authMiddleware, adminMiddleware, toggleLockPeriod);
 
 export default router;

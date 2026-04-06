@@ -34,7 +34,7 @@ function AnnouncementForm({ onSubmit, onCancel }) {
         />
         <label className="floating-group__label">Başlık</label>
         {errors.title && (
-          <span className="input-error">{errors.title.message}</span>
+          <span className="input-error-message">{errors.title.message}</span>
         )}
       </div>
 
@@ -50,7 +50,7 @@ function AnnouncementForm({ onSubmit, onCancel }) {
         />
         <label className="floating-group__label">İçerik</label>
         {errors.content && (
-          <span className="input-error">{errors.content.message}</span>
+          <span className="input-error-message">{errors.content.message}</span>
         )}
         <span className="input-hint">
           {contentValue.length} / 1000 karakter

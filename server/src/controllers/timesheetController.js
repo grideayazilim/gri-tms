@@ -2,6 +2,7 @@ import { pool, withTransaction } from "../config/database.js";
 import { toCamelCase } from "../utils/caseMapper.js";
 import { createAuditLog } from "../utils/auditLogger.js";
 import { AUDIT_EVENT } from "../enums/auditEventTypes.js";
+import { PAID_CODES } from "../enums/markers.js";
 
 // ======================== GET /timesheets ========================
 export async function getTimesheets(req, res) {
@@ -179,12 +180,7 @@ export async function getTimesheets(req, res) {
         }
       }
 
-      // ── 6) Ücretli marker kodları ve günlük ücret ─────────────────────────
-      const markerResult = await client.query(
-        `SELECT code FROM app.markers WHERE is_paid = true`,
-      );
-      const paidCodes = new Set(markerResult.rows.map((r) => r.code));
-
+      // ── 6) Günlük ücret ──────────────────────────────────────────────────
       const settingsResult = await client.query(
         `SELECT daily_wage FROM app.settings LIMIT 1`,
       );
@@ -194,7 +190,7 @@ export async function getTimesheets(req, res) {
       const timesheets = dataResult.rows.map((row) => {
         const days = row.timesheet_id ? daysMap[row.timesheet_id] || [] : [];
         const totalWorkDays = days.filter((d) =>
-          paidCodes.has(d.markerCode),
+          PAID_CODES.has(d.markerCode),
         ).length;
 
         return toCamelCase({
@@ -346,17 +342,11 @@ export async function createOrUpdateTimesheets(req, res) {
       );
       const maxWeeklyDays = settingsResult.rows[0]?.max_weekly_days || 6;
 
-      // is_paid marker code'ları
-      const markerResult = await client.query(
-        `SELECT code FROM app.markers WHERE is_paid = true`,
-      );
-      const paidCodes = new Set(markerResult.rows.map((r) => r.code));
-
       // 5) Haftalık limit kontrolü (ISO hafta: Pazartesi–Pazar)
       for (const ts of timesheets) {
         const weekMap = {};
         for (const dayEntry of ts.days) {
-          if (paidCodes.has(dayEntry.markerCode)) {
+          if (PAID_CODES.has(dayEntry.markerCode)) {
             const date = new Date(dayEntry.day + "T00:00:00Z");
             const isoWeek = getISOWeekKey(date);
             weekMap[isoWeek] = (weekMap[isoWeek] || 0) + 1;
@@ -504,14 +494,16 @@ export async function createOrUpdateTimesheets(req, res) {
 }
 
 // ======================== PATCH /timesheets/:periodId/lock ========================
-export async function lockPeriod(req, res) {
+// Dönem kilit durumunu tersine çevirir (toggle).
+// Kilitli ise açar, açık ise kilitler. Sadece ADMIN yetkisiyle çalışır.
+export async function toggleLockPeriod(req, res) {
   try {
     const { periodId } = req.params;
 
     const result = await withTransaction(async (client) => {
       // Period var mı?
       const periodResult = await client.query(
-        `SELECT id, year, month FROM app.periods WHERE id = $1`,
+        `SELECT id, year, month, is_locked FROM app.periods WHERE id = $1`,
         [periodId],
       );
 
@@ -520,24 +512,26 @@ export async function lockPeriod(req, res) {
       }
 
       const period = periodResult.rows[0];
+      const newLockState = !period.is_locked;
 
-      // Kilitle
+      // Kilit durumunu toggle et
       await client.query(
-        `UPDATE app.periods SET is_locked = true WHERE id = $1`,
-        [periodId],
+        `UPDATE app.periods SET is_locked = $1 WHERE id = $2`,
+        [newLockState, periodId],
       );
 
       // Audit log
+      const action = newLockState ? "kilitlendi" : "kilidi açıldı";
       await createAuditLog(client, {
         username: req.user.username,
         userRole: req.user.role,
         eventType: AUDIT_EVENT.TIMESHEET,
-        description: `${period.year}-${String(period.month).padStart(2, "0")} dönemi kilitlendi`,
+        description: `${period.year}-${String(period.month).padStart(2, "0")} dönemi ${action}`,
         tableName: "periods",
         recordId: periodId,
       });
 
-      return { error: false };
+      return { error: false, isLocked: newLockState };
     });
 
     if (result.error) {
@@ -547,15 +541,20 @@ export async function lockPeriod(req, res) {
       });
     }
 
+    const message = result.isLocked
+      ? "Dönem kilitlendi"
+      : "Dönem kilidi açıldı";
+
     res.json({
       success: true,
-      message: "Dönem kilitlendi",
+      message,
+      data: { isLocked: result.isLocked },
     });
   } catch (error) {
-    console.error("Lock period error:", error);
+    console.error("Toggle lock period error:", error);
     res.status(500).json({
       success: false,
-      message: "Dönem kilitlenirken hata oluştu",
+      message: "Dönem kilit durumu değiştirilirken hata oluştu",
     });
   }
 }
@@ -564,7 +563,7 @@ export async function lockPeriod(req, res) {
 export async function getPeriods(req, res) {
   try {
     const { rows } = await pool.query(
-      `${PERIOD_SELECT} ORDER BY year DESC, month DESC`,
+      `${PERIOD_SELECT} WHERE is_deleted = false ORDER BY year DESC, month DESC`,
     );
 
     res.json({ success: true, data: { periods: rows } });
@@ -594,7 +593,6 @@ function getISOWeekKey(date) {
 }
 
 // ======================== YARDIMCI: Dönem Bulma ========================
-
 const PERIOD_SELECT = `
   SELECT id, year, month,
          TO_CHAR(start_date,'YYYY-MM-DD') AS start_date,
@@ -606,7 +604,7 @@ async function findPeriod(client, { month, year }) {
   if (month) {
     const [y, m] = month.split("-");
     const { rows } = await client.query(
-      `${PERIOD_SELECT} WHERE year = $1 AND month = $2 LIMIT 1`,
+      `${PERIOD_SELECT} WHERE year = $1 AND month = $2 AND is_deleted = false LIMIT 1`,
       [parseInt(y, 10), parseInt(m, 10)],
     );
     return rows[0] || null;
@@ -614,14 +612,14 @@ async function findPeriod(client, { month, year }) {
 
   if (year) {
     const { rows } = await client.query(
-      `${PERIOD_SELECT} WHERE year = $1 ORDER BY month DESC LIMIT 1`,
+      `${PERIOD_SELECT} WHERE year = $1 AND is_deleted = false ORDER BY month DESC LIMIT 1`,
       [parseInt(year, 10)],
     );
     return rows[0] || null;
   }
 
   const { rows } = await client.query(
-    `${PERIOD_SELECT} ORDER BY year DESC, month DESC LIMIT 1`,
+    `${PERIOD_SELECT} WHERE is_deleted = false ORDER BY year DESC, month DESC LIMIT 1`,
   );
   return rows[0] || null;
 }

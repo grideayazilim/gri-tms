@@ -25,9 +25,4 @@ router.get('/system', authMiddleware, adminMiddleware, getSystemSettings);
 router.put('/system', authMiddleware, adminMiddleware, updateSystemSettings);
 router.delete('/system/reset', authMiddleware, adminMiddleware, resetSystem);
 
-// 3. Markers
-router.get('/markers', authMiddleware, getMarkers);
-router.put('/markers', authMiddleware, adminMiddleware, updateMarkers);
-router.patch('/markers/reorder', authMiddleware, adminMiddleware, reorderMarkers);
-
 export default router;

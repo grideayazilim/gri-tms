@@ -14,7 +14,11 @@ const PendingUserList = ({ pendingUsers, onApprove, onReject }) => {
              <div className="pending-user-card__info">
                <div className="pending-user-card__name">{user.username}</div>
                <div className="pending-user-card__details">
-                 {user.location || '-'} • {user.unit || '-'}
+                 {user.role === 'ADMIN'
+                   ? 'Yönetici'
+                   : user.role === 'RESPONSIBLE'
+                     ? `Birim Sorumlusu${user.unit?.location?.name ? ` — ${user.unit.location.name}` : ''}${user.unit?.name ? ` / ${user.unit.name}` : ''}`
+                     : user.role ?? ''}
                </div>
              </div>
              <div className="pending-user-card__actions">

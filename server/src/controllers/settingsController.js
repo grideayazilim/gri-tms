@@ -36,7 +36,7 @@ export async function getPendingUsers(req, res) {
 export async function approvePendingUser(req, res) {
   try {
     const { id } = req.params;
-    
+
     const result = await withTransaction(async (client) => {
       const updateRes = await client.query(`
         UPDATE app.users
@@ -74,7 +74,7 @@ export async function approvePendingUser(req, res) {
 export async function rejectPendingUser(req, res) {
   try {
     const { id } = req.params;
-    
+
     const result = await withTransaction(async (client) => {
       const deleteRes = await client.query(`
         DELETE FROM app.users
@@ -157,7 +157,7 @@ export async function updateSystemSettings(req, res) {
 
       const newStart = formatToDateStr(programStart);
       const newEnd = formatToDateStr(programEnd);
-      
+
       const oldStart = current ? formatToDateStr(current.program_start_date) : null;
       const oldEnd = current ? formatToDateStr(current.program_end_date) : null;
 
@@ -188,33 +188,62 @@ export async function updateSystemSettings(req, res) {
         updatedSettings = insertRes.rows[0];
       }
 
-      // SIKINTI!!!
+      // --- SLIDING WINDOW (KAYAR PENCERE) MANTIGI ---
+      // Program başlangıç ve bitiş tarihleri değiştiğinde, sistemin sadece 
+      // bu aralıktaki dönemleri "aktif" göstermesi, dışındakileri ise "gizlemesi" gerekir.
       if (dateChanged && force) {
-        await client.query(`DELETE FROM app.periods`); 
-        
         if (newStart && newEnd) {
-           let curr = new Date(newStart);
-           const end = new Date(newEnd);
-           while(curr <= end) {
-              const y = curr.getFullYear();
-              const m = curr.getMonth() + 1;
-              const firstDay = new Date(y, m - 1, 1);
-              const lastDay = new Date(y, m, 0);
-              
-              const periodStart = (curr.getTime() === new Date(newStart).getTime()) ? new Date(newStart) : firstDay;
-              
-              const isLastMonth = (y === end.getFullYear() && m === (end.getMonth() + 1));
-              const periodEnd = isLastMonth ? new Date(newEnd) : lastDay;
+          // 1) HEDEFLİ GİZLEME: 
+          // Yeni belirlenen tarih aralığının tamamen dışında kalan dönemleri 'is_deleted = true' yaparak gizliyoruz.
+          // Bu sayede geçmiş veriler fiziksel olarak silinmez, sadece kullanıcı arayüzünden kaldırılır.
+          await client.query(
+            `UPDATE app.periods SET is_deleted = true WHERE start_date < $1 OR end_date > $2`,
+            [newStart, newEnd]
+          );
 
-              await client.query(`
-                INSERT INTO app.periods (year, month, start_date, end_date)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (year, month) DO NOTHING
-              `, [y, m, periodStart, periodEnd]);
-              
-              curr.setMonth(curr.getMonth() + 1);
-              curr.setDate(1);
-           }
+          // 2) KAPSAMLI AKTİVASYON VE OLUŞTURMA:
+          // newStart ile newEnd arasındaki her ay için döngü kurarak dönemlerin varlığını garanti altına alıyoruz.
+          let curr = new Date(newStart);
+          const end = new Date(newEnd);
+          while (curr <= end) {
+            const y = curr.getFullYear();
+            const m = curr.getMonth() + 1;
+            const firstDay = new Date(y, m - 1, 1);
+            const lastDay = new Date(y, m, 0);
+
+            // Ayın başladığı gerçek gün (Eğer program ayın ortasında başlıyorsa o günü baz alır)
+            const periodStart =
+              curr.getTime() === new Date(newStart).getTime()
+                ? new Date(newStart)
+                : firstDay;
+
+            // Ayın bittiği gerçek gün (Eğer program ayın ortasında bitiyorsa o günü baz alır)
+            const isLastMonth =
+              y === end.getFullYear() && m === end.getMonth() + 1;
+            const periodEnd = isLastMonth ? new Date(newEnd) : lastDay;
+
+            // UPSERT (INSERT or UPDATE) İŞLEMİ:
+            // Eğer o yıl/ay için bir kayıt varsa tarihlerini güncelleyip 'is_deleted = false' (aktif) yapıyoruz.
+            // Kayıt yoksa yeni bir dönem oluşturuyoruz.
+            await client.query(
+              `
+                INSERT INTO app.periods (year, month, start_date, end_date, is_deleted)
+                VALUES ($1, $2, $3, $4, false)
+                ON CONFLICT (year, month) DO UPDATE 
+                SET start_date = EXCLUDED.start_date, 
+                    end_date = EXCLUDED.end_date, 
+                    is_deleted = false
+              `,
+              [y, m, periodStart, periodEnd]
+            );
+
+            // Bir sonraki aya geç
+            curr.setMonth(curr.getMonth() + 1);
+            curr.setDate(1);
+          }
+        } else {
+          // Eğer geçerli bir tarih aralığı girilmemişse, güvenlik amacıyla tüm dönemleri gizle.
+          await client.query(`UPDATE app.periods SET is_deleted = true`);
         }
       }
 
@@ -245,7 +274,7 @@ export async function updateSystemSettings(req, res) {
 export async function getMarkers(req, res) {
   try {
     const result = await withTransaction(async (client) => {
-      return await client.query(`SELECT * FROM app.markers ORDER BY display_order ASC, code ASC`);
+      return await client.query(`SELECT * FROM app.markers ORDER BY code ASC`);
     });
 
     res.json({
@@ -272,25 +301,23 @@ export async function updateMarkers(req, res) {
     await withTransaction(async (client) => {
       const currentRes = await client.query(`SELECT code FROM app.markers`);
       const currentCodes = currentRes.rows.map(row => row.code);
-      
+
       const newCodes = markers.map(m => m.code);
       const codesToDelete = currentCodes.filter(c => !newCodes.includes(c));
 
       // Delete missing
       if (codesToDelete.length > 0) {
-         await client.query(`DELETE FROM app.markers WHERE code = ANY($1)`, [codesToDelete]);
+        await client.query(`DELETE FROM app.markers WHERE code = ANY($1)`, [codesToDelete]);
       }
 
       // Upsert
-      for (let i = 0; i < markers.length; i++) {
-        const m = markers[i];
-        const displayOrder = m.displayOrder ?? (i + 1);
+      for (const m of markers) {
         await client.query(`
-          INSERT INTO app.markers (code, label, is_paid, display_order)
-          VALUES ($1, $2, $3, $4)
-          ON CONFLICT (code) DO UPDATE 
-          SET label = EXCLUDED.label, is_paid = EXCLUDED.is_paid, display_order = EXCLUDED.display_order
-        `, [m.code, m.label, !!m.isPaid, displayOrder]);
+           INSERT INTO app.markers (code, label, is_paid)
+           VALUES ($1, $2, $3)
+           ON CONFLICT (code) DO UPDATE 
+           SET label = EXCLUDED.label, is_paid = EXCLUDED.is_paid
+         `, [m.code, m.label, !!m.isPaid]);
       }
 
       // Fetch the updated markers to store in audit log
@@ -299,7 +326,7 @@ export async function updateMarkers(req, res) {
       await createAuditLog(client, {
         username: req.user?.username || 'System',
         userRole: req.user?.role || 'SYSTEM',
-        eventType: AUDIT_EVENT.SETTINGS,
+        eventType: AUDIT_EVENT.MARKER,
         description: `Puantaj işaretçileri toplu olarak güncellendi.`,
         tableName: 'markers',
         oldData: currentRes.rows,

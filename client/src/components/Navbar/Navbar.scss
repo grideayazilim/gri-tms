@@ -8,7 +8,7 @@
   flex-direction: column;
   justify-content: space-between;
   border-right: 2px solid var(--border-color);
-  padding: var(--space-lg) var(--space-md);
+  padding: var(--space-md) var(--space-sm);
 
   // Aktif nav linki (NavLink'ten otomatik geliyor)
   .active {
@@ -19,14 +19,14 @@
   // Icon stili
   svg {
     display: block;
-    width: 24px;
-    height: 24px;
-    font-size: 1.5rem;
+    width: 20px;
+    height: 20px;
+    font-size: 1.25rem;
   }
 
   // Bir buton küçük kaldı, büyütmek için
   .tie-icon {
-    font-size: 1.6rem;
+    font-size: 1.35rem;
   }
 
   // Pop menüyü navbarın arkasından çıkar gibi göstermek için background
@@ -44,7 +44,7 @@
   &__title {
     display: flex;
     padding-block: 0 var(--space-md);
-    font-size: 1.3rem;
+    font-size: 1.15rem;
     font-weight: var(--font-weight-main-title);
     transform: translateX(10%);
     transition: 0.4s;
@@ -86,7 +86,7 @@
     display: flex;
     align-items: center;
     position: relative;
-    padding: var(--space-md);
+    padding: var(--space-sm);
     border-radius: var(--radius-md);
     text-decoration: none;
     transition: all 0.25s ease;
@@ -145,7 +145,7 @@
       // Linklere özel padding ver
       // (Normal halde kare görünüm için block ve inline padding eşitti)
       .nav__link {
-        padding: var(--space-md) var(--space-lg);
+        padding: var(--space-sm) var(--space-md);
       }
 
       // Linklerin yazılarını göster (Navbar'ın uzama sebebi)
@@ -165,7 +165,7 @@
     flex-direction: row;
     bottom: 0;
     width: 100%;
-    padding: var(--space-md) var(--space-xl);
+    padding: var(--space-sm) var(--space-lg);
     border-right: none;
     border-top: 2px solid var(--border-color);
     height: auto;
@@ -254,7 +254,7 @@
 
     // Link buton boyutunu küçült
     &__link {
-      padding: var(--space-sm);
+      padding: var(--space-xs);
     }
   }
 }

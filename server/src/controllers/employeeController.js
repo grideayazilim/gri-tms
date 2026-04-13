@@ -53,11 +53,9 @@ export async function getEmployees(req, res) {
 
     if (status) {
       if (status === "active") {
-        conditions.push(`(e.end_date IS NULL OR e.end_date >= CURRENT_DATE)`);
+        conditions.push(`e.is_active = true`);
       } else if (status === "inactive") {
-        conditions.push(
-          `(e.end_date IS NOT NULL AND e.end_date < CURRENT_DATE)`,
-        );
+        conditions.push(`e.is_active = false`);
       }
     }
 
@@ -82,7 +80,7 @@ export async function getEmployees(req, res) {
         SELECT 
           e.id, e.tc_no, e.first_name, e.last_name, e.iban_no,
           e.start_date, e.end_date, e.created_at, e.updated_at,
-          CASE WHEN e.end_date IS NULL OR e.end_date >= CURRENT_DATE THEN true ELSE false END AS is_active,
+          e.is_active,
           u.id AS unit_id, u.name AS unit_name,
           l.id AS location_id, l.name AS location_name
         FROM app.employees e
@@ -158,7 +156,7 @@ export async function createEmployee(req, res) {
 
     const result = await withTransaction(async (client) => {
       const query = `
-        INSERT INTO app.employees (tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date)
+        INSERT INTO app.employees (tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, is_active)
         VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING id, tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, created_at, updated_at
       `;
@@ -170,6 +168,7 @@ export async function createEmployee(req, res) {
         unitId,
         startDate,
         endDate || null,
+        true,
       ]);
 
       // Birimi ve yerleşkeyi de getir
@@ -318,7 +317,7 @@ export async function deleteEmployee(req, res) {
     const result = await withTransaction(async (client) => {
       const { rows } = await client.query(
         "DELETE FROM app.employees WHERE id = $1 RETURNING id",
-        [id]
+        [id],
       );
       return rows[0];
     });

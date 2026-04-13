@@ -189,7 +189,10 @@ const TimesheetPage = () => {
       const now = new Date();
       const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
       const match = periods.find((p) => p.value === currentPeriod);
-      setFilters((prev) => ({ ...prev, period: match ? match.value : periods[0].value }));
+      setFilters((prev) => ({
+        ...prev,
+        period: match ? match.value : periods[0].value,
+      }));
     }
   }, [periods, setFilters, filters.period]);
 
@@ -234,7 +237,6 @@ const TimesheetPage = () => {
         });
         return;
       }
-
 
       // Kilitli dönemde değişiklik yapılmasın
       if (row.isLocked) {
@@ -354,9 +356,7 @@ const TimesheetPage = () => {
       const newState = result.data?.isLocked;
       setPeriodIsLocked(newState);
       // Satırlardaki isLocked bilgisini de güncelle
-      setTimesheets((prev) =>
-        prev.map((r) => ({ ...r, isLocked: newState })),
-      );
+      setTimesheets((prev) => prev.map((r) => ({ ...r, isLocked: newState })));
       toast({
         type: "success",
         message: newState

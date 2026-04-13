@@ -1,0 +1,340 @@
+@charset "UTF-8";
+@import url("https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap");
+:root {
+  /* ================= Colors =============== */
+  --background-color: #f5f6fa;
+  --surface-color: #ffffff;
+  --surface-hover-color: #e7ebf0;
+  --button-red-color: #e5484d;
+  --button-red-hover-color: #d13f44;
+  --success-color: #4ad66d;
+  --border-color: #dfdfdf;
+  --text-primary: #202224;
+  --text-secondary: #979797;
+  --brand-color: #4880ff;
+  --thead-header-bg: #f8fafc;
+  /* ============= Table Colors ============= */
+  /* Tablo ve kart kenarlık rengi */
+  --border-color-strong: #e2e8f0;
+  /* Tablo satır hover / ayraç yüzeyi */
+  --surface-alt: #f1f5f9;
+  /* Pagination buton hover border */
+  --border-hover: #cbd5e1;
+  /* Scrollbar thumb rengi */
+  --scrollbar-thumb: #cbd5e0;
+  /* Tablo gövde metin rengi */
+  --text-dark: #334155;
+  /* En koyu metin (select değeri vb.) */
+  --text-darker: #1e293b;
+  /* Sütun başlığı, pagination buton metni */
+  --text-muted: #64748b;
+  /* Gün numaraları, filter etiket, "gösterilen" metni */
+  --text-faint: #94a3b8;
+  /* ============== Typography ============== */
+  /* Font Family */
+  --font-family-base: "Nunito Sans", sans-serif;
+  /* Font Sizes */
+  --font-size-normal-text: 14px;
+  --font-size-main-title: 32px;
+  --font-size-small-text: 8px;
+  /* Font Weights */
+  --font-weight-normal-text: 600;
+  --font-weight-main-title: 700;
+  --font-weight-small-text: 700;
+  --font-weight-bold: 800;
+  /* ============ Spacing =============== */
+  --space-xs: 8px; /* Buton dikey padding, ikon-text arası gap vermek için kullanılır */
+  --space-sm: 12px; /* Buton yatay padding, input ve card padding vermek için kullanılır */
+  --space-md: 16px; /* Component arası gap vermek için kullanılır */
+  --space-lg: 24px; /* Section padding vermek için kullanılır */
+  --space-xl: 32px; /* Section arası gap vermek için kullanılır */
+  /* =========== Border Radius =========== */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+/* ============ Breakpoints =========== */
+/* ===========  Responsive ========== */
+/* ========================================================================
+   UI KIT & FORM ELEMANLARI
+   Bu dosya projedeki tüm Input, Select ve Button stillerini barındırır.
+   ======================================================================== */
+/* ============================================
+   1. STANDART INPUT
+   --------------------------------------------
+   Kullanım: 
+   <input className="input" type="text" />
+
+   Select Kullanımı:
+   <select className="input input--select">...</select>
+   ============================================ */
+.input {
+  width: 100%;
+  height: 40px;
+  padding: 0 var(--space-sm);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-normal-text);
+  font-weight: 500;
+  color: var(--text-primary);
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.input::-moz-placeholder {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.input::placeholder {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.input:focus {
+  border-color: var(--brand-color);
+  box-shadow: 0 0 0 1px var(--brand-color);
+  z-index: 10;
+}
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: var(--background-color);
+}
+.input--select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  color: var(--text-primary);
+  background-color: var(--surface-color);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23979797' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px 16px;
+  padding-right: 32px;
+  cursor: pointer;
+}
+.input--select option {
+  color: var(--text-primary);
+  background-color: var(--surface-color);
+}
+.input--select option:checked {
+  background-color: color-mix(in srgb, var(--brand-color) 16%, var(--surface-color));
+  color: var(--text-primary);
+}
+
+.input--sm {
+  height: 32px;
+  font-size: 13px;
+}
+
+/* ============================================
+   2. FLOATING LABEL (Yüzen Etiket)
+   --------------------------------------------
+   Variants:
+   - Default (on-surface): Beyaz/surface arkaplanlar üzerinde kullanım
+   - on-background: Gri arkaplanlar üzerinde kullanım
+
+   Örnek HTML (on-surface - default):
+   <div className="floating-group">
+      <input className="input" placeholder=" " />
+      <label className="floating-group__label">Adınız</label>
+   </div>
+
+   Örnek HTML (on-background):
+   <div className="floating-group floating-group--on-background">
+      <input className="input" placeholder=" " />
+      <label className="floating-group__label">Adınız</label>
+   </div>
+   ============================================ */
+.floating-group {
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+}
+.floating-group .input::-moz-placeholder {
+  color: transparent;
+}
+.floating-group .input::placeholder {
+  color: transparent;
+}
+.floating-group .input--error {
+  border-color: #ff4d4f !important;
+}
+.floating-group .input--error:focus {
+  border-color: #ff4d4f !important;
+  box-shadow: 0 0 0 1px #ff4d4f !important;
+}
+.floating-group__label {
+  position: absolute;
+  left: var(--space-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-normal-text);
+  color: var(--text-secondary);
+  pointer-events: none;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 0 4px;
+  z-index: 15;
+}
+textarea.input ~ .floating-group__label {
+  top: 20px;
+}
+.floating-group .input:not(:-moz-placeholder) ~ .floating-group__label {
+  top: 0;
+  font-size: 12px;
+  color: var(--brand-color);
+  font-weight: 600;
+  background-color: var(--surface-color);
+  margin-left: -4px;
+}
+.floating-group .input:focus ~ .floating-group__label,
+.floating-group .input:not(:placeholder-shown) ~ .floating-group__label,
+.floating-group .input--error ~ .floating-group__label {
+  top: 0;
+  font-size: 12px;
+  color: var(--brand-color);
+  font-weight: 600;
+  background-color: var(--surface-color);
+  margin-left: -4px;
+}
+.floating-group .input:not(:focus):not(:-moz-placeholder) ~ .floating-group__label {
+  color: var(--text-secondary);
+}
+.floating-group .input:not(:focus):not(:placeholder-shown) ~ .floating-group__label {
+  color: var(--text-secondary);
+}
+.floating-group .input--error ~ .floating-group__label {
+  color: #ff4d4f !important;
+}
+.floating-group--on-background .input {
+  background-color: var(--background-color);
+}
+.floating-group--on-background .input:focus {
+  background-color: var(--background-color);
+  border-color: var(--brand-color);
+  box-shadow: 0 0 0 1px var(--brand-color);
+}
+.floating-group--on-background .input:not(:-moz-placeholder) ~ .floating-group__label {
+  background-color: var(--background-color);
+}
+.floating-group--on-background .input:focus ~ .floating-group__label,
+.floating-group--on-background .input:not(:placeholder-shown) ~ .floating-group__label,
+.floating-group--on-background .input--error ~ .floating-group__label {
+  background-color: var(--background-color);
+}
+.floating-group--on-background .input--error ~ .floating-group__label {
+  color: #ff4d4f !important;
+}
+
+/* ============================================
+   3. INPUT ERROR STATES & MESSAGES
+   --------------------------------------------
+   Hatalı input görünümü ve hata mesajları için kullanılır.
+
+   Örnek HTML (Field error):
+   <div className="floating-group">
+      <input className="input input--error" placeholder=" " />
+      <label className="floating-group__label">Email</label>
+      <span className="input-error-message">Bu alan zorunludur</span>
+   </div>
+
+   Örnek HTML (Form error box):
+   <div className="input-error-box">
+      Giriş bilgileri hatalı
+   </div>
+   ============================================ */
+.input-error-message {
+  display: block;
+  color: #ff4d4f;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 4px;
+  font-family: var(--font-family-base);
+}
+
+.input-error-box {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: var(--radius-sm);
+  color: #ff4d4f;
+  font-size: var(--font-size-normal-text);
+  font-weight: 500;
+  font-family: var(--font-family-base);
+  line-height: 1.4;
+}
+
+/* ============================================
+   4. BUTONLAR
+   --------------------------------------------
+   Temel Kullanım: <button className="btn">Kaydet</button>
+   Kırmızı Buton:  <button className="btn btn--danger">Sil</button>
+   Sadece İkon:    <button className="btn btn--icon-only"><Icon /></button>
+   ============================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  height: 40px;
+  padding: 0 var(--space-lg);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-normal-text);
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+  background-color: var(--brand-color);
+  color: var(--surface-color);
+  -webkit-user-select: none;
+     -moz-user-select: none;
+          user-select: none;
+}
+.btn:disabled {
+  background-color: var(--text-secondary);
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn:not(:disabled):hover {
+  background-color: #03045e;
+  color: var(--surface-color);
+  border: 1px solid #003566;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 8px 20px rgba(31, 42, 68, 0.25);
+  transition: all 0.25s ease-in-out;
+}
+.btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+.btn--danger {
+  background-color: #ff4d4f;
+}
+.btn--danger:not(:disabled):hover {
+  background-color: #d9363e;
+}
+.btn--icon-only {
+  padding: 0;
+  width: 40px;
+  flex-shrink: 0;
+}
+.btn--icon-only svg {
+  width: 20px;
+  height: 20px;
+}
+.btn--sm {
+  height: 32px;
+}
+.btn--sm.btn--icon-only {
+  width: 32px;
+}
+@media (max-width: 768px) {
+  .btn:not(.btn--icon-only) {
+    width: 100%;
+  }
+}/*# sourceMappingURL=inputs.css.map */

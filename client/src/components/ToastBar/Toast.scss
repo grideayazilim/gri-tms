@@ -11,6 +11,9 @@
 }
 
 .toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
   min-width: 260px;

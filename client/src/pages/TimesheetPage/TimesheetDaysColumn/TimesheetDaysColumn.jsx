@@ -5,7 +5,6 @@ import { tr } from "date-fns/locale";
 import { MARKER_LIST, MARKERS } from "../../../constants/markers";
 import "./TimesheetDaysColumn.scss";
 
-
 const getDayValue = (timesheetDays, day) => {
   if (!timesheetDays) return "";
   const dayStr = day.toString().padStart(2, "0");
@@ -169,7 +168,7 @@ const TimesheetDaysColumn = ({
   // ── Hover tooltip işlemleri ──────────────────────────────────────────────
   const handleMouseEnter = (e, day) => {
     if (longPressTriggered.current) return;
-    
+
     clearTimeout(hoverCloseTimer.current);
     clearTimeout(hoverTimer.current);
     setHoverClosing(false);

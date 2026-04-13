@@ -21,7 +21,8 @@
         color: var(--text-color);
       }
 
-      &.active, &:active {
+      &.active,
+      &:active {
         background-color: var(--primary-color, #2563eb);
         color: #ffffff !important;
         border-color: var(--primary-color, #2563eb);
@@ -36,69 +37,69 @@
     width: 100%;
     margin-bottom: 16px; /* Added bottom margin to settings-row inside modal */
   }
-  
-    .flex-full {
-      width: 100%;
-      margin-top: 16px;
-    }
-  
-    .bulk-upload-section {
-      text-align: center;
-  
-      .upload-box {
-        border: 2px dashed var(--border-color);
-        border-radius: var(--border-radius-md);
-        padding: 48px 24px;
-        background-color: var(--bg-color-secondary);
-        transition: border-color 0.2s;
-        margin-bottom: 16px;
-  
-        &:hover {
-          border-color: var(--primary-color);
-        }
-  
-        .upload-icon {
-          font-size: 48px;
-          color: var(--primary-color);
-          margin-bottom: 16px;
-        }
-  
-        h3 {
-          margin: 0 0 8px 0;
-          color: var(--text-color);
-        }
-  
-        p {
-          color: var(--text-color-secondary);
-          margin: 0 0 24px 0;
-          font-size: 0.9rem;
-        }
-  
-        .file-input-hidden {
-          display: none;
-        }
-        
-        .upload-btn {
-          cursor: pointer;
-          display: inline-flex;
-          justify-content: center;
-          align-items: center;
-          text-align: center;
-          min-width: 140px;
-          margin: 0 auto;
-        }
+
+  .flex-full {
+    width: 100%;
+    margin-top: 0;
+  }
+
+  .bulk-upload-section {
+    text-align: center;
+
+    .upload-box {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--border-radius-md);
+      padding: 48px 24px;
+      background-color: var(--bg-color-secondary);
+      transition: border-color 0.2s;
+      margin-bottom: 16px;
+
+      &:hover {
+        border-color: var(--primary-color);
       }
-  
-      .template-download {
-        .link-text {
-          color: var(--primary-color);
-          text-decoration: none;
-          font-size: 0.9rem;
-          
-          &:hover {
-            text-decoration: underline;
-          }
+
+      .upload-icon {
+        font-size: 48px;
+        color: var(--primary-color);
+        margin-bottom: 16px;
+      }
+
+      h3 {
+        margin: 0 0 8px 0;
+        color: var(--text-color);
+      }
+
+      p {
+        color: var(--text-color-secondary);
+        margin: 0 0 24px 0;
+        font-size: 0.9rem;
+      }
+
+      .file-input-hidden {
+        display: none;
+      }
+
+      .upload-btn {
+        cursor: pointer;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        min-width: 140px;
+        margin: 0 auto;
+      }
+    }
+
+    .template-download {
+      .link-text {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-size: 0.9rem;
+
+        &:hover {
+          text-decoration: underline;
         }
       }
     }
   }
+}

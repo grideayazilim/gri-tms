@@ -8,7 +8,7 @@
   flex-direction: column;
   justify-content: space-between;
   border-right: 2px solid var(--border-color);
-  padding: var(--space-md) var(--space-sm);
+  padding: var(--space-lg) var(--space-sm);
 
   // Aktif nav linki (NavLink'ten otomatik geliyor)
   .active {
@@ -44,6 +44,7 @@
   &__title {
     display: flex;
     padding-block: 0 var(--space-md);
+    margin-bottom: var(--space-md);
     font-size: 1.15rem;
     font-weight: var(--font-weight-main-title);
     transform: translateX(10%);

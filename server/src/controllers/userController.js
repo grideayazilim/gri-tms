@@ -70,7 +70,7 @@ export async function getUsers(req, res) {
             const totalCount = parseInt(countResult.rows[0].count, 10);
 
             
-            queryStr += ` ORDER BY u.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+            queryStr += ` ORDER BY u.username ASC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
             queryParams.push(limit, offset);
 
             const dataResult = await client.query(queryStr, queryParams);
@@ -152,10 +152,19 @@ export async function updateUser(req, res) {
 
             // Değerleri alma
             const newRole = role !== undefined ? role : existingUser.role;
-            const newStatus = status !== undefined ? status : existingUser.status;
             const newUnitId = unitId !== undefined ? unitId : existingUser.unit_id;
             const newLocationId = locationId !== undefined ? locationId : existingUser.location_id;
             const newExpiryDate = expiryDate !== undefined ? expiryDate : existingUser.expiry_date;
+            
+            let newStatus = status !== undefined ? status : existingUser.status;
+            
+            // Eğer expiryDate geçmişse otomatik olarak EXPIRED yap.
+            // Eğer status EXPIRED ve expiryDate gelecekteyse (veya yoksa) ACTIVE yap.
+            if (newExpiryDate && new Date(newExpiryDate) < new Date()) {
+                newStatus = 'EXPIRED';
+            } else if (newStatus === 'EXPIRED' && (!newExpiryDate || new Date(newExpiryDate) >= new Date())) {
+                newStatus = 'ACTIVE';
+            }
 
             const updateQuery = `
         UPDATE app.users 

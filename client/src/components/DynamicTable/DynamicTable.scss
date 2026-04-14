@@ -36,7 +36,7 @@
       transition: background-color 0.15s;
 
       // Dikey ayraç — ilk hariç her filter-group'un sol kenarı
-      & + .filter-group {
+      &+.filter-group {
         border-left: 1px solid var(--border-color-strong);
       }
 
@@ -244,18 +244,17 @@
 // ─── İşlem butonları (TableColumns'daki edit/delete) ───
 .action-btn {
   padding: 6px;
-  border-radius: 6px;
+  border-radius: 5px;
   border: 1px solid transparent;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
-  font-size: 1.1rem;
+  transition: all 0.15s;
   line-height: 1;
 
   &.edit-btn {
-    background-color: #f0f9ff;
+    background-color: #e6f5ff;
     color: #0369a1;
 
     &:hover {

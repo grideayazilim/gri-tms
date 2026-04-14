@@ -33,6 +33,15 @@ function SignUp({ onToggle }) {
     },
   });
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!isLoading) {
+        handleSubmit(onSubmitForm)();
+      }
+    }
+  };
+
   const locationId = watch("locationId");
   const role = watch("role");
   const isBirimSorumlusu = role === "RESPONSIBLE";
@@ -84,7 +93,7 @@ function SignUp({ onToggle }) {
         Devam etmek için bir hesap oluşturun.
       </p>
 
-      <form className="auth-page__form" onSubmit={handleSubmit(onSubmitForm)}>
+      <form className="auth-page__form" onSubmit={handleSubmit(onSubmitForm)} onKeyDown={handleKeyDown}>
         {/* 3. Kullanıcı Türü */}
         <div className="auth-page__field">
           <div className="floating-group">
@@ -92,7 +101,6 @@ function SignUp({ onToggle }) {
               id="role"
               className={`input input--select ${errors.role ? 'input--error' : ''}`}
               {...register('role')}
-              disabled={isLoading}
             >
               <option value="" disabled hidden></option>
               <option value="ADMIN">Admin</option>
@@ -115,7 +123,6 @@ function SignUp({ onToggle }) {
                 id="location"
                 className={`input input--select ${errors.locationId ? 'input--error' : ''}`}
                 {...register('locationId')}
-                disabled={isLoading}
               >
                 <option value="" disabled hidden></option>
                 {locations.map((loc) => (
@@ -142,7 +149,7 @@ function SignUp({ onToggle }) {
                 id="unit"
                 className={`input input--select ${errors.unitId ? 'input--error' : ''}`}
                 {...register('unitId')}
-                disabled={!locationId || isLoading}
+                disabled={!locationId}
               >
                 <option value="" disabled hidden></option>
                 {units.map((unit) => (
@@ -170,7 +177,6 @@ function SignUp({ onToggle }) {
               type="text"
               placeholder=" "
               {...register('username')}
-              disabled={isLoading}
             />
             <label className="floating-group__label" htmlFor="username">
               Kullanıcı Adı
@@ -190,7 +196,6 @@ function SignUp({ onToggle }) {
               type="password"
               placeholder=" "
               {...register('password')}
-              disabled={isLoading}
             />
             <label className="floating-group__label" htmlFor="password">
               Şifre

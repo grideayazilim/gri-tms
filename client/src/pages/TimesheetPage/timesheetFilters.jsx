@@ -25,7 +25,7 @@ export const getTimesheetFilterConfig = (periods, locations, units) => [
   {
     key: "search",
     apiParam: "search",
-    label: "Çalışan Adı Ara",
+    label: "Çalışan Ara",
     type: "text",
   },
 ];

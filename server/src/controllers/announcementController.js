@@ -24,7 +24,7 @@ export async function getAnnouncements(req, res) {
           a.title, 
           a.content,
           to_char(a.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at,
-          CASE WHEN r.id IS NOT NULL THEN true ELSE false END AS is_read
+          CASE WHEN r.announcement_id IS NOT NULL THEN true ELSE false END AS is_read
         FROM app.announcements a
         LEFT JOIN app.announcement_reads r ON r.announcement_id = a.id AND r.user_id = $1
         ORDER BY a.created_at DESC

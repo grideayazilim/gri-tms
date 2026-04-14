@@ -14,7 +14,7 @@ export const jwtConfig = {
 export const cookieConfig = {
   httpOnly: true, // JavaScript tarafından erişilemez
   sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-  secure: process.env.NODE_ENV === 'production', // Production'da HTTPS zorunlu
+  secure: process.env.COOKIE_SECURE === 'true', // HTTPS varsa true, HTTP ise false
   maxAge: {
     access: 15 * 60 * 1000, // 15 dakika (ms)
     refresh: 7 * 24 * 60 * 60 * 1000, // 7 gün (ms)

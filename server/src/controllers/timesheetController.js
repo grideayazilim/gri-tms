@@ -50,7 +50,7 @@ export async function getTimesheets(req, res) {
         return { timesheets: [], totalRecords: 0 };
 
       // ── 2) Çalışan filtre koşulları (scope + query params) ────────────────
-      const empConditions = [];
+      const empConditions = ['e.is_active = true'];
       const empParams = [];
       let pi = 1;
 
@@ -140,7 +140,7 @@ export async function getTimesheets(req, res) {
         LEFT JOIN app.timesheets t
           ON t.employee_id = e.id AND t.period_id = $${periodParamIdx}::uuid
         ${whereClause}
-        ORDER BY e.last_name, e.first_name
+        ORDER BY e.first_name, e.last_name
         LIMIT  $${limitParamIdx}
         OFFSET $${offsetParamIdx}
       `;
@@ -294,7 +294,7 @@ export async function createOrUpdateTimesheets(req, res) {
         `SELECT e.id, e.unit_id, e.first_name, e.last_name, u.location_id
          FROM app.employees e
          JOIN app.units u ON u.id = e.unit_id
-         WHERE e.id = ANY($1)`,
+         WHERE e.id = ANY($1) AND e.is_active = true`,
         [employeeIds],
       );
 

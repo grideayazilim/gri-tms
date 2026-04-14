@@ -38,39 +38,33 @@ export const usePublicHolidays = (period) => {
 
   // Seçili aya ait tatil günlerini Set olarak hesapla
   const holidayDays = useMemo(() => {
-    if (!month || holidays.length === 0) return new Set();
+    if (holidays.length === 0) return new Set();
 
     const days = new Set();
     for (const h of holidays) {
-      const [hYear, hMonth, hDay] = h.date.split("-").map(Number);
-      if (hYear === year && hMonth === month) {
-        days.add(hDay);
-      }
+      days.add(h.date);
     }
     return days;
-  }, [holidays, year, month]);
+  }, [holidays]);
 
   // Tatil günü adları (tooltip'te göstermek için)
   const holidayNames = useMemo(() => {
-    if (!month || holidays.length === 0) return new Map();
+    if (holidays.length === 0) return new Map();
 
     const names = new Map();
     for (const h of holidays) {
-      const [hYear, hMonth, hDay] = h.date.split("-").map(Number);
-      if (hYear === year && hMonth === month) {
-        names.set(hDay, h.localName);
-      }
+      names.set(h.date, h.localName);
     }
     return names;
-  }, [holidays, year, month]);
+  }, [holidays]);
 
   const isPublicHoliday = useCallback(
-    (day) => holidayDays.has(day),
+    (dateStr) => holidayDays.has(dateStr),
     [holidayDays],
   );
 
   const getHolidayName = useCallback(
-    (day) => holidayNames.get(day) || null,
+    (dateStr) => holidayNames.get(dateStr) || null,
     [holidayNames],
   );
 

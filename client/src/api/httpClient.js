@@ -20,9 +20,20 @@ httpClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Eğer refresh veya me endpoint'i fail olduysa, infinite loop'u önle
-    if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/me')) {
-      return Promise.reject(error);
+    // Eğer login, register, refresh veya me endpoint'i fail olduysa, auto-refresh yapma
+    if (
+      originalRequest.url?.includes('/auth/refresh') ||
+      originalRequest.url?.includes('/auth/me') ||
+      originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/register')
+    ) {
+      if (error.response) {
+        return Promise.reject({
+          message: error.response.data.message || 'Bir hata oluştu',
+          status: error.response.status,
+        });
+      }
+      return Promise.reject({ message: 'Sunucuya ulaşılamıyor', status: 0 });
     }
 
     // 401 ve henüz retry yapılmadıysa

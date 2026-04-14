@@ -8,6 +8,7 @@ import EmployeeModal from './EmployeeModal/EmployeeModal';
 import { useFilter } from '../../hooks/data/useFilter';
 import { getEmployeeFilterConfig } from './employeeFilters';
 import { useEmployees } from '../../hooks/data/useEmployees';
+import { useLocationsAndUnits } from '../../hooks/data/useLocationsAndUnits';
 import '../../styles/inputs.scss';
 
 const EmployeesPage = () => {
@@ -21,38 +22,52 @@ const EmployeesPage = () => {
   } = useEmployees();
   const { showConfirm, showModal } = useModal();
 
-  // İlk yüklemede çalışanları getir
-  useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+  const {
+    locations: apiLocations,
+    units: apiUnits,
+    fetchLocations,
+    fetchUnitsByLocation,
+  } = useLocationsAndUnits();
 
-  // Filtre seçeneklerini gerçek veriden türet
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
+
   const locationOptions = useMemo(
-    () => [...new Set(employees.map(e => e.unit?.location?.name).filter(Boolean))],
-    [employees]
+    () => apiLocations.map(l => ({ label: l.name, value: String(l.id) })),
+    [apiLocations]
   );
   const unitOptions = useMemo(
-    () => [...new Set(employees.map(e => e.unit?.name).filter(Boolean))],
-    [employees]
+    () => apiUnits.map(u => ({ label: u.name, value: String(u.id) })),
+    [apiUnits]
   );
 
-  const filterConfig = getEmployeeFilterConfig(locationOptions, unitOptions);
-  const { filters, handleFilterChange } = useFilter(filterConfig, {
-    locationName: '',
-    unitName: '',
+  const filterConfig = useMemo(
+    () => getEmployeeFilterConfig(locationOptions, unitOptions),
+    [locationOptions, unitOptions]
+  );
+  const { filters, apiParams, handleFilterChange } = useFilter(filterConfig, {
+    locationId: '',
+    unitId: '',
+    status: '',
     search: '',
   });
 
-  // Client-side filtering: apply each filter's `apply` function
-  const filteredEmployees = useMemo(() => {
-    return employees.filter(emp =>
-      filterConfig.every(config => {
-        const value = filters[config.key];
-        if (!value || !config.apply) return true;
-        return config.apply(emp, value);
-      })
-    );
-  }, [employees, filters, filterConfig]);
+  // Seçili yerleşke değişince birimleri yükle
+  useEffect(() => {
+    if (filters.locationId) {
+      fetchUnitsByLocation(filters.locationId);
+    }
+    // Yerleşke temizlenince birim filtresini de sıfırla
+    if (!filters.locationId) {
+      handleFilterChange('unitId', '');
+    }
+  }, [filters.locationId, fetchUnitsByLocation, handleFilterChange]);
+
+  // İlk yüklemede ve filtre değiştiğinde çalışanları getir
+  useEffect(() => {
+    fetchEmployees(apiParams);
+  }, [fetchEmployees, apiParams]);
 
   const handleDelete = async (employeeId) => {
     const confirmed = await showConfirm({
@@ -118,7 +133,7 @@ const EmployeesPage = () => {
       <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
       <DynamicTable
         columns={employeeColumns(handleEdit, handleDelete)}
-        data={filteredEmployees}
+        data={employees}
         loading={isLoading}
         pageSize={10}
       />

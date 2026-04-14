@@ -1,6 +1,7 @@
 import "dotenv/config";
 import app from "./app.js";
 import { pool } from "./config/database.js";
+import { initCronJobs } from "./utils/cronJobs.js";
 
 const PORT = process.env.PORT || 3000;
 
@@ -14,6 +15,7 @@ pool.query("SELECT NOW()", (err, res) => {
     
     app.listen(PORT, () => {
       console.log(`🚀 Server http://localhost:${PORT} adresinde yayında!`);
+      initCronJobs();
     });
   }
 });

@@ -1,31 +1,26 @@
-import { AUDIT_EVENTS } from '../../constants/auditEvents';
-import { USER_ROLES } from '../../constants/users';
+import { getAuditEventConfig } from '../../constants/auditEvents';
 import PopUpColumn from './PopUpColumn/PopUpColumn';
 
-const ACTION_BADGE_MAP = {
-    CREATE: { label: 'Oluştur', cls: 'create' },
-    UPDATE: { label: 'Güncelle', cls: 'update' },
-    DELETE: { label: 'Sil',     cls: 'delete' },
-    LOGIN:  { label: 'Giriş',   cls: 'login'  },
-    LOGOUT: { label: 'Çıkış',   cls: 'logout' },
-};
+const Pill = ({ cfg }) => (
+  <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '12px', fontWeight: 600, background: cfg.bg, color: cfg.color }}>
+    {cfg.label}
+  </span>
+);
 
 export const auditLogColumns = [
     {
         header: 'İşlem Tipi',
-        render: (row) => {
-            const badge = ACTION_BADGE_MAP[row.eventType] || { label: row.eventType, cls: 'default' };
-            const label = AUDIT_EVENTS[row.eventType]?.label ?? badge.label;
-            return <span className={`badge badge--${badge.cls}`}>{label}</span>;
-        },
+        render: (row) => <Pill cfg={getAuditEventConfig(row.eventType)} />,
     },
     {
         header: 'İşlemi Yapan',
         render: (row) => {
-             const roleLabel = USER_ROLES[row.userRole]?.label || row.userRole || 'Sistem';
              return (
                  <span>
-                     <strong>{row.username}</strong> ({roleLabel})
+                     <strong>{row.username}</strong>
+                     <span style={{ fontSize: "11px", color: "var(--text-secondary)", marginLeft: "4px" }}>
+                       ({row.userRole || 'Sistem'})
+                     </span>
                  </span>
              );
         }

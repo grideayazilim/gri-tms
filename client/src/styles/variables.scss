@@ -52,11 +52,16 @@
   --font-weight-bold: 800;
 
   /* ============ Spacing =============== */
-  --space-xs: 8px; /* Buton dikey padding, ikon-text arası gap vermek için kullanılır */
-  --space-sm: 12px; /* Buton yatay padding, input ve card padding vermek için kullanılır */
-  --space-md: 16px; /* Component arası gap vermek için kullanılır */
-  --space-lg: 24px; /* Section padding vermek için kullanılır */
-  --space-xl: 32px; /* Section arası gap vermek için kullanılır */
+  --space-xs: 8px;
+  /* Buton dikey padding, ikon-text arası gap vermek için kullanılır */
+  --space-sm: 12px;
+  /* Buton yatay padding, input ve card padding vermek için kullanılır */
+  --space-md: 16px;
+  /* Component arası gap vermek için kullanılır */
+  --space-lg: 24px;
+  /* Section padding vermek için kullanılır */
+  --space-xl: 32px;
+  /* Section arası gap vermek için kullanılır */
 
   /* =========== Border Radius =========== */
   --radius-sm: 4px;

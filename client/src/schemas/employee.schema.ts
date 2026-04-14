@@ -15,4 +15,5 @@ export const employeeSchema = z.object({
         .optional()
         .nullable()
         .or(z.literal('')),
+    isActive: z.boolean().default(true),
 });

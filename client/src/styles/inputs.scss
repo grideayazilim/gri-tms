@@ -76,11 +76,9 @@ $control-height-sm: 32px;
     }
 
     option:checked {
-      background-color: color-mix(
-        in srgb,
-        var(--brand-color) 16%,
-        var(--surface-color)
-      );
+      background-color: color-mix(in srgb,
+          var(--brand-color) 16%,
+          var(--surface-color));
       color: var(--text-primary);
     }
   }
@@ -151,14 +149,14 @@ $control-height-sm: 32px;
   }
 
   // Textarea kullanıldığında label her zaman input'un yüksekliğinin tam ortasında durmasın
-  textarea.input ~ &__label {
+  textarea.input~&__label {
     top: 20px;
   }
 
   // --- Label Animasyonu (Hata durumu dahil)
-  .input:focus ~ .floating-group__label,
-  .input:not(:placeholder-shown) ~ .floating-group__label,
-  .input--error ~ .floating-group__label {
+  .input:focus~.floating-group__label,
+  .input:not(:placeholder-shown)~.floating-group__label,
+  .input--error~.floating-group__label {
     top: 0;
     font-size: 12px;
     color: var(--brand-color);
@@ -168,10 +166,11 @@ $control-height-sm: 32px;
     margin-left: -4px;
   }
 
-  .input:not(:focus):not(:placeholder-shown) ~ .floating-group__label {
+  .input:not(:focus):not(:placeholder-shown)~.floating-group__label {
     color: var(--text-secondary);
   }
-  .input--error ~ .floating-group__label {
+
+  .input--error~.floating-group__label {
     color: #ff4d4f !important;
   }
 
@@ -187,14 +186,14 @@ $control-height-sm: 32px;
       }
     }
 
-    .input:focus ~ .floating-group__label,
-    .input:not(:placeholder-shown) ~ .floating-group__label,
-    .input--error ~ .floating-group__label {
+    .input:focus~.floating-group__label,
+    .input:not(:placeholder-shown)~.floating-group__label,
+    .input--error~.floating-group__label {
       background-color: var(--background-color);
     }
 
     // Error durumunda label kırmızı olsun
-    .input--error ~ .floating-group__label {
+    .input--error~.floating-group__label {
       color: #ff4d4f !important;
     }
   }

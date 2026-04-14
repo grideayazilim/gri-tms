@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true };
     } catch (error) {
       console.error('❌ Login error:', error);
-      const errorMessage = error.message || 'Giriş başarısız';
+      const errorMessage = error.message || 'Kullanıcı adı veya şifre yanlış';
       return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);

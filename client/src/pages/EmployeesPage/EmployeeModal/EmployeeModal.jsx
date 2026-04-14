@@ -32,6 +32,7 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
       startDate: employee?.startDate ? employee.startDate.slice(0, 10) : "",
       endDate: employee?.endDate ? employee.endDate.slice(0, 10) : "",
       ibanNo: employee?.ibanNo ?? "",
+      isActive: employee?.isActive ?? true,
     },
   });
 
@@ -74,8 +75,9 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
         lastName: data.lastName,
         unitId: data.unitId,
         startDate: data.startDate,
-        endDate: data.endDate || null,
+        endDate: data.isActive ? null : data.endDate || null,
         ibanNo: data.ibanNo || null,
+        isActive: data.isActive,
       };
       const result = await onSave(payload);
       if (result && result.success === false) {
@@ -115,9 +117,9 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
 
       {currentMode === "SINGLE" ? (
         <form className="modal-form" onSubmit={handleSubmit(onSubmit)}>
-          {/* TC No + Ad */}
+          {/* TC No */}
           <div className="settings-row">
-            <div className="floating-group">
+            <div className="floating-group flex-full">
               <input
                 type="text"
                 id="tcNo"
@@ -135,6 +137,10 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
                 </span>
               )}
             </div>
+          </div>
+
+          {/* Ad + Soyad */}
+          <div className="settings-row">
             <div className="floating-group">
               <input
                 type="text"
@@ -152,11 +158,7 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
                 </span>
               )}
             </div>
-          </div>
-
-          {/* Soyad */}
-          <div className="settings-row">
-            <div className="floating-group flex-full">
+            <div className="floating-group">
               <input
                 type="text"
                 id="lastName"
@@ -253,6 +255,7 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
                 id="endDate"
                 className={`input ${errors.endDate ? "input--error" : ""}`}
                 placeholder=" "
+                disabled={watch("isActive")}
                 {...register("endDate")}
               />
               <label htmlFor="endDate" className="floating-group__label">
@@ -264,6 +267,16 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
                 </span>
               )}
             </div>
+          </div>
+
+          <div style={{ marginBottom: "16px", display: "flex", gap: "8px", alignItems: "center", cursor: "pointer", color: "var(--text-secondary)", fontSize: "14px" }}>
+            <input
+              type="checkbox"
+              id="isActiveCheck"
+              {...register("isActive")}
+              style={{ width: "16px", height: "16px", cursor: "pointer" }}
+            />
+            <label htmlFor="isActiveCheck" style={{ cursor: "pointer" }}>Çalışmaya devam ediyor mu?</label>
           </div>
 
           {/* IBAN */}

@@ -2,37 +2,58 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { userEditSchema } from '../../../schemas/user.schema';
+import { useLocationsAndUnits } from '../../../hooks/data/useLocationsAndUnits';
 import './UserEditModal.scss';
 
 const UserEditModal = ({ user, onClose, onSave }) => {
+  const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors, isDirty },
     reset,
   } = useForm({
     resolver: zodResolver(userEditSchema),
     defaultValues: {
       role: user?.role || '',
-      validityDate: user?.lastLogin || '', // Map lastLogin for now as validity date
-      location: user?.location || '',
-      unit: user?.unit || '',
+      validityDate: user?.expiryDate ? user.expiryDate.slice(0, 10) : '',
+      locationId: user?.unit?.location?.id?.toString() || '',
+      unitId: user?.unit?.id?.toString() || '',
     },
   });
+
+
+
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
+
+  useEffect(() => {
+    if (user?.unit?.location?.id) {
+      fetchUnitsByLocation(user.unit.location.id);
+    }
+  }, [user, fetchUnitsByLocation]);
 
   useEffect(() => {
     if (user) {
       reset({
         role: user.role || '',
-        validityDate: user.lastLogin || '', // Map lastLogin for now as validity date
-        location: user.location || '',
-        unit: user.unit || '',
+        validityDate: user.expiryDate ? user.expiryDate.slice(0, 10) : '',
+        locationId: user.unit?.location?.id?.toString() || '',
+        unitId: user.unit?.id?.toString() || '',
       });
     }
   }, [user, reset]);
 
   const onSubmit = (data) => {
-    onSave(data);
+    onSave({
+      role: data.role,
+      expiryDate: data.validityDate || null,
+      locationId: data.locationId || null,
+      unitId: data.unitId || null,
+    });
   };
 
   return (
@@ -76,37 +97,46 @@ const UserEditModal = ({ user, onClose, onSave }) => {
       <div className="settings-row">
          <div className="floating-group">
           <select
-            id="location"
-            className={`input ${errors.location ? 'input--error' : ''}`}
-            {...register('location')}
+            id="locationId"
+            className={`input ${errors.locationId ? 'input--error' : ''}`}
+            // Standart register yerine e.target.value ataması yapıp alt menüyü boşaltalım
+            {...register('locationId')}
+            onChange={(e) => {
+              const locId = e.target.value;
+              setValue('locationId', locId, { shouldDirty: true });
+              setValue('unitId', '', { shouldDirty: true });
+              if (locId) fetchUnitsByLocation(locId);
+            }}
           >
             <option value="" disabled hidden></option>
-            <option value="Merkez Kampüs">Merkez Kampüs</option>
-            <option value="Kuzey Kampüs">Kuzey Kampüs</option>
+            {locations.map(loc => (
+              <option key={loc.id} value={loc.id}>{loc.name}</option>
+            ))}
           </select>
-          <label htmlFor="location" className="floating-group__label">
+          <label htmlFor="locationId" className="floating-group__label">
             Yerleşke
           </label>
-          {errors.location && (
-            <span className="input-error-message">{errors.location.message}</span>
+          {errors.locationId && (
+            <span className="input-error-message">{errors.locationId.message}</span>
           )}
         </div>
 
         <div className="floating-group">
           <select
-            id="unit"
-            className={`input ${errors.unit ? 'input--error' : ''}`}
-            {...register('unit')}
+            id="unitId"
+            className={`input ${errors.unitId ? 'input--error' : ''}`}
+            {...register('unitId')}
           >
             <option value="" disabled hidden></option>
-            <option value="Bilgisayar Mühendisliği">Bilgisayar Mühendisliği</option>
-            <option value="Yazılım Mühendisliği">Yazılım Mühendisliği</option>
+            {units.map(unit => (
+              <option key={unit.id} value={unit.id}>{unit.name}</option>
+            ))}
           </select>
-          <label htmlFor="unit" className="floating-group__label">
+          <label htmlFor="unitId" className="floating-group__label">
             Birim
           </label>
-          {errors.unit && (
-            <span className="input-error-message">{errors.unit.message}</span>
+          {errors.unitId && (
+            <span className="input-error-message">{errors.unitId.message}</span>
           )}
         </div>
       </div>

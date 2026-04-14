@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { AiOutlineBell } from "react-icons/ai";
 import DynamicTable from "../../components/DynamicTable/DynamicTable";
 import { timesheetColumns } from "./timesheetColumns";
@@ -35,10 +36,12 @@ const MONTH_LABELS = [
   "Aralık",
 ];
 
-// DB'den gelen period'u { value, label } formatına dönüştürür
+// DB'den gelen period'u { value, label, startDate, endDate } formatına dönüştürür
 const mapPeriod = (p) => ({
   value: `${p.year}-${String(p.month).padStart(2, "0")}`,
   label: `${p.year} ${MONTH_LABELS[p.month - 1]}`,
+  startDate: p.start_date,
+  endDate: p.end_date,
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,10 +230,10 @@ const TimesheetPage = () => {
   // HÜCRE TIKLAMA — sol tık: X, sağ tık: diğer işaretçiler (markerCode ile gelir)
   // ─────────────────────────────────────────────────────────────────────────
   const handleDayClick = useCallback(
-    (row, day, markerCode) => {
+    (row, dateStr, markerCode) => {
       // Resmi tatilde değişiklik yapılmasın
-      if (isPublicHoliday(day)) {
-        const holidayName = getHolidayName(day) || "Resmi tatil";
+      if (isPublicHoliday(dateStr)) {
+        const holidayName = getHolidayName(dateStr) || "Resmi tatil";
         toast({
           type: "warning",
           message: `${holidayName} — bu gün resmi tatildir, işaretçi girilemez.`,
@@ -251,8 +254,7 @@ const TimesheetPage = () => {
         prev.map((r) => {
           if (r.id !== row.id) return r;
 
-          const dayStr = day.toString().padStart(2, "0");
-          const key = `${filters.period}-${dayStr}`;
+          const key = dateStr;
 
           const newDays = { ...r.timesheet_days };
           // Aynı marker tekrar tıklanırsa kaldır (toggle)
@@ -278,9 +280,8 @@ const TimesheetPage = () => {
   // DİRTY STATE — değişen hücreleri işaretler
   // ─────────────────────────────────────────────────────────────────────────
   const isDayCellDirty = useCallback(
-    (rowId, day) => {
-      const dayStr = day.toString().padStart(2, "0");
-      const key = `${filters.period}-${dayStr}`;
+    (rowId, dateStr) => {
+      const key = dateStr;
 
       const originalRow = originalSnapshot.find((r) => r.id === rowId);
       if (!originalRow) return false;
@@ -386,12 +387,27 @@ const TimesheetPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER YARDIMCILARI
   // ─────────────────────────────────────────────────────────────────────────
-  const getDaysInMonth = (periodStr) => {
-    if (!periodStr) return 30;
-    const [year, month] = periodStr.split("-");
-    return new Date(year, month, 0).getDate();
-  };
-  const currentDaysInMonth = getDaysInMonth(filters.period);
+  const activePeriod = useMemo(() => {
+    return periods.find((p) => p.value === filters.period) || null;
+  }, [periods, filters.period]);
+
+  const periodDays = useMemo(() => {
+    if (!activePeriod || !activePeriod.startDate || !activePeriod.endDate) {
+      if (!filters.period) return [];
+      const [year, month] = filters.period.split("-");
+      const d = new Date(year, month, 0).getDate();
+      return Array.from({ length: d }, (_, i) => `${year}-${month}-${String(i + 1).padStart(2, "0")}`);
+    }
+    try {
+      const start = parseISO(activePeriod.startDate);
+      const end = parseISO(activePeriod.endDate);
+      const interval = eachDayOfInterval({ start, end });
+      return interval.map((d) => format(d, "yyyy-MM-dd"));
+    } catch {
+      return [];
+    }
+  }, [activePeriod, filters.period]);
+
   const userName = user?.name || user?.username || "Kullanıcı";
 
   const headerActions = (
@@ -457,7 +473,7 @@ const TimesheetPage = () => {
 
       <DynamicTable
         columns={timesheetColumns(
-          currentDaysInMonth,
+          periodDays,
           handleDayClick,
           isDayCellDirty,
           filters.period,

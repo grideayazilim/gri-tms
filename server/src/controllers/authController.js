@@ -94,11 +94,18 @@ export async function login(req, res) {
     if (result.rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Geçersiz kullanıcı adı veya şifre',
+        message: 'Kullanıcı adı veya şifre yanlış',
       });
     }
 
     const user = result.rows[0];
+
+    if (user.status === 'EXPIRED') {
+      return res.status(403).json({
+        success: false,
+        message: 'Hesabınızın süresi dolmuştur. Sisteme giriş yapamazsınız.',
+      });
+    }
 
     if (user.status !== 'ACTIVE') {
       return res.status(403).json({
@@ -111,7 +118,7 @@ export async function login(req, res) {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Geçersiz kullanıcı adı veya şifre',
+        message: 'Kullanıcı adı veya şifre yanlış',
       });
     }
 

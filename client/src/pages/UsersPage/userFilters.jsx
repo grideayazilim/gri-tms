@@ -1,52 +1,46 @@
-export const userFilterConfig = [
-  { 
-    key: 'role', 
-    label: 'Rol', 
-    type: 'select', 
-    options: [
-      { value: 'ADMIN', label: 'Admin' }, 
-      { value: 'RESPONSIBLE', label: 'Sorumlu' }
-    ], 
-    defaultOption: 'Tüm Roller',
-    apply: (user, value) => user.role === value
-  },
-  { 
-    key: 'status', 
-    label: 'Durum', 
-    type: 'select', 
-    options: [
-      { value: 'ACTIVE', label: 'Aktif' }, 
-      { value: 'PENDING', label: 'Onay Bekliyor' }
-    ], 
-    defaultOption: 'Tüm Durumlar',
-    apply: (user, value) => user.status === value
-  },
+export const userFilterConfig = (locations, units) => [
   {
-    key: 'location',
+    key: 'locationId',
+    apiParam: 'locationId',
     label: 'Yerleşke',
     type: 'select',
-    options: [
-      { value: 'Merkez Kampüs', label: 'Merkez Kampüs' },
-      { value: 'Kuzey Kampüs', label: 'Kuzey Kampüs' }
-    ],
+    options: locations,
     defaultOption: 'Tüm Yerleşkeler',
-    apply: (user, value) => user.location === value
   },
   {
-    key: 'unit',
+    key: 'unitId',
+    apiParam: 'unitId',
     label: 'Birim',
     type: 'select',
-    options: [
-      { value: 'Bilgisayar Mühendisliği', label: 'Bilgisayar Mühendisliği' },
-      { value: 'Yazılım Mühendisliği', label: 'Yazılım Mühendisliği' }
-    ],
+    options: units,
     defaultOption: 'Tüm Birimler',
-    apply: (user, value) => user.unit === value
   },
-  { 
-    key: 'search', 
-    label: 'Kullanıcı Adı Ara', 
+  {
+    key: 'role',
+    apiParam: 'role',
+    label: 'Rol',
+    type: 'select',
+    options: [
+      { value: 'ADMIN', label: 'Admin' },
+      { value: 'RESPONSIBLE', label: 'Sorumlu' }
+    ],
+    defaultOption: 'Tüm Roller',
+  },
+  {
+    key: 'status',
+    apiParam: 'status',
+    label: 'Durum',
+    type: 'select',
+    options: [
+      { value: 'ACTIVE', label: 'Aktif' },
+      { value: 'PENDING', label: 'Onay Bekliyor' }
+    ],
+    defaultOption: 'Tüm Durumlar',
+  },
+  {
+    key: 'search',
+    apiParam: 'search',
+    label: 'Kullanıcı Ara',
     type: 'text',
-    apply: (user, value) => user.username.toLowerCase().includes(value.toLowerCase())
   },
 ];

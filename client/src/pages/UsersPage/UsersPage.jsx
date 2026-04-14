@@ -8,17 +8,59 @@ import UserEditModal from "./UserEditModal/UserEditModal";
 import { useFilter } from "../../hooks/data/useFilter";
 import { userFilterConfig } from "./userFilters";
 import { useUsers } from "../../hooks/data/useUsers";
+import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
+import { useMemo } from "react";
 import "../../styles/inputs.scss";
 
 const UsersPage = () => {
   const { users, isLoading, error, fetchUsers, editUser, removeUser } =
     useUsers();
+  
+  const {
+    locations: apiLocations,
+    units: apiUnits,
+    fetchLocations,
+    fetchUnitsByLocation,
+  } = useLocationsAndUnits();
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchLocations();
+  }, [fetchLocations]);
 
-  console.log("USERS STATE:", users);
+  const locationOptions = useMemo(
+    () => apiLocations.map((l) => ({ label: l.name, value: String(l.id) })),
+    [apiLocations]
+  );
+  const unitOptions = useMemo(
+    () => apiUnits.map((u) => ({ label: u.name, value: String(u.id) })),
+    [apiUnits]
+  );
+
+  const filterConfig = useMemo(
+    () => userFilterConfig(locationOptions, unitOptions),
+    [locationOptions, unitOptions]
+  );
+
+  const { filters, apiParams, handleFilterChange } = useFilter(filterConfig, {
+    role: "",
+    status: "",
+    locationId: "",
+    unitId: "",
+    search: "",
+  });
+
+  useEffect(() => {
+    if (filters.locationId) {
+      fetchUnitsByLocation(filters.locationId);
+    }
+    if (!filters.locationId) {
+      handleFilterChange("unitId", "");
+    }
+  }, [filters.locationId, fetchUnitsByLocation, handleFilterChange]);
+
+  useEffect(() => {
+    fetchUsers(apiParams);
+  }, [fetchUsers, apiParams]);
 
   const { showConfirm, showModal, closeModal } = useModal();
 
@@ -66,19 +108,13 @@ const UsersPage = () => {
     }
   };
 
-  const { filters, handleFilterChange } = useFilter(userFilterConfig, {
-    role: "",
-    status: "",
-    location: "",
-    unit: "",
-    search: "",
-  });
+
 
   return (
     <PageShell title="Kullanıcılar">
       {/* Filters */}
       <FilterBar
-        config={userFilterConfig}
+        config={filterConfig}
         filters={filters}
         onFilterChange={handleFilterChange}
       />
@@ -87,6 +123,7 @@ const UsersPage = () => {
       <DynamicTable
         columns={userColumns(handleEdit, handleDelete)}
         data={users}
+        loading={isLoading}
         pageSize={10}
       />
     </PageShell>

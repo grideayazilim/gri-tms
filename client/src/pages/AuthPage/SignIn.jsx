@@ -21,9 +21,17 @@ function SignIn({ onToggle }) {
     defaultValues: {
       username: "",
       password: "",
-      rememberMe: false,
     },
   });
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!isLoading) {
+        handleSubmit(onSubmitForm)();
+      }
+    }
+  };
 
   const onSubmitForm = async (data) => {
     setGeneralError("");
@@ -47,7 +55,7 @@ function SignIn({ onToggle }) {
         Lütfen kullanıcı adınızı ve şifrenizi giriniz.
       </p>
 
-      <form className="auth-page__form" onSubmit={handleSubmit(onSubmitForm)}>
+      <form className="auth-page__form" onSubmit={handleSubmit(onSubmitForm)} onKeyDown={handleKeyDown}>
 
         <div className="auth-page__field">
           <div className="floating-group">
@@ -57,7 +65,6 @@ function SignIn({ onToggle }) {
               type="text"
               placeholder=" "
               {...register('username')}
-              disabled={isLoading}
             />
             <label className="floating-group__label" htmlFor="username">
               Kullanıcı Adı
@@ -76,7 +83,6 @@ function SignIn({ onToggle }) {
               type="password"
               placeholder=" "
               {...register('password')}
-              disabled={isLoading}
             />
             <label className="floating-group__label" htmlFor="password">
               Şifre
@@ -85,20 +91,6 @@ function SignIn({ onToggle }) {
               <span className="input-error-message">{errors.password.message}</span>
             )}
           </div>
-          <span className="auth-page__forgot">Şifreni mi unuttun?</span>
-        </div>
-
-        <div className="auth-page__remember">
-          <input
-            id="rememberMe"
-            type="checkbox"
-            className="auth-page__checkbox"
-            {...register('rememberMe')}
-            disabled={isLoading}
-          />
-          <label htmlFor="rememberMe" className="auth-page__remember-label">
-            Şifreyi hatırla
-          </label>
         </div>
 
         <button type="submit" className="btn auth-page__btn" disabled={isLoading}>

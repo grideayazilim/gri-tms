@@ -5,21 +5,19 @@ import { tr } from "date-fns/locale";
 import { MARKER_LIST, MARKERS } from "../../../constants/markers";
 import "./TimesheetDaysColumn.scss";
 
-const getDayValue = (timesheetDays, day) => {
-  if (!timesheetDays) return "";
-  const dayStr = day.toString().padStart(2, "0");
-  const key = Object.keys(timesheetDays).find((k) => k.endsWith(`-${dayStr}`));
-  return key ? timesheetDays[key] : "";
+const getDayValue = (timesheetDays, dateStr) => {
+  if (!timesheetDays || !dateStr) return "";
+  return timesheetDays[dateStr] || "";
 };
 
-const isWeekendDay = (period, day) => {
-  if (!period) return false;
-
-  const [year, month] = period.split("-").map(Number);
-  if (!year || !month) return false;
-
-  const weekday = new Date(year, month - 1, day).getDay();
-  return weekday === 0 || weekday === 6;
+const isWeekendDay = (dateStr) => {
+  if (!dateStr) return false;
+  try {
+    const weekday = parseISO(dateStr).getDay();
+    return weekday === 0 || weekday === 6;
+  } catch {
+    return false;
+  }
 };
 
 // X dışındaki işaretçiler — sağ tık / long press menüsünde gösterilir
@@ -29,16 +27,16 @@ const OTHER_MARKERS = MARKER_LIST.filter((m) => m.code !== MARKERS.X.code);
  * Bir satırdaki tüm gün hücrelerini render eden sütun bileşeni.
  *
  * @param {object}   timesheetDays   - { "2026-02-05": "X", ... }
- * @param {number}   daysInMonth     - ayın gün sayısı
+ * @param {string[]} periodDays      - periyottaki günlerin array'i
  * @param {string}   period          - YYYY-MM
- * @param {function} onDayClick      - (day, markerCode) => void
- * @param {function} isDayCellDirty  - (day) => boolean — opsiyonel
- * @param {function} isPublicHoliday - (day) => boolean — opsiyonel
+ * @param {function} onDayClick      - (dateStr, markerCode) => void
+ * @param {function} isDayCellDirty  - (dateStr) => boolean — opsiyonel
+ * @param {function} isPublicHoliday - (dateStr) => boolean — opsiyonel
  */
 const TimesheetDaysColumn = ({
   period,
   timesheetDays,
-  daysInMonth,
+  periodDays,
   onDayClick,
   isDayCellDirty,
   isPublicHoliday,
@@ -87,24 +85,22 @@ const TimesheetDaysColumn = ({
 
   // ── Tarih bilgisi formatı ──────────────────────────────────────────────
   const getDateTooltip = useCallback(
-    (day) => {
-      if (!period) return `Gün ${day}`;
-      const dayStr = day.toString().padStart(2, "0");
-      const dateStr = `${period}-${dayStr}`;
+    (dateStr) => {
+      if (!dateStr) return "";
       try {
         const date = parseISO(dateStr);
         return format(date, "d MMMM EEEE — yyyy", { locale: tr });
       } catch {
-        return `Gün ${day}`;
+        return dateStr;
       }
     },
-    [period],
+    [],
   );
 
   // ── Sağ tık — marker menüsü aç (desktop) ──────────────────────────────
-  const handleContextMenu = (e, day) => {
+  const handleContextMenu = (e, dateStr) => {
     e.preventDefault();
-    if (isLocked || isPublicHoliday?.(day)) return;
+    if (isLocked || isPublicHoliday?.(dateStr)) return;
 
     // Hover varsa hemen sıfırla
     clearTimeout(hoverCloseTimer.current);
@@ -115,14 +111,14 @@ const TimesheetDaysColumn = ({
     const rect = e.currentTarget.getBoundingClientRect();
     setMenuClosing(false);
     setContextMenu({
-      day,
+      day: dateStr,
       centerX: rect.left + rect.width / 2,
       y: rect.bottom + 8,
       showDate: false,
     });
   };
 
-  const handleTouchStart = (e, day) => {
+  const handleTouchStart = (e, dateStr) => {
     longPressTriggered.current = false;
     clearTimeout(hoverCloseTimer.current);
     clearTimeout(hoverTimer.current);
@@ -132,11 +128,11 @@ const TimesheetDaysColumn = ({
     const rect = e.currentTarget.getBoundingClientRect();
 
     longPressTimer.current = setTimeout(() => {
-      if (isLocked || isPublicHoliday?.(day)) return;
+      if (isLocked || isPublicHoliday?.(dateStr)) return;
       longPressTriggered.current = true;
       setMenuClosing(false);
       setContextMenu({
-        day,
+        day: dateStr,
         centerX: rect.left + rect.width / 2,
         y: rect.bottom + 8,
         showDate: true,
@@ -153,7 +149,7 @@ const TimesheetDaysColumn = ({
   };
 
   // Sol tık — long press tetiklendiyse tıklamayı yoksay
-  const handleClick = (day) => {
+  const handleClick = (dateStr) => {
     if (longPressTriggered.current) {
       longPressTriggered.current = false;
       return;
@@ -162,11 +158,11 @@ const TimesheetDaysColumn = ({
     clearTimeout(hoverTimer.current);
     setHoverDay(null);
     setHoverClosing(false);
-    onDayClick(day, MARKERS.X.code);
+    onDayClick(dateStr, MARKERS.X.code);
   };
 
   // ── Hover tooltip işlemleri ──────────────────────────────────────────────
-  const handleMouseEnter = (e, day) => {
+  const handleMouseEnter = (e, dateStr) => {
     if (longPressTriggered.current) return;
 
     clearTimeout(hoverCloseTimer.current);
@@ -180,7 +176,7 @@ const TimesheetDaysColumn = ({
     });
 
     hoverTimer.current = setTimeout(() => {
-      setHoverDay(day);
+      setHoverDay(dateStr);
     }, 400); // delayShow=400ms muadili
   };
 
@@ -215,16 +211,16 @@ const TimesheetDaysColumn = ({
 
   return (
     <div className="day-grid">
-      {Array.from({ length: daysInMonth }, (_, i) => {
-        const day = i + 1;
-        const value = getDayValue(timesheetDays, day);
-        const dirty = isDayCellDirty ? isDayCellDirty(day) : false;
-        const isWeekend = isWeekendDay(period, day);
-        const isHoliday = isPublicHoliday ? isPublicHoliday(day) : false;
+      {(periodDays || []).map((dateStr) => {
+        const day = parseInt(dateStr.split("-")[2], 10);
+        const value = getDayValue(timesheetDays, dateStr);
+        const dirty = isDayCellDirty ? isDayCellDirty(dateStr) : false;
+        const isWeekend = isWeekendDay(dateStr);
+        const isHoliday = isPublicHoliday ? isPublicHoliday(dateStr) : false;
 
         return (
           <button
-            key={day}
+            key={dateStr}
             type="button"
             className={[
               "ts-day-cell",
@@ -234,11 +230,11 @@ const TimesheetDaysColumn = ({
             ]
               .filter(Boolean)
               .join(" ")}
-            onMouseEnter={(e) => handleMouseEnter(e, day)}
+            onMouseEnter={(e) => handleMouseEnter(e, dateStr)}
             onMouseLeave={handleMouseLeave}
-            onClick={() => handleClick(day)}
-            onContextMenu={(e) => handleContextMenu(e, day)}
-            onTouchStart={(e) => handleTouchStart(e, day)}
+            onClick={() => handleClick(dateStr)}
+            onContextMenu={(e) => handleContextMenu(e, dateStr)}
+            onTouchStart={(e) => handleTouchStart(e, dateStr)}
             onTouchEnd={handleTouchEnd}
             onTouchMove={handleTouchMove}
             disabled={isLocked || isHoliday}

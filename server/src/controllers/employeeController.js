@@ -87,7 +87,7 @@ export async function getEmployees(req, res) {
         JOIN app.units u ON e.unit_id = u.id
         JOIN app.locations l ON u.location_id = l.id
         ${whereClause}
-        ORDER BY e.last_name, e.first_name
+        ORDER BY e.first_name, e.last_name
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}
       `;
       const dataResult = await client.query(dataQuery, [
@@ -157,8 +157,8 @@ export async function createEmployee(req, res) {
     const result = await withTransaction(async (client) => {
       const query = `
         INSERT INTO app.employees (tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, is_active)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING id, tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, created_at, updated_at
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id, tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, is_active, created_at, updated_at
       `;
       const { rows } = await client.query(query, [
         tcNo,
@@ -168,7 +168,7 @@ export async function createEmployee(req, res) {
         unitId,
         startDate,
         endDate || null,
-        true,
+        req.body.isActive !== undefined ? req.body.isActive : true,
       ]);
 
       // Birimi ve yerleşkeyi de getir
@@ -196,7 +196,7 @@ export async function createEmployee(req, res) {
           ibanNo: row.iban_no,
           startDate: row.start_date,
           endDate: row.end_date,
-          isActive: !row.end_date || new Date(row.end_date) >= new Date(),
+          isActive: row.is_active,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           unit: {
@@ -238,9 +238,10 @@ export async function updateEmployee(req, res) {
           unit_id    = COALESCE($5, unit_id),
           start_date = COALESCE($6, start_date),
           end_date   = $7,
+          is_active  = $8,
           updated_at = NOW()
-        WHERE id = $8
-        RETURNING id, tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, created_at, updated_at
+        WHERE id = $9
+        RETURNING id, tc_no, first_name, last_name, iban_no, unit_id, start_date, end_date, is_active, created_at, updated_at
       `;
       const { rows } = await client.query(query, [
         tcNo || null,
@@ -250,6 +251,7 @@ export async function updateEmployee(req, res) {
         unitId || null,
         startDate || null,
         endDate || null,
+        req.body.isActive !== undefined ? req.body.isActive : true,
         id,
       ]);
 
@@ -285,7 +287,7 @@ export async function updateEmployee(req, res) {
           ibanNo: row.iban_no,
           startDate: row.start_date,
           endDate: row.end_date,
-          isActive: !row.end_date || new Date(row.end_date) >= new Date(),
+          isActive: row.is_active,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           unit: {

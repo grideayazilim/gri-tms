@@ -1,31 +1,35 @@
 export const getEmployeeFilterConfig = (locations, units) => [
-  { 
-    key: 'locationName', 
-    label: 'Yerleşke', 
-    type: 'select', 
+  {
+    key: 'locationId',
+    apiParam: 'locationId',
+    label: 'Yerleşke',
+    type: 'select',
     options: locations,
     defaultOption: 'Tüm Yerleşkeler',
-    // Client-side apply for instant filtering
-    apply: (item, value) => item.unit?.location?.name === value,
   },
-  { 
-    key: 'unitName', 
-    label: 'Birim', 
-    type: 'select', 
+  {
+    key: 'unitId',
+    apiParam: 'unitId',
+    label: 'Birim',
+    type: 'select',
     options: units,
     defaultOption: 'Tüm Birimler',
-    apply: (item, value) => item.unit?.name === value,
   },
-  { 
-    key: 'search', 
-    label: 'Çalışan Ara', 
+  {
+    key: 'status',
+    apiParam: 'status',
+    label: 'Durum',
+    type: 'select',
+    options: [
+      { label: "Devam edenler", value: "active" },
+      { label: "İşten çıkarılanlar", value: "inactive" },
+    ],
+    defaultOption: 'Tüm durumlar',
+  },
+  {
+    key: 'search',
+    apiParam: 'search',
+    label: 'Çalışan Ara',
     type: 'text',
-    apply: (item, value) => {
-      const fullName = `${item.firstName} ${item.lastName}`.toLowerCase();
-      return (
-        fullName.includes(value.toLowerCase()) ||
-        (item.tcNo || '').includes(value)
-      );
-    },
   },
 ];

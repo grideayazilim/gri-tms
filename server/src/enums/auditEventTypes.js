@@ -15,6 +15,10 @@ export const AUDIT_EVENT = Object.freeze({
 
   // ==================== SECURITY ====================
   SECURITY: "SECURITY",
+
+  // ==================== EXPORT / IMPORT ====================
+  EXCEL_EXPORT: "EXCEL_EXPORT",
+  EXCEL_IMPORT: "EXCEL_IMPORT",
 });
 
 // Tüm işlem türlerini liste olarak döndür

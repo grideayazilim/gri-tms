@@ -1,10 +1,19 @@
-import { useState, useEffect } from "react";
-import { RiDeleteBinLine, RiArrowDownSLine, RiArrowRightSLine } from "react-icons/ri";
+import { useState, useEffect, useRef } from "react";
+import { RiDeleteBinLine, RiArrowRightSLine, RiFileExcel2Line, RiRobot2Line } from "react-icons/ri";
 import "../../styles/inputs.scss";
 import PageShell from "../../components/PageShell/PageShell";
 import * as locationService from "../../api/locationAndUnitService";
+import { downloadPuantajExcel, downloadSimpleExcel, downloadBotExcel } from "../../api/exportService";
 import { useToast } from "../../components/ToastBar/ToastContext";
 import "./LocationsPage.scss";
+
+const TURKISH_MONTHS = [
+  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
+  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
+];
+
+const currentYear = new Date().getFullYear();
+const YEARS = Array.from({ length: currentYear - 2019 }, (_, i) => currentYear - i);
 
 function LocationsPage() {
   // === STATE ===
@@ -13,12 +22,32 @@ function LocationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [deletedLocationIds, setDeletedLocationIds] = useState([]);
   const [expandedLocations, setExpandedLocations] = useState([]);
+
+  // Export panel state: { locationId, locationName, type: 'simple'|'puantaj' } | null
+  const [exportPanel, setExportPanel] = useState(null);
+  const [exportYear, setExportYear] = useState(currentYear);
+  const [exportMonth, setExportMonth] = useState(new Date().getMonth() + 1);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportPanelRef = useRef(null);
   const toast = useToast();
 
   // === FETCH DATA ===
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Close export panel on outside click
+  useEffect(() => {
+    if (!exportPanel) return;
+    const handleClick = (e) => {
+      if (exportPanelRef.current && !exportPanelRef.current.contains(e.target)) {
+        setExportPanel(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [exportPanel]);
 
   // === TOGGLE EXPAND ===
   const toggleLocationCollapse = (id) => {
@@ -73,7 +102,6 @@ function LocationsPage() {
   };
 
   const removeLocation = (id) => {
-    // Eğer ID string ise (UUID), silinecekler listesine ekle
     if (typeof id === 'string') {
       setDeletedLocationIds(prev => [...prev, id]);
     }
@@ -120,14 +148,11 @@ function LocationsPage() {
 
   const handleSave = async () => {
     try {
-      // 1. Silinen yerleşkeleri sil
       for (const id of deletedLocationIds) {
         await locationService.deleteLocation(id);
       }
 
-      // 2. Mevcut ve yeni yerleşkeleri işle
       for (const loc of locations) {
-        // Yeni yerleşke (temp numeric ID)
         if (typeof loc.id === 'number') {
           const createRes = await locationService.createLocation({
             name: loc.name,
@@ -136,7 +161,6 @@ function LocationsPage() {
 
           const newLocId = createRes.data.location.id;
 
-          // Birimleri de ekle (createLocation birimleri almıyor demiştik)
           if (loc.units && loc.units.length > 0) {
             await locationService.syncLocationWithUnits(newLocId, {
               name: loc.name,
@@ -144,14 +168,12 @@ function LocationsPage() {
               units: loc.units.map(u => ({ name: u.name }))
             });
           }
-        }
-        // Mevcut yerleşke (UUID)
-        else {
+        } else {
           await locationService.syncLocationWithUnits(loc.id, {
             name: loc.name,
             programNo: loc.programNo,
             units: loc.units.map(u => ({
-              id: typeof u.id === 'string' ? u.id : undefined, // Yeni birimler için ID gönderme
+              id: typeof u.id === 'string' ? u.id : undefined,
               name: u.name
             }))
           });
@@ -160,10 +182,47 @@ function LocationsPage() {
 
       toast({ type: "success", message: "Değişiklikler başarıyla kaydedildi" });
       setDeletedLocationIds([]);
-      fetchData(); // Listeyi güncelle
+      fetchData();
     } catch (error) {
       console.error("Error saving locations:", error);
       toast({ type: "error", message: error.message || "Kaydedilirken bir hata oluştu" });
+    }
+  };
+
+  const openExportPanel = (location, type) => {
+    if (typeof location.id !== 'string') {
+      toast({ type: "error", message: "Önce değişiklikleri kaydedin" });
+      return;
+    }
+    setExportPanel({ locationId: location.id, locationName: location.name, type });
+  };
+
+  const handleExport = async () => {
+    if (!exportPanel) return;
+    setIsExporting(true);
+    try {
+      const params = {
+        locationId: exportPanel.locationId,
+        year: exportYear,
+        month: exportMonth,
+        locationName: exportPanel.locationName,
+      };
+
+      if (exportPanel.type === "puantaj") {
+        await downloadPuantajExcel(params);
+      } else if (exportPanel.type === "bot") {
+        await downloadBotExcel(params);
+      } else {
+        await downloadSimpleExcel(params);
+      }
+
+      setExportPanel(null);
+      toast({ type: "success", message: "Excel başarıyla indirildi" });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({ type: "error", message: error?.message || "Excel oluşturulurken hata oluştu" });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -188,11 +247,12 @@ function LocationsPage() {
   return (
     <PageShell title="Yerleşke ve Birimler" headerActions={headerActions}>
       <div className="locations-tree">
-        {/* Sol taraftaki ana rehber çizgi */}
         <div className="tree-root-line" />
 
         {locations.map((location) => {
           const isExpanded = expandedLocations.includes(location.id);
+          const isPanelOpen = exportPanel?.locationId === location.id;
+
           return (
             <div key={location.id} className={`tree-node location-node ${!isExpanded ? 'is-collapsed' : ''}`}>
               {/* LEVEL 1: YERLEŞKE */}
@@ -234,6 +294,61 @@ function LocationsPage() {
                   </div>
                 </div>
 
+                {/* Export Buttons */}
+                <div className="export-btn-group" ref={isPanelOpen ? exportPanelRef : null}>
+                  <button
+                    type="button"
+                    className="btn btn--export-excel btn--icon-only"
+                    onClick={() => openExportPanel(location, "puantaj")}
+                    title="Excel Export Al"
+                  >
+                    <RiFileExcel2Line />
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn--export-bot btn--icon-only"
+                    onClick={() => openExportPanel(location, "bot")}
+                    title="Bot İçin Export Al"
+                  >
+                    <RiRobot2Line />
+                  </button>
+
+                  {/* Export Period Panel */}
+                  {isPanelOpen && (
+                    <div className="export-panel">
+                      <p className="export-panel__title">DÖNEM SEÇİNİZ</p>
+                      <div className="export-panel__selects">
+                        <select
+                          className="export-select"
+                          value={exportYear}
+                          onChange={(e) => setExportYear(Number(e.target.value))}
+                        >
+                          {YEARS.map((y) => (
+                            <option key={y} value={y}>{y}</option>
+                          ))}
+                        </select>
+                        <select
+                          className="export-select"
+                          value={exportMonth}
+                          onChange={(e) => setExportMonth(Number(e.target.value))}
+                        >
+                          {TURKISH_MONTHS.map((m, i) => (
+                            <option key={i + 1} value={i + 1}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn--primary export-panel__download-btn"
+                        onClick={handleExport}
+                        disabled={isExporting}
+                      >
+                        {isExporting ? "İndiriliyor..." : "İndir"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <button
                   type="button"
                   className="btn btn--danger btn--icon-only"
@@ -244,7 +359,7 @@ function LocationsPage() {
                 </button>
               </div>
 
-              {/* LEVEL 2: BİRİMLER - Animated */}
+              {/* LEVEL 2: BİRİMLER */}
               <div className={`node-children-wrapper ${isExpanded ? 'is-expanded' : ''}`}>
                 <div className="node-children-inner">
                   <div className="node-children">
@@ -276,7 +391,6 @@ function LocationsPage() {
                       </div>
                     ))}
 
-                    {/* Birim Ekleme Butonu */}
                     <button
                       type="button"
                       className="add-btn add-unit-btn"
@@ -291,7 +405,6 @@ function LocationsPage() {
           );
         })}
 
-        {/* Yerleşke Ekleme Butonu */}
         <button
           type="button"
           className="add-btn add-location-btn"
@@ -305,4 +418,3 @@ function LocationsPage() {
 }
 
 export default LocationsPage;
-

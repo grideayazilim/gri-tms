@@ -241,6 +241,85 @@ $line-color: var(--border-color);
   }
 }
 
+// === EXPORT BUTON STİLLERİ ===
+.btn.btn--export-excel {
+  background-color: #1e7e34;
+  color: #fff;
+
+  &:not(:disabled):hover {
+    background-color: #155d27;
+  }
+}
+
+.btn.btn--export-bot {
+  background-color: #4a1a6b;
+  color: #fff;
+
+  &:not(:disabled):hover {
+    background-color: #35124e;
+  }
+}
+
+// === EXPORT BUTONLARI VE PANEL ===
+.export-btn-group {
+  position: relative;
+  display: flex;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.export-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background-color: var(--surface-color);
+  border: 1px solid $line-color;
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 100;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  &__title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+  }
+
+  &__selects {
+    display: flex;
+    gap: var(--space-xs);
+  }
+
+  &__download-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.export-select {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid $line-color;
+  border-radius: var(--radius-sm);
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  appearance: auto;
+
+  &:focus {
+    outline: 2px solid var(--brand-color);
+    outline-offset: -1px;
+  }
+}
+
 // === RESPONSIVE ===
 @media (max-width: $bp-sm) {
 

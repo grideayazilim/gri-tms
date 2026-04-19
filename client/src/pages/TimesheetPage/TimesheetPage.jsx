@@ -216,6 +216,10 @@ const TimesheetPage = () => {
   }, [filters.location, fetchUnitsByLocation, handleFilterChange]);
 
   useEffect(() => {
+    // Dönem seçili değilse fetch yapma — period ayarlanmadan önce gelen stale
+    // response'un marks'ı silmesini (race condition) önler
+    if (!apiParams.month) return;
+
     fetchTimesheets(apiParams).then((result) => {
       if (result.success && result.rows) {
         setOriginalSnapshot(JSON.parse(JSON.stringify(result.rows)));

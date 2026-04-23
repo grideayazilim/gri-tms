@@ -33,20 +33,28 @@ async function fetchBlob(url, params) {
   }
 }
 
-export async function downloadPuantajExcel({ locationId, year, month, locationName }) {
-  const blob = await fetchBlob("/export/puantaj", { locationId, year, month });
-  const filename = `puantaj_${locationName}_${year}_${String(month).padStart(2, "0")}.xlsx`;
+const TURKISH_MONTHS = [
+  "OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN",
+  "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"
+];
+
+export async function downloadTimesheetExcel({ locationId, year, month, locationName }) {
+  const blob = await fetchBlob("/export/timesheet", { locationId, year, month });
+  const period = `${TURKISH_MONTHS[month - 1]} ${year}`;
+  const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} MAAŞLAR.xlsm`;
   downloadBlob(blob, filename);
 }
 
 export async function downloadSimpleExcel({ locationId, year, month, locationName }) {
   const blob = await fetchBlob("/export/simple", { locationId, year, month });
-  const filename = `liste_${locationName}_${year}_${String(month).padStart(2, "0")}.xlsx`;
+  const period = `${TURKISH_MONTHS[month - 1]} ${year}`;
+  const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} LİSTE.xlsm`;
   downloadBlob(blob, filename);
 }
 
 export async function downloadBotExcel({ locationId, year, month, locationName }) {
   const blob = await fetchBlob("/export/bot", { locationId, year, month });
-  const filename = `bot_puantaj_${locationName}_${year}_${String(month).padStart(2, "0")}.xlsx`;
+  const period = `${TURKISH_MONTHS[month - 1]} ${year}`;
+  const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} BOT GİRDİSİ.xlsx`;
   downloadBlob(blob, filename);
 }

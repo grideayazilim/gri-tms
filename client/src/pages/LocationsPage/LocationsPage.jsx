@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { RiDeleteBinLine, RiArrowRightSLine, RiFileExcel2Line, RiRobot2Line } from "react-icons/ri";
+import { RiDeleteBinLine, RiArrowRightSLine, RiFileExcel2Line, RiRobot2Line, RiArrowGoBackLine, RiMore2Fill } from "react-icons/ri";
 import "../../styles/inputs.scss";
 import PageShell from "../../components/PageShell/PageShell";
 import * as locationService from "../../api/locationAndUnitService";
-import { downloadPuantajExcel, downloadSimpleExcel, downloadBotExcel } from "../../api/exportService";
+import { getPeriods } from "../../api/timesheetService";
+import { downloadTimesheetExcel, downloadSimpleExcel, downloadBotExcel } from "../../api/exportService";
 import { useToast } from "../../components/ToastBar/ToastContext";
 import "./LocationsPage.scss";
 
@@ -12,22 +13,24 @@ const TURKISH_MONTHS = [
   "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
 ];
 
-const currentYear = new Date().getFullYear();
-const YEARS = Array.from({ length: currentYear - 2019 }, (_, i) => currentYear - i);
-
 function LocationsPage() {
   // === STATE ===
   const [locations, setLocations] = useState([]);
   const [initialLocations, setInitialLocations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletedLocationIds, setDeletedLocationIds] = useState([]);
+  const [deletedUnitIds, setDeletedUnitIds] = useState([]);
   const [expandedLocations, setExpandedLocations] = useState([]);
+  const [periods, setPeriods] = useState([]);
+  const [focusElementId, setFocusElementId] = useState(null);
 
   // Export panel state: { locationId, locationName, type: 'simple'|'puantaj' } | null
   const [exportPanel, setExportPanel] = useState(null);
-  const [exportYear, setExportYear] = useState(currentYear);
-  const [exportMonth, setExportMonth] = useState(new Date().getMonth() + 1);
+  const [exportPeriodId, setExportPeriodId] = useState("");
   const [isExporting, setIsExporting] = useState(false);
+  
+  const [mobileMenuId, setMobileMenuId] = useState(null);
+  const mobileMenuRef = useRef(null);
 
   const exportPanelRef = useRef(null);
   const toast = useToast();
@@ -49,6 +52,29 @@ function LocationsPage() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [exportPanel]);
 
+  // Close mobile menu on outside click
+  useEffect(() => {
+    if (!mobileMenuId) return;
+    const handleClick = (e) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target)) {
+        setMobileMenuId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [mobileMenuId]);
+
+  // Auto-focus on recently added inputs
+  useEffect(() => {
+    if (focusElementId) {
+      const el = document.getElementById(focusElementId);
+      if (el) {
+        el.focus();
+        setFocusElementId(null);
+      }
+    }
+  }, [locations, expandedLocations, focusElementId]);
+
   // === TOGGLE EXPAND ===
   const toggleLocationCollapse = (id) => {
     setExpandedLocations((prev) =>
@@ -59,13 +85,33 @@ function LocationsPage() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      const [locRes, unitRes] = await Promise.all([
+      const [locRes, unitRes, periodRes] = await Promise.all([
         locationService.getLocations(),
-        locationService.getUnits()
+        locationService.getUnits(),
+        getPeriods()
       ]);
 
       const locs = locRes.data?.locations || [];
       const allUnits = unitRes.data?.units || [];
+      const fetchedPeriods = periodRes.data?.periods || [];
+
+      // Sort periods by year and month descending
+      fetchedPeriods.sort((a, b) => {
+        if (b.year !== a.year) return b.year - a.year;
+        return b.month - a.month;
+      });
+
+      setPeriods(fetchedPeriods);
+      if (fetchedPeriods.length > 0) {
+        const currentM = new Date().getMonth() + 1;
+        const currentY = new Date().getFullYear();
+        const currentPeriod = fetchedPeriods.find(p => p.month === currentM && p.year === currentY);
+        if (currentPeriod) {
+          setExportPeriodId(String(currentPeriod.id));
+        } else {
+          setExportPeriodId(String(fetchedPeriods[0].id));
+        }
+      }
 
       const enrichedLocations = locs.map(loc => ({
         ...loc,
@@ -99,13 +145,21 @@ function LocationsPage() {
     };
     setLocations((prev) => [...prev, newLocation]);
     setExpandedLocations((prev) => [...prev, newId]);
+    setFocusElementId(`loc-name-${newId}`);
   };
 
   const removeLocation = (id) => {
-    if (typeof id === 'string') {
-      setDeletedLocationIds(prev => [...prev, id]);
+    if (typeof id === 'number') {
+      // Yeni oluşturulmuş ve henüz kaydedilmemiş bir yerleşkeyi silerse tamamen yokediyoruz
+      setLocations((prev) => prev.filter((loc) => loc.id !== id));
+      setExpandedLocations((prev) => prev.filter((expId) => expId !== id));
+    } else {
+      setDeletedLocationIds((prev) => [...prev, id]);
     }
-    setLocations((prev) => prev.filter((loc) => loc.id !== id));
+  };
+
+  const undoLocation = (id) => {
+    setDeletedLocationIds((prev) => prev.filter((delId) => delId !== id));
   };
 
   const handleUnitChange = (locId, unitId, value) => {
@@ -123,27 +177,38 @@ function LocationsPage() {
   };
 
   const addUnit = (locId) => {
+    const newId = Date.now();
     setLocations((prev) =>
       prev.map((loc) => {
         if (loc.id !== locId) return loc;
         return {
           ...loc,
-          units: [...loc.units, { id: Date.now(), name: "" }],
+          units: [...loc.units, { id: newId, name: "" }],
         };
       }),
     );
+    setFocusElementId(`unit-name-${newId}`);
   };
 
   const removeUnit = (locId, unitId) => {
-    setLocations((prev) =>
-      prev.map((loc) => {
-        if (loc.id !== locId) return loc;
-        return {
-          ...loc,
-          units: loc.units.filter((unit) => unit.id !== unitId),
-        };
-      }),
-    );
+    if (typeof unitId === 'number') {
+      // Yeni oluşturulmuş birim silinirse tamamen yokediyoruz
+      setLocations((prev) =>
+        prev.map((loc) => {
+          if (loc.id !== locId) return loc;
+          return {
+            ...loc,
+            units: loc.units.filter((unit) => unit.id !== unitId),
+          };
+        }),
+      );
+    } else {
+      setDeletedUnitIds((prev) => [...prev, unitId]);
+    }
+  };
+
+  const undoUnit = (locId, unitId) => {
+    setDeletedUnitIds((prev) => prev.filter((delId) => delId !== unitId));
   };
 
   const handleSave = async () => {
@@ -198,18 +263,27 @@ function LocationsPage() {
   };
 
   const handleExport = async () => {
-    if (!exportPanel) return;
+    if (!exportPanel || !exportPeriodId) {
+      toast({ type: "error", message: "Lütfen bir periyod seçin" });
+      return;
+    }
+    const selectedPeriod = periods.find(p => String(p.id) === String(exportPeriodId));
+    if (!selectedPeriod) {
+      toast({ type: "error", message: "Seçilen periyod bulunamadı" });
+      return;
+    }
+
     setIsExporting(true);
     try {
       const params = {
         locationId: exportPanel.locationId,
-        year: exportYear,
-        month: exportMonth,
+        year: selectedPeriod.year,
+        month: selectedPeriod.month,
         locationName: exportPanel.locationName,
       };
 
-      if (exportPanel.type === "puantaj") {
-        await downloadPuantajExcel(params);
+      if (exportPanel.type === "timesheet") {
+        await downloadTimesheetExcel(params);
       } else if (exportPanel.type === "bot") {
         await downloadBotExcel(params);
       } else {
@@ -226,7 +300,23 @@ function LocationsPage() {
     }
   };
 
-  const hasUnsavedChanges = deletedLocationIds.length > 0 || JSON.stringify(locations) !== JSON.stringify(initialLocations);
+  const hasUnsavedChanges = deletedLocationIds.length > 0 || deletedUnitIds.length > 0 || JSON.stringify(locations) !== JSON.stringify(initialLocations);
+
+  const isLocationDirty = (loc) => {
+    if (typeof loc.id === 'number') return true;
+    const initLoc = initialLocations.find(l => l.id === loc.id);
+    if (!initLoc) return true;
+    return loc.name !== initLoc.name || loc.programNo !== initLoc.programNo;
+  };
+
+  const isUnitDirty = (locId, unit) => {
+    if (typeof unit.id === 'number') return true;
+    const initLoc = initialLocations.find(l => l.id === locId);
+    if (!initLoc) return true;
+    const initUnit = initLoc.units.find(u => u.id === unit.id);
+    if (!initUnit) return true;
+    return unit.name !== initUnit.name;
+  };
 
   const headerActions = hasUnsavedChanges ? (
     <button type="button" className="btn btn--primary" onClick={handleSave}>
@@ -246,6 +336,9 @@ function LocationsPage() {
 
   return (
     <PageShell title="Yerleşke ve Birimler" headerActions={headerActions}>
+      <div className="locations-warning">
+        <strong>Uyarı:</strong> Bir yerleşke veya birimi sildiğinizde, ilgili oluşuma ait tüm çalışanlar, puantaj verileri ve sistem sorumluları da <strong>kalıcı olarak silinir</strong>.
+      </div>
       <div className="locations-tree">
         <div className="tree-root-line" />
 
@@ -269,94 +362,130 @@ function LocationsPage() {
                 <div className="location-inputs">
                   <div className="floating-group floating-group--on-background">
                     <input
+                      id={`loc-name-${location.id}`}
                       type="text"
-                      className="input"
+                      className={`input ${deletedLocationIds.includes(location.id) ? 'is-deleted' : (isLocationDirty(location) ? 'is-dirty' : '')}`}
                       placeholder=" "
                       value={location.name}
                       onChange={(e) =>
                         handleLocationChange(location.id, "name", e.target.value)
                       }
+                      disabled={deletedLocationIds.includes(location.id)}
                     />
                     <label className="floating-group__label">Yerleşke Adı</label>
                   </div>
 
                   <div className="floating-group floating-group--on-background">
                     <input
+                      id={`loc-program-${location.id}`}
                       type="text"
-                      className="input"
+                      className={`location-no-input input ${deletedLocationIds.includes(location.id) ? 'is-deleted' : (isLocationDirty(location) ? 'is-dirty' : '')}`}
                       placeholder=" "
                       value={location.programNo}
                       onChange={(e) =>
                         handleLocationChange(location.id, "programNo", e.target.value)
                       }
+                      disabled={deletedLocationIds.includes(location.id)}
                     />
                     <label className="floating-group__label">Program No</label>
                   </div>
                 </div>
 
-                {/* Export Buttons */}
-                <div className="export-btn-group" ref={isPanelOpen ? exportPanelRef : null}>
+                {deletedLocationIds.includes(location.id) ? (
                   <button
                     type="button"
-                    className="btn btn--export-excel btn--icon-only"
-                    onClick={() => openExportPanel(location, "puantaj")}
-                    title="Excel Export Al"
+                    className="btn btn--secondary btn--icon-only"
+                    onClick={() => undoLocation(location.id)}
+                    title="Geri Al"
                   >
-                    <RiFileExcel2Line />
+                    <RiArrowGoBackLine />
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn--export-bot btn--icon-only"
-                    onClick={() => openExportPanel(location, "bot")}
-                    title="Bot İçin Export Al"
-                  >
-                    <RiRobot2Line />
-                  </button>
+                ) : (
+                  <>
+                    <div className="location-actions-desktop">
+                      <div className="export-btn-group" ref={isPanelOpen ? exportPanelRef : null}>
+                        <button
+                          type="button"
+                          className="btn btn--export-excel btn--icon-only"
+                          onClick={() => openExportPanel(location, "timesheet")}
+                          title="Puantaj Export Al"
+                        >
+                          <RiFileExcel2Line />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn--export-bot btn--icon-only"
+                          onClick={() => openExportPanel(location, "bot")}
+                          title="Bot İçin Export Al"
+                        >
+                          <RiRobot2Line />
+                        </button>
 
-                  {/* Export Period Panel */}
-                  {isPanelOpen && (
-                    <div className="export-panel">
-                      <p className="export-panel__title">DÖNEM SEÇİNİZ</p>
-                      <div className="export-panel__selects">
-                        <select
-                          className="export-select"
-                          value={exportYear}
-                          onChange={(e) => setExportYear(Number(e.target.value))}
-                        >
-                          {YEARS.map((y) => (
-                            <option key={y} value={y}>{y}</option>
-                          ))}
-                        </select>
-                        <select
-                          className="export-select"
-                          value={exportMonth}
-                          onChange={(e) => setExportMonth(Number(e.target.value))}
-                        >
-                          {TURKISH_MONTHS.map((m, i) => (
-                            <option key={i + 1} value={i + 1}>{m}</option>
-                          ))}
-                        </select>
+                        {/* Export Period Panel */}
+                        {isPanelOpen && (
+                          <div className="export-panel">
+                            <p className="export-panel__title">DÖNEM SEÇİNİZ</p>
+                            <div className="export-panel__selects">
+                              <select
+                                className="export-select"
+                                value={exportPeriodId}
+                                onChange={(e) => setExportPeriodId(e.target.value)}
+                              >
+                                {periods.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {TURKISH_MONTHS[p.month - 1]} {p.year}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn--primary export-panel__download-btn"
+                              onClick={handleExport}
+                              disabled={isExporting}
+                            >
+                              {isExporting ? "İndiriliyor..." : "İndir"}
+                            </button>
+                          </div>
+                        )}
                       </div>
+
                       <button
                         type="button"
-                        className="btn btn--primary export-panel__download-btn"
-                        onClick={handleExport}
-                        disabled={isExporting}
+                        className="btn btn--danger btn--icon-only"
+                        onClick={() => removeLocation(location.id)}
+                        title="Yerleşkeyi Sil"
                       >
-                        {isExporting ? "İndiriliyor..." : "İndir"}
+                        <RiDeleteBinLine />
                       </button>
                     </div>
-                  )}
-                </div>
 
-                <button
-                  type="button"
-                  className="btn btn--danger btn--icon-only"
-                  onClick={() => removeLocation(location.id)}
-                  title="Yerleşkeyi Sil"
-                >
-                  <RiDeleteBinLine />
-                </button>
+                    <div className="location-actions-mobile" ref={mobileMenuId === location.id ? mobileMenuRef : null}>
+                      <button
+                        type="button"
+                        className="btn btn--primary btn--icon-only"
+                        onClick={() => setMobileMenuId(mobileMenuId === location.id ? null : location.id)}
+                        title="Seçenekler"
+                      >
+                        <RiMore2Fill />
+                      </button>
+
+                      {mobileMenuId === location.id && (
+                        <div className="mobile-action-menu">
+                          <button type="button" className="mobile-action-menu__item" onClick={(e) => { e.stopPropagation(); openExportPanel(location, "timesheet"); setMobileMenuId(null); }}>
+                            <RiFileExcel2Line size={16} /> Puantaj Çıktısı Al
+                          </button>
+                          <button type="button" className="mobile-action-menu__item" onClick={(e) => { e.stopPropagation(); openExportPanel(location, "bot"); setMobileMenuId(null); }}>
+                            <RiRobot2Line size={16} /> Bot Çıktısı Al
+                          </button>
+                          <button type="button" className="mobile-action-menu__item mobile-action-menu__item--danger" onClick={(e) => { e.stopPropagation(); removeLocation(location.id); setMobileMenuId(null); }}>
+                            <RiDeleteBinLine size={16} /> Yerleşkeyi Sil
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* LEVEL 2: BİRİMLER */}
@@ -368,25 +497,39 @@ function LocationsPage() {
                         <div className="node-row unit-row">
                           <div className="floating-group floating-group--on-background">
                             <input
+                              id={`unit-name-${unit.id}`}
                               type="text"
-                              className="input"
+                              className={`input ${(deletedLocationIds.includes(location.id) || deletedUnitIds.includes(unit.id)) ? 'is-deleted' : (isUnitDirty(location.id, unit) ? 'is-dirty' : '')}`}
                               placeholder=" "
                               value={unit.name}
                               onChange={(e) =>
                                 handleUnitChange(location.id, unit.id, e.target.value)
                               }
+                              disabled={deletedLocationIds.includes(location.id) || deletedUnitIds.includes(unit.id)}
                             />
                             <label className="floating-group__label">Birim Adı</label>
                           </div>
 
-                          <button
-                            type="button"
-                            className="btn btn--danger btn--icon-only"
-                            onClick={() => removeUnit(location.id, unit.id)}
-                            title="Birimi Sil"
-                          >
-                            <RiDeleteBinLine />
-                          </button>
+                          {deletedUnitIds.includes(unit.id) ? (
+                            <button
+                              type="button"
+                              className="btn btn--secondary btn--icon-only"
+                              onClick={() => undoUnit(location.id, unit.id)}
+                              title="Geri Al"
+                            >
+                              <RiArrowGoBackLine />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn--danger btn--icon-only"
+                              onClick={() => removeUnit(location.id, unit.id)}
+                              title="Birimi Sil"
+                              disabled={deletedLocationIds.includes(location.id)}
+                            >
+                              <RiDeleteBinLine />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}

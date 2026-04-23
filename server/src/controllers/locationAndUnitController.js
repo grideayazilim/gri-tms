@@ -187,6 +187,12 @@ export async function createLocation(req, res) {
       },
     });
   } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        message: 'Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.',
+      });
+    }
     console.error('Create location error:', error);
     res.status(500).json({
       success: false,
@@ -321,6 +327,12 @@ export async function updateLocation(req, res) {
       },
     });
   } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        message: 'Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.',
+      });
+    }
     if (error.message === 'NOT_FOUND') {
       return res.status(404).json({ success: false, message: 'Yerleşke bulunamadı.' });
     }
@@ -513,6 +525,12 @@ export async function syncLocationWithUnits(req, res) {
     });
 
   } catch (error) {
+    if (error.code === '23505') {
+      return res.status(400).json({
+        success: false,
+        message: 'Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.',
+      });
+    }
     if (error.message === 'EMPTY_UNIT_NAME') {
       return res.status(400).json({ success: false, message: 'Birim adı boş bırakılamaz.' });
     }

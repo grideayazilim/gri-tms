@@ -28,8 +28,14 @@ export async function register(req, res) {
 
     const result = await withTransaction(async (client) => {
       const insertRes = await client.query(
-        `INSERT INTO app.users (username, password_hash, role, status, unit_id, location_id)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO app.users (username, password_hash, role, status, unit_id, location_id, expiry_date)
+         VALUES (
+           $1, $2, $3, $4, $5, $6,
+           CASE 
+             WHEN $3 = 'ADMIN' THEN NULL
+             ELSE (SELECT program_end_date + INTERVAL '20 days' FROM app.settings LIMIT 1)
+           END
+         )
          RETURNING id, username, role, status, unit_id, location_id`,
         [username, passwordHash, role, 'PENDING', unitId || null, locationId || null]
       );

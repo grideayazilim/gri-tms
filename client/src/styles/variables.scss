@@ -1,5 +1,12 @@
 @import url("https://fonts.googleapis.com/css2?family=Nunito+Sans:ital,opsz,wght@0,6..12,200..1000;1,6..12,200..1000&display=swap");
 
+/* ============ Breakpoints =========== */
+// SCSS variable olmak zorunda!
+$bp-sm: 500px;
+$bp-md: 768px;
+$bp-lg: 1024px;
+$bp-xl: 1400px;
+
 :root {
   /* ================= Colors =============== */
   --background-color: #f5f6fa;
@@ -67,11 +74,8 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
-}
 
-/* ============ Breakpoints =========== */
-// SCSS variable olmak zorunda!
-$bp-sm: 500px;
-$bp-md: 768px;
-$bp-lg: 1024px;
-$bp-xl: 1400px;
+  @media screen and (max-width: $bp-md) {
+    --font-size-main-title: 24px;
+  }
+}

@@ -158,6 +158,11 @@ export async function updateUser(req, res) {
             
             let newStatus = status !== undefined ? status : existingUser.status;
             
+            // Eğer ADMIN ise expiryDate her zaman null olmalı
+            if (newRole === 'ADMIN') {
+                newExpiryDate = null;
+            }
+
             // Eğer expiryDate geçmişse otomatik olarak EXPIRED yap.
             // Eğer status EXPIRED ve expiryDate gelecekteyse (veya yoksa) ACTIVE yap.
             if (newExpiryDate && new Date(newExpiryDate) < new Date()) {

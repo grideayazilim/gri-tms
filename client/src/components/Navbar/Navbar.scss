@@ -133,8 +133,10 @@
   }
 
   // MASAÜSTÜNDE İKEN / FARE ERİŞİMİ VARKEN HOVER İŞLEMİ
-  @media (hover: hover) and (pointer: fine) {
+  // Sadece geniş ekranlarda (min-width: 1025px) çalışmasını garantiye alıyoruz
+  @media (min-width: 1025px) and (hover: hover) and (pointer: fine) {
     &:hover {
+
       // 'gri' yazısını göster
       .nav__title {
         .prefix {
@@ -214,7 +216,7 @@
       // Yeni management bar için için link görünümü
       .nav__link {
         background-color: var(--surface-color);
-        padding: var(--space-md) var(--space-lg);
+        padding: var(--space-sm) var(--space-md);
         box-shadow: 0 0 20px rgba(148, 148, 148, 0.247);
       }
 
@@ -228,7 +230,7 @@
 
     &__management-navigator {
       height: 100%;
-      padding-inline: var(--space-sm);
+      padding-inline: var(--space-xs);
       display: flex;
       align-items: center;
 

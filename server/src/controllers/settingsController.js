@@ -245,6 +245,16 @@ export async function updateSystemSettings(req, res) {
           // Eğer geçerli bir tarih aralığı girilmemişse, güvenlik amacıyla tüm dönemleri gizle.
           await client.query(`UPDATE app.periods SET is_deleted = true`);
         }
+
+        // --- EXPIRY DATE UPDATE MANTIĞI ---
+        // Program bitiş tarihi değiştiyse, tüm ADMIN harici kullanıcıların expiry_date'ini güncelle
+        if (newEnd && newEnd !== oldEnd) {
+          await client.query(`
+            UPDATE app.users 
+            SET expiry_date = $1::date + INTERVAL '20 days'
+            WHERE role != 'ADMIN'
+          `, [newEnd]);
+        }
       }
 
       await createAuditLog(client, {

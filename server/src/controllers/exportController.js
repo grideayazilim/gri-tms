@@ -1,6 +1,6 @@
 import { pool, withTransaction } from "../config/database.js";
 import {
-  generatePuantajExcel,
+  generateTimesheetExcel,
   generateSimpleExcel,
   generateBotExcel,
 } from "../utils/excelHandler.js";
@@ -8,21 +8,14 @@ import { createAuditLog } from "../utils/auditLogger.js";
 import { AUDIT_EVENT } from "../enums/auditEventTypes.js";
 
 const TURKISH_MONTHS = [
-  "Ocak",
-  "Şubat",
-  "Mart",
-  "Nisan",
-  "Mayıs",
-  "Haziran",
-  "Temmuz",
-  "Ağustos",
-  "Eylül",
-  "Ekim",
-  "Kasım",
-  "Aralık",
+  "OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN",
+  "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK",
 ];
 
 // ── Ortak: veri çekme ─────────────────────────────────────────────────────────
+// NOT: Dışa aktarım logic'i (şablon doldurma) /src/utils/excelHandler.js içerisindedir.
+// excelHandler, kendi içinde projeye özel olan "customExcelHandler.js" dosyasını çağırır.
+// Eğer bu özel dosya yoksa "EXCEL_NOT_IMPLEMENTED" hatası fırlatılır ve client'a 501 dönülür.
 async function fetchExportData(locationId, year, month) {
   return withTransaction(async (client) => {
     // 1) Yerleşke bilgisi
@@ -97,9 +90,9 @@ async function fetchExportData(locationId, year, month) {
   });
 }
 
-// ── GET /api/export/puantaj?locationId=&year=&month= ─────────────────────────
-// Şablon tabanlı export (bot için)
-export async function exportPuantaj(req, res) {
+// ── GET /api/export/timesheet?locationId=&year=&month= ─────────────────────────
+// Şablon tabanlı export (bot için değil, timesheet için)
+export async function exportTimesheet(req, res) {
   try {
     const { locationId, year, month } = req.query;
 
@@ -123,7 +116,7 @@ export async function exportPuantaj(req, res) {
         .json({ success: false, message: "Yerleşke bulunamadı" });
     }
 
-    const buffer = await generatePuantajExcel({
+    const buffer = await generateTimesheetExcel({
       employees: data.employees,
       daysMap: data.daysMap,
       dailyWage: data.dailyWage,
@@ -135,7 +128,7 @@ export async function exportPuantaj(req, res) {
       periodEndDate: data.programEndDate,
     });
 
-    const filename = `puantaj_${data.location.name}_${year}_${String(month).padStart(2, "0")}.xlsx`;
+    const filename = `${data.location.name.toLocaleUpperCase('tr-TR')} - ${TURKISH_MONTHS[month - 1]} ${year} MAAŞLAR.xlsm`;
 
     res.setHeader(
       "Content-Type",
@@ -159,7 +152,14 @@ export async function exportPuantaj(req, res) {
       });
     }).catch((err) => console.error("Export audit log error:", err));
   } catch (error) {
-    console.error("Export puantaj error:", error?.message || error);
+    // Özel script henüz yazılmamışsa, bu durumu client'a kibar bir mesajla ilet
+    if (error.message === "EXCEL_NOT_IMPLEMENTED") {
+      return res.status(501).json({
+        success: false,
+        message: "Bu sistemin excel çıktı şablonu ve script'i henüz yazılmadı."
+      });
+    }
+    console.error("Export timesheet error:", error?.message || error);
     console.error(error?.stack);
     res
       .status(500)
@@ -205,7 +205,7 @@ export async function exportSimple(req, res) {
       locationName: data.location.name,
     });
 
-    const filename = `liste_${data.location.name}_${year}_${String(month).padStart(2, "0")}.xlsx`;
+    const filename = `${data.location.name.toLocaleUpperCase('tr-TR')} - ${TURKISH_MONTHS[month - 1]} ${year} LİSTE.xlsm`;
 
     res.setHeader(
       "Content-Type",
@@ -228,6 +228,13 @@ export async function exportSimple(req, res) {
       });
     }).catch((err) => console.error("Export audit log error:", err));
   } catch (error) {
+    // Özel script henüz yazılmamışsa, bu durumu client'a kibar bir mesajla ilet
+    if (error.message === "EXCEL_NOT_IMPLEMENTED") {
+      return res.status(501).json({
+        success: false,
+        message: "Bu sistemin excel çıktı şablonu ve script'i henüz yazılmadı."
+      });
+    }
     console.error("Export simple error:", error?.message || error);
     console.error(error?.stack);
     res
@@ -272,11 +279,11 @@ export async function exportBot(req, res) {
       month: parseInt(month, 10),
       locationName: data.location.name,
       programNo: data.location.program_no,
-      periodStartDate: data.programStartDate,
-      periodEndDate: data.programEndDate,
+      periodStartDate: data.period?.start_date,
+      periodEndDate: data.period?.end_date,
     });
 
-    const filename = `bot_puantaj_${data.location.name}_${year}_${String(month).padStart(2, "0")}.xlsx`;
+    const filename = `${data.location.name.toLocaleUpperCase('tr-TR')} - ${TURKISH_MONTHS[month - 1]} ${year} BOT GİRDİSİ.xlsx`;
 
     res.setHeader(
       "Content-Type",
@@ -299,6 +306,13 @@ export async function exportBot(req, res) {
       });
     }).catch((err) => console.error("Bot export audit log error:", err));
   } catch (error) {
+    // Özel script henüz yazılmamışsa, bu durumu client'a kibar bir mesajla ilet
+    if (error.message === "EXCEL_NOT_IMPLEMENTED") {
+      return res.status(501).json({
+        success: false,
+        message: "Bu sistemin excel çıktı şablonu ve script'i henüz yazılmadı."
+      });
+    }
     console.error("Export bot error:", error?.message || error);
     console.error(error?.stack);
     res

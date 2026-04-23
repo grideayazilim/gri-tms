@@ -5,6 +5,16 @@ import { userEditSchema } from '../../../schemas/user.schema';
 import { useLocationsAndUnits } from '../../../hooks/data/useLocationsAndUnits';
 import './UserEditModal.scss';
 
+const getLocalDateString = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const UserEditModal = ({ user, onClose, onSave }) => {
   const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
   const {
@@ -18,13 +28,11 @@ const UserEditModal = ({ user, onClose, onSave }) => {
     resolver: zodResolver(userEditSchema),
     defaultValues: {
       role: user?.role || '',
-      validityDate: user?.expiryDate ? user.expiryDate.slice(0, 10) : '',
+      validityDate: getLocalDateString(user?.expiryDate),
       locationId: user?.unit?.location?.id?.toString() || '',
       unitId: user?.unit?.id?.toString() || '',
     },
   });
-
-
 
   useEffect(() => {
     fetchLocations();
@@ -40,7 +48,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
     if (user) {
       reset({
         role: user.role || '',
-        validityDate: user.expiryDate ? user.expiryDate.slice(0, 10) : '',
+        validityDate: getLocalDateString(user.expiryDate),
         locationId: user.unit?.location?.id?.toString() || '',
         unitId: user.unit?.id?.toString() || '',
       });

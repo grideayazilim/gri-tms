@@ -1,6 +1,6 @@
 import express from "express";
 import {
-  exportPuantaj,
+  exportTimesheet,
   exportSimple,
   exportBot,
 } from "../controllers/exportController.js";
@@ -8,8 +8,8 @@ import { authMiddleware } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// GET /api/export/puantaj
-router.get("/puantaj", authMiddleware, exportPuantaj);
+// GET /api/export/timesheet
+router.get("/timesheet", authMiddleware, exportTimesheet);
 
 // GET /api/export/simple
 router.get("/simple", authMiddleware, exportSimple);

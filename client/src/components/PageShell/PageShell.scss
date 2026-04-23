@@ -13,12 +13,9 @@
   position: relative;
 
   @media (max-width: $bp-md) {
-    padding: 70px 24px;
+    padding: 30px 24px;
   }
 
-  @media (max-width: $bp-sm) {
-    padding: 64px 14px;
-  }
 }
 
 /* ==========================================

@@ -57,8 +57,21 @@ httpClient.interceptors.response.use(
 
     // Diğer hatalar
     if (error.response) {
+      let errorMessage = 'Bir hata oluştu';
+      if (error.response.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          const json = JSON.parse(text);
+          errorMessage = json.message || errorMessage;
+        } catch (e) {
+          // parse hatası vs yoksay, fallback mesaja kal
+        }
+      } else {
+        errorMessage = error.response.data?.message || errorMessage;
+      }
+
       return Promise.reject({
-        message: error.response.data.message || 'Bir hata oluştu',
+        message: errorMessage,
         status: error.response.status,
       });
     }

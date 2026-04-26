@@ -1,4 +1,9 @@
+/* ========================================================================
+   SETTINGS SERVICE (AYARLAR SERVİSİ)
+   Sistem ayarları ve onay bekleyen kullanıcı işlemleri.
+   ======================================================================== */
 import { api } from './httpClient';
+
 
 // --- PENDING USERS ---
 export const getPendingUsers = async () => {

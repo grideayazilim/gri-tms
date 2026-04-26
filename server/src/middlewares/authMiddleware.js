@@ -1,4 +1,9 @@
+/* ========================================================================
+   AUTH MIDDLEWARE
+   Cookie içindeki accessToken'ı doğrular ve user bilgisini request'e ekler
+   ======================================================================== */
 import { verifyAccessToken } from '../utils/tokenUtils.js';
+
 
 // Cookie'den token oku
 export const authMiddleware = async (req, res, next) => {

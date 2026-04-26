@@ -133,7 +133,11 @@ export function ToastProvider({ children }) {
   const timeouts = useRef({});
 
   const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+    setToasts((prev) => prev.map((t) => t.id === id ? { ...t, removing: true } : t));
+
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== id));
+    }, 220);
 
     if (timeouts.current[id]) {
       clearTimeout(timeouts.current[id]);

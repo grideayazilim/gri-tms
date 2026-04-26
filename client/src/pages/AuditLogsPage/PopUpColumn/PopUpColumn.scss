@@ -1,14 +1,14 @@
 .data-popup-trigger {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--brand-color, #4880ff);
+    font-size: 0.875rem;
+    color: var(--text-primary, #222);
     cursor: pointer;
-    border-bottom: 1px dashed currentColor;
-    white-space: nowrap;
-    transition: opacity 0.2s;
+    border-bottom: 1px dashed var(--brand-color, #4880ff);
+    transition: color 0.2s;
+    display: inline-block;
+    max-width: 480px;
 
     &:hover {
-        opacity: 0.8;
+        color: var(--brand-color, #4880ff);
     }
 }
 
@@ -31,18 +31,66 @@
         color: var(--text-muted, #888);
     }
 
-    .data-popup__pre {
+    .data-popup__empty {
+        color: var(--text-faint, #aaa);
+        font-style: italic;
+    }
+
+    .data-popup__list {
         margin: 0;
-        font-size: 0.85rem;
-        line-height: 1.5;
-        color: var(--text-dark, #333);
+        padding: 10px 12px;
         background: var(--surface-alt, #f8f8f8);
         border: 1px solid var(--border-color-strong, #e0e0e0);
         border-radius: 6px;
-        padding: 10px 12px;
-        white-space: pre-wrap;
-        word-break: break-all;
-        max-height: 300px;
+        max-height: 320px;
         overflow-y: auto;
+
+        li {
+            font-size: 0.875rem;
+            line-height: 1.5;
+            color: var(--text-primary, #222);
+            margin: 2px 0;
+        }
+    }
+
+    .data-popup__sub-list {
+        margin: 0;
+        padding-left: 18px;
+
+        li {
+            font-size: 0.8rem;
+            line-height: 1.5;
+        }
+    }
+
+    .data-popup__meta {
+        margin: 0;
+        padding: 10px 12px;
+        background: var(--surface-alt, #f8f8f8);
+        border: 1px solid var(--border-color-strong, #e0e0e0);
+        border-radius: 6px;
+        max-height: 320px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .data-popup__meta-row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 12px;
+        font-size: 0.85rem;
+
+        dt {
+            font-weight: 600;
+            color: var(--text-secondary, #555);
+        }
+
+        dd {
+            margin: 0;
+            color: var(--text-primary, #222);
+            word-break: break-word;
+        }
     }
 }

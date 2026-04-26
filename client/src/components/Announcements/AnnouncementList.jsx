@@ -97,9 +97,9 @@ function AnnouncementList({ onClose }) {
 
   return (
     <div className="announcement-list">
-      {isAdmin() && (
+      {isAdmin && (
         <button
-          className="btn btn--primary announcement-list__add-btn"
+          className="btn announcement-list__add-btn"
           onClick={handleAddAnnouncement}
         >
           <RiAddLine />
@@ -113,7 +113,7 @@ function AnnouncementList({ onClose }) {
             <div className="empty-state__icon">📢</div>
             <div className="empty-state__title">Henüz duyuru yok</div>
             <div className="empty-state__description">
-              {isAdmin() ? 'Yeni bir duyuru ekleyerek başlayın.' : 'Şu anda görüntülenecek duyuru bulunmuyor.'}
+              {isAdmin ? 'Yeni bir duyuru ekleyerek başlayın.' : 'Şu anda görüntülenecek duyuru bulunmuyor.'}
             </div>
           </div>
         </div>
@@ -125,7 +125,7 @@ function AnnouncementList({ onClose }) {
               announcement={announcement}
               onDelete={handleDeleteAnnouncement}
               onRead={markAsRead}
-              isAdmin={isAdmin()}
+              isAdmin={isAdmin}
             />
           ))}
         </div>

@@ -1,6 +1,11 @@
+/* ========================================================================
+   EMPLOYEE SERVICE (ÇALIŞAN SERVİSİ)
+   Çalışan kartları oluşturma, güncelleme ve listeleme.
+   ======================================================================== */
 import { api } from "./httpClient";
 
 // Çalışanları getir (filtreleme + sayfalama)
+// Fetches employee records based on optional query parameters (filtering + pagination)
 export const getEmployees = async (params = {}) => {
   const response = await api.get("/employees", { params });
   return response;

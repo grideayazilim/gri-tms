@@ -1,16 +1,25 @@
+/* ========================================================================
+   USER SERVICE (KULLANICI SERVİSİ)
+   Sistem kullanıcılarının (Admin/Sorumlu) yönetimi.
+   ======================================================================== */
 import { api } from './httpClient';
 
-export const getUsers = async (params = {}) => {
-  return await api.get('/users', { params });
+
+// Tüm kullanıcıları getir (Filtreleme desteği ile: role, status, search vb.)
+export const getUsers = async (params) => {
+  return api.get('/users', { params });
 };
 
-export const updateUser = async (userId, userData) => {
-  return await api.put(`/users/${userId}`, userData);
+// Belirli bir kullanıcıyı güncelle (Durum değişikliği, rol değişikliği vb.)
+export const updateUser = async (id, data) => {
+  return api.put(`/users/${id}`, data);
 };
 
-export const deleteUser = async (userId) => {
-  return await api.delete(`/users/${userId}`);
+// Kullanıcıyı tamamen sil
+export const deleteUser = async (id) => {
+  return api.delete(`/users/${id}`);
 };
+
 
 export const updateProfile = async (profileData) => {
   return await api.put('/users/me', profileData);

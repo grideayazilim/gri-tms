@@ -1,4 +1,9 @@
+/* ========================================================================
+   VERİTABANI YAPILANDIRMASI (POSTGRESQL)
+   Connection Pool ayarları ve Transaction yardımcı fonksiyonları
+   ======================================================================== */
 import pg from "pg";
+
 const { Pool } = pg;
 
 export const pool = new Pool({
@@ -12,7 +17,10 @@ export const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
+// withTransaction: Verilen fonksiyonu bir Transaction bloğu içinde çalıştırır.
+// Hata durumunda otomatik ROLLBACK, başarı durumunda COMMIT yapar.
 export async function withTransaction(fn) {
+
   const client = await pool.connect();
 
   try {

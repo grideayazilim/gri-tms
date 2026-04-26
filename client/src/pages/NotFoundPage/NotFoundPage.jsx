@@ -1,5 +1,10 @@
+/* ========================================================================
+   NOT FOUND PAGE (404 SAYFASI)
+   Sistemde bulunmayan bir URL'ye girildiğinde gösterilen hata sayfası.
+   ======================================================================== */
 import { Link } from 'react-router-dom';
 import "./NotFoundPage.scss";
+
 
 function NotFoundPage() {
   return (
@@ -18,6 +23,9 @@ function NotFoundPage() {
           strokeLinecap="round"
         />
       </svg>
+
+      {/* 404 Hata Kartı */}
+
 
       <div className="auth-page__card notfound">
         {/* 404 Browser Illustration */}

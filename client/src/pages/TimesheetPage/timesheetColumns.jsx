@@ -1,4 +1,9 @@
+/* ========================================================================
+   TIMESHEET COLUMNS (PUANTAJ TABLO SÜTUNLARI)
+   DataTable bileşenine verilecek olan sütun tanımlamaları.
+   ======================================================================== */
 import TimesheetDaysColumn from "./TimesheetDaysColumn/TimesheetDaysColumn";
+
 
 /**
  * @param {string[]} periodDays       - periyottaki günlerin YYYY-MM-DD listesi
@@ -18,6 +23,7 @@ export const timesheetColumns = (
     { header: "Ad Soyad", accessor: "name", width: "150px" },
     {
       header: <div style={{ textAlign: "center" }}>Çalışma Günleri</div>,
+      // Bu sütun, ayın günlerini içeren devasa bir alt bileşeni (TimesheetDaysColumn) render eder.
       render: (row) => (
         <TimesheetDaysColumn
           timesheetDays={row.timesheet_days}
@@ -35,8 +41,10 @@ export const timesheetColumns = (
     {
       header: "Toplam",
       width: "60px",
+      // Çalışanın o ayki toplam fiili çalışma gün sayısını gösterir
       render: (row) => (
-        <div style={{ textAlign: "center" }}>{row.work_days_count}</div>
+        <div style={{ textAlign: "center" }}>{row.workDaysCount}</div>
       ),
     },
   ];
+

@@ -1,120 +1,105 @@
+/* ========================================================================
+   AUTH CONTEXT (KİMLİK DOĞRULAMA BAĞLAMI)
+   Kullanıcı oturumunun tüm uygulama boyunca yönetilmesini sağlar.
+   ======================================================================== */
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authService } from '../api';
+import { USER_ROLE } from '@timesheet/shared';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // isBooting: Uygulama ilk açıldığında sunucudan session (/me) kontrolü 
+  // yapılana kadar "yükleniyor" ekranı göstermek için kullanılır.
+  const [isBooting, setIsBooting] = useState(true);
+  
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Uygulama başlangıcında auth kontrolü yap
+
   useEffect(() => {
     checkAuth();
   }, []);
 
-  // /me endpoint'i ile authentication kontrolü
   const checkAuth = async () => {
     try {
+      // Sayfa yenilendiğinde Cookie üzerinden mevcut oturumu (/me) geri yüklemeye çalışır
       const response = await authService.getMe();
       setUser(response.data.user);
       setIsAuthenticated(true);
-    } catch (error) {
-      // Authenticated değil - cookie'ler geçersiz veya expired
+    } catch {
+      // Oturum yoksa veya süresi dolmuşsa state'leri sıfırla
       setUser(null);
       setIsAuthenticated(false);
     } finally {
-      setIsLoading(false);
+      // Kontrol tamamlandı, boot süreci bitti (Splash screen kapanabilir)
+      setIsBooting(false);
     }
   };
 
-  // Login
+
   const login = async (username, password) => {
-    setIsLoading(true);
     try {
       const response = await authService.login(username, password);
-      console.log('🔍 Login response:', response);
-      
+
       if (!response || !response.data || !response.data.user) {
         throw new Error('Invalid response structure');
       }
-      
-      const { user: userData } = response.data;
 
-      // Cookie'ler backend tarafından otomatik set edildi
-      setUser(userData);
+      setUser(response.data.user);
       setIsAuthenticated(true);
-
       return { success: true };
     } catch (error) {
-      console.error('❌ Login error:', error);
-      const errorMessage = error.message || 'Kullanıcı adı veya şifre yanlış';
-      return { success: false, error: errorMessage };
-    } finally {
-      setIsLoading(false);
+      return { success: false, error: error.message || 'Kullanıcı adı veya şifre yanlış' };
     }
   };
 
-  // Register
   const register = async (username, password, role, unitId, locationId) => {
-    setIsLoading(true);
     try {
       const response = await authService.register(username, password, role, unitId, locationId);
-      console.log('🔍 Register response:', response);
-      
+
       if (!response || !response.data || !response.data.user) {
         throw new Error('Invalid response structure');
       }
-      
-      // Kayıt başarılı oldu, onay bekliyor. Otomatik login yapılmaz.
+
       return { success: true };
     } catch (error) {
-      console.error('❌ Register error:', error);
-      const errorMessage = error.message || 'Kayıt başarısız';
-      return { success: false, error: errorMessage };
-    } finally {
-      setIsLoading(false);
+      return { success: false, error: error.message || 'Kayıt başarısız' };
     }
   };
 
-  // Logout
   const logout = async () => {
     try {
+      // Sunucu tarafındaki session cookie'lerini temizle
       await authService.logout();
-      // Cookie'ler backend tarafından temizlendi
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch {
+      // Hata olsa bile (örn: internet kesik) kullanıcının uygulama state'ini sıfırlıyoruz
     }
-
     setUser(null);
     setIsAuthenticated(false);
   };
 
-  // Şifre değiştir
+
   const changePassword = async (oldPassword, newPassword) => {
-    setIsLoading(true);
     try {
       await authService.changePassword(oldPassword, newPassword);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Kullanıcı bilgilerini güncelle
   const updateProfile = (updatedUser) => {
     setUser({ ...user, ...updatedUser });
   };
 
-  // Rol kontrolleri
-  const isAdmin = () => user?.role === 'ADMIN';
-  const isResponsible = () => user?.role === 'RESPONSIBLE';
+  const isAdmin = user?.role === USER_ROLE.ADMIN;
+  const isResponsible = user?.role === USER_ROLE.RESPONSIBLE;
 
   const value = {
     user,
-    isLoading,
+    isBooting,
     isAuthenticated,
     login,
     register,

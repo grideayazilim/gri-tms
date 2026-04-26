@@ -1,4 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+/* ========================================================================
+   EMPLOYEES PAGE (ÇALIŞAN YÖNETİM SAYFASI)
+   Tüm çalışanların listelendiği, filtrelendiği ve yönetildiği ana sayfa.
+   ======================================================================== */
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { employeeColumns } from './employeeColumns';
 import FilterBar from '../../components/FilterBar/FilterBar';
@@ -8,12 +12,17 @@ import EmployeeModal from './EmployeeModal/EmployeeModal';
 import { useFilter } from '../../hooks/data/useFilter';
 import { getEmployeeFilterConfig } from './employeeFilters';
 import { useEmployees } from '../../hooks/data/useEmployees';
-import { useLocationsAndUnits } from '../../hooks/data/useLocationsAndUnits';
+import { useLocationUnitFilter } from '../../hooks/data/useLocationUnitFilter';
+import { useToast } from '../../components/ToastBar/ToastContext';
 import '../../styles/inputs.scss';
+
+
+const PAGE_LIMIT = 10;
 
 const EmployeesPage = () => {
   const {
     employees,
+    pagination,
     isLoading,
     fetchEmployees,
     addEmployee,
@@ -21,53 +30,36 @@ const EmployeesPage = () => {
     removeEmployee,
   } = useEmployees();
   const { showConfirm, showModal } = useModal();
+  const toast = useToast();
 
-  const {
-    locations: apiLocations,
-    units: apiUnits,
-    fetchLocations,
-    fetchUnitsByLocation,
-  } = useLocationsAndUnits();
+  const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
-
-  const locationOptions = useMemo(
-    () => apiLocations.map(l => ({ label: l.name, value: String(l.id) })),
-    [apiLocations]
+  const { filters, apiParams, handleFilterChange } = useFilter(
+    useMemo(() => getEmployeeFilterConfig([], []), []),
+    { locationId: '', unitId: '', status: '', search: '' },
   );
-  const unitOptions = useMemo(
-    () => apiUnits.map(u => ({ label: u.name, value: String(u.id) })),
-    [apiUnits]
+
+  // Herhangi bir filtre değiştiğinde sayfayı otomatik olarak 1. sayfaya çeker.
+  // Bu sayede örn: 5. sayfadayken bir arama yapıldığında boş sonuç görme riski engellenir.
+  const handleFilterChangeAndReset = useCallback((key, value) => {
+    handleFilterChange(key, value);
+    setPage(1);
+  }, [handleFilterChange]);
+
+
+  const { locationOptions, unitOptions } = useLocationUnitFilter(
+    filters.locationId,
+    handleFilterChangeAndReset,
   );
 
   const filterConfig = useMemo(
     () => getEmployeeFilterConfig(locationOptions, unitOptions),
-    [locationOptions, unitOptions]
+    [locationOptions, unitOptions],
   );
-  const { filters, apiParams, handleFilterChange } = useFilter(filterConfig, {
-    locationId: '',
-    unitId: '',
-    status: '',
-    search: '',
-  });
 
-  // Seçili yerleşke değişince birimleri yükle
   useEffect(() => {
-    if (filters.locationId) {
-      fetchUnitsByLocation(filters.locationId);
-    }
-    // Yerleşke temizlenince birim filtresini de sıfırla
-    if (!filters.locationId) {
-      handleFilterChange('unitId', '');
-    }
-  }, [filters.locationId, fetchUnitsByLocation, handleFilterChange]);
-
-  // İlk yüklemede ve filtre değiştiğinde çalışanları getir
-  useEffect(() => {
-    fetchEmployees(apiParams);
-  }, [fetchEmployees, apiParams]);
+    fetchEmployees({ ...apiParams, page, limit: PAGE_LIMIT });
+  }, [fetchEmployees, apiParams, page]);
 
   const handleDelete = async (employeeId) => {
     const confirmed = await showConfirm({
@@ -78,7 +70,13 @@ const EmployeesPage = () => {
       cancelText: 'Vazgeç',
     });
     if (confirmed) {
-      await removeEmployee(employeeId);
+      const result = await removeEmployee(employeeId);
+      if (result.success) {
+        toast({ type: 'success', message: 'Çalışan başarıyla silindi' });
+        fetchEmployees({ ...apiParams, page, limit: PAGE_LIMIT });
+      } else {
+        toast({ type: 'error', message: result.error || 'Silme işlemi başarısız' });
+      }
     }
   };
 
@@ -95,7 +93,11 @@ const EmployeesPage = () => {
           onClose={() => closeModal(null)}
           onSave={async (updatedData) => {
             const result = await editEmployee(employeeId, updatedData);
-            if (result.success) closeModal(updatedData);
+            if (result.success) {
+              toast({ type: 'success', message: 'Çalışan başarıyla güncellendi' });
+              fetchEmployees({ ...apiParams, page, limit: PAGE_LIMIT });
+              closeModal(updatedData);
+            }
             return result;
           }}
         />
@@ -104,6 +106,8 @@ const EmployeesPage = () => {
   };
 
   const handleAdd = async () => {
+    // showModal içerisine içeriği (content) bir render function olarak veriyoruz.
+    // closeModal parametresi ile modal'ı içeriden kapatabiliyoruz.
     await showModal({
       title: 'Yeni Çalışan Ekle',
       size: 'medium',
@@ -112,7 +116,13 @@ const EmployeesPage = () => {
           onClose={() => closeModal(null)}
           onSave={async (newData) => {
             const result = await addEmployee(newData);
-            if (result.success) closeModal(newData);
+            if (result.success) {
+              toast({ type: 'success', message: 'Çalışan başarıyla eklendi' });
+              // Yeni eklenen en üstte görünsün diye sayfayı 1'e çekiyoruz
+              fetchEmployees({ ...apiParams, page: 1, limit: PAGE_LIMIT });
+              setPage(1);
+              closeModal(newData);
+            }
             return result;
           }}
         />
@@ -120,9 +130,10 @@ const EmployeesPage = () => {
     });
   };
 
+
   const headerActions = (
     <div className="page-header__actions">
-      <button className="btn btn--primary" onClick={handleAdd}>
+      <button className="btn" onClick={handleAdd}>
         + Yeni Çalışan Ekle
       </button>
     </div>
@@ -130,12 +141,13 @@ const EmployeesPage = () => {
 
   return (
     <PageShell title="Çalışanlar" headerActions={headerActions}>
-      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChange} />
+      <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChangeAndReset} />
       <DynamicTable
         columns={employeeColumns(handleEdit, handleDelete)}
         data={employees}
         loading={isLoading}
-        pageSize={10}
+        pagination={pagination}
+        onPageChange={setPage}
       />
     </PageShell>
   );

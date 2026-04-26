@@ -1,4 +1,9 @@
+/* ========================================================================
+   EMPLOYEE FILTERS (ÇALIŞAN FİLTRE KONFİGÜRASYONU)
+   Çalışan listesi sayfasındaki filtre barının yapısını tanımlar.
+   ======================================================================== */
 export const getEmployeeFilterConfig = (locations, units) => [
+
   {
     key: 'locationId',
     apiParam: 'locationId',
@@ -30,6 +35,8 @@ export const getEmployeeFilterConfig = (locations, units) => [
     key: 'search',
     apiParam: 'search',
     label: 'Çalışan Ara',
+    // Ad, Soyad veya TC No ile arama yapar
     type: 'text',
   },
 ];
+

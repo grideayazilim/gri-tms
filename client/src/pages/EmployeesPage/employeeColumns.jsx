@@ -1,60 +1,13 @@
-import React, { useState } from 'react';
+/* ========================================================================
+   EMPLOYEE COLUMNS (ÇALIŞAN TABLO SÜTUNLARI)
+   DataTable bileşenine verilecek olan çalışan tablosu tanımlamaları.
+   ======================================================================== */
 import { getEmployeeStatusConfig } from '../../constants/employees';
-import { FiEdit2, FiTrash2, FiCopy } from 'react-icons/fi';
+import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { formatDate } from '../../utils/dateUtils';
+import Pill from '../../components/Pill/Pill';
+import IbanCell from '../../components/IbanCell/IbanCell';
 
-const Pill = ({ cfg }) => (
-  <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '12px', fontWeight: 600, background: cfg.bg, color: cfg.color }}>
-    {cfg.label}
-  </span>
-);
-
-const IbanCell = ({ iban }) => {
-    const [tooltipState, setTooltipState] = useState({ show: false, text: iban, x: 0, y: 0, closing: false });
-
-    const handleMouseEnter = (e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        setTooltipState({ show: true, text: iban, x: rect.left + rect.width / 2, y: rect.top, closing: false });
-    };
-
-    const handleMouseLeave = () => {
-        setTooltipState(prev => ({ ...prev, closing: true }));
-        setTimeout(() => setTooltipState(prev => ({ ...prev, show: false, closing: false })), 150);
-    };
-
-    const handleCopy = (e) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(iban);
-        setTooltipState(prev => ({ ...prev, text: 'Kopyalandı!' }));
-        setTimeout(() => {
-            setTooltipState(prev => ({ ...prev, text: iban }));
-        }, 2000);
-    };
-
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>{iban.slice(0, 6)}...</span>
-            <button
-                type="button"
-                className="action-btn"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                onClick={handleCopy}
-            >
-                <FiCopy size={13} />
-            </button>
-            
-            {tooltipState.show && (
-                <div
-                    className={`date-tooltip ${tooltipState.closing ? 'date-tooltip--closing' : ''}`}
-                    style={{ top: tooltipState.y, left: tooltipState.x }}
-                >
-                    <span className="date-tooltip__arrow" />
-                    <div className="date-tooltip__text">{tooltipState.text}</div>
-                </div>
-            )}
-        </div>
-    );
-};
 
 export const employeeColumns = (handleEdit, handleDelete) => [
     {
@@ -75,20 +28,22 @@ export const employeeColumns = (handleEdit, handleDelete) => [
     },
     {
         header: 'IBAN',
+        // IBAN numarasını gruplayarak (4'erli) ve kopyalanabilir şekilde gösterir
         render: (row) => row.ibanNo
             ? <IbanCell iban={row.ibanNo} />
             : <span style={{ color: 'var(--color-text-muted)' }}>—</span>,
     },
+
     {
         header: 'İşe Giriş',
-        render: (row) => row.startDate
-            ? new Date(row.startDate).toLocaleDateString('tr-TR')
-            : '-',
+        render: (row) => row.startDate ? formatDate(row.startDate) : '-',
     },
     {
         header: 'Durum',
+        // Aktif/Pasif durumuna göre renkli etiket (Pill) döner
         render: (row) => <Pill cfg={getEmployeeStatusConfig(row.isActive)} />,
     },
+
     {
         header: 'İşlemler',
         width: '100px',

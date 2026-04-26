@@ -261,13 +261,12 @@ $control-height-sm: 32px;
   font-size: var(--font-size-normal-text);
   font-weight: 600;
 
-  border: 1px solid transparent;
+  border: none;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
+  transition: 0.2s ease;
 
+  // Default: Primary (Blue)
   background-color: var(--brand-color);
   color: var(--surface-color);
 
@@ -277,33 +276,50 @@ $control-height-sm: 32px;
     background-color: var(--text-secondary);
     opacity: 0.5;
     cursor: not-allowed;
-    transform: none;
+    transform: none !important;
   }
 
   &:not(:disabled):hover {
-    background-color: #03045e;
-    color: var(--surface-color);
-    border: 1px solid #003566;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(6px);
-    box-shadow: 0 8px 20px rgba(31, 42, 68, 0.25);
-    transition: all 0.25s ease-in-out;
+    background-color: var(--brand-hover-color);
   }
 
   &:not(:disabled):active {
     transform: scale(0.98);
   }
 
-  // Kırmızı İşlem Butonu
-  &--danger {
-    background-color: #ff4d4f;
+  // --- Variants ---
+
+  &--secondary {
+    background-color: var(--secondary-color);
+    color: var(--secondary-text);
 
     &:not(:disabled):hover {
-      background-color: #d9363e;
+      background-color: var(--secondary-hover-color);
     }
   }
 
-  // Kare Buton (Sadece ikon içerdiğinde kullanılır)
+  &--danger {
+    background-color: var(--button-red-color);
+    color: var(--surface-color);
+
+    &:not(:disabled):hover {
+      background-color: var(--button-red-hover-color);
+    }
+  }
+
+  &--outline {
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+
+    &:not(:disabled):hover {
+      background-color: var(--background-color);
+      border-color: var(--border-hover);
+    }
+  }
+
+  // --- Sizes & Shapes ---
+
   &--icon-only {
     padding: 0;
     width: $control-height;
@@ -315,11 +331,12 @@ $control-height-sm: 32px;
     }
   }
 
-  // Küçük Buton (Tablo içi veya liste içi işlemler)
   &--sm {
     height: $control-height-sm;
+    padding: 0 var(--space-md);
 
     &.btn--icon-only {
+      padding: 0;
       width: $control-height-sm;
     }
   }

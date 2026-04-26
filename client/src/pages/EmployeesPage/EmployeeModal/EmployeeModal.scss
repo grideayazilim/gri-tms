@@ -1,33 +1,11 @@
 .employee-modal {
   &__tabs {
     display: flex;
+    gap: 12px;
     margin-bottom: 24px;
-    gap: 8px;
 
     .tab-btn {
       flex: 1;
-      padding: 12px;
-      background: var(--bg-color-secondary);
-      border: 1px solid var(--border-color);
-      border-radius: var(--border-radius-md);
-      color: var(--text-color-secondary);
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-        background-color: var(--hover-color, rgba(0, 0, 0, 0.05));
-        color: var(--text-color);
-      }
-
-      &.active,
-      &:active {
-        background-color: var(--primary-color, #2563eb);
-        color: #ffffff !important;
-        border-color: var(--primary-color, #2563eb);
-        opacity: 1;
-      }
     }
   }
 
@@ -35,67 +13,98 @@
     display: flex;
     gap: 16px;
     width: 100%;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
   }
 
   .flex-full {
     width: 100%;
-    margin-top: 0;
   }
 
-  // ── TOPLU GİRİŞ BÖLÜMÜ ──────────────────────────────────────────────────────
-  .bulk-upload-section {
+  .isActive-checkbox {
+    margin-bottom: 24px;
     display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
+    gap: 8px;
+    align-items: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 14px;
 
-  // Dönem + Yerleşke seçicileri
-  .bulk-selectors {
-    &__row {
-      display: flex;
-      gap: 12px;
+    input {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
 
-      .floating-group {
-        flex: 1;
-        position: relative;
-      }
-
-      @media (max-width: 480px) {
-        flex-direction: column;
-      }
+    label {
+      cursor: pointer;
     }
   }
 
-  // Upload kutusu
+  .api-error-alert {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: #fff2f0;
+    border: 1px solid #ffccc7;
+    border-radius: var(--radius-sm);
+    color: #ff4d4f;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 24px;
+    line-height: 1.4;
+  }
+
+  .modal-form__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+  }
+
+  // ── TOPLU GİRİŞ (BULK) ──────────────────────────────────────────────────────
+  .bulk-upload-section {
+    padding: 16px 0;
+  }
+
   .upload-box {
-    border: 2px dashed var(--border-color);
-    border-radius: var(--border-radius-md);
-    padding: 32px 24px;
-    background-color: var(--bg-color-secondary);
-    transition: border-color 0.2s;
-    text-align: center;
+    border: 2px dashed var(--border-color, #e2e8f0);
+    border-radius: 16px;
+    background: linear-gradient(to bottom, transparent, var(--bg-color-secondary, #f8fafc));
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
 
     &:hover {
-      border-color: var(--primary-color);
+      border-color: var(--primary-color, #2563eb);
+      background: rgba(37, 99, 235, 0.02);
+      transform: translateY(-2px);
+    }
+
+    &__content {
+      padding: 48px 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
     }
 
     .upload-icon {
-      font-size: 40px;
-      color: var(--primary-color);
-      margin-bottom: 12px;
+      font-size: 48px;
+      color: var(--primary-color, #2563eb);
+      margin-bottom: 16px;
+      filter: drop-shadow(0 4px 6px rgba(37, 99, 235, 0.15));
     }
 
     h3 {
-      margin: 0 0 6px 0;
-      font-size: 15px;
-      color: var(--text-color);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text-color, #1e293b);
+      margin: 0 0 8px 0;
     }
 
-    > p {
-      color: var(--text-color-secondary);
-      margin: 0 0 16px 0;
-      font-size: 0.875rem;
+    p {
+      color: var(--text-color-secondary, #64748b);
+      font-size: 14px;
+      margin-bottom: 24px;
+      max-width: 320px;
     }
 
     .file-input-hidden {
@@ -103,218 +112,310 @@
     }
 
     .upload-btn {
-      cursor: pointer;
-      display: inline-flex;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
-      min-width: 160px;
-      margin: 0 auto;
-
-      &.btn--disabled {
-        opacity: 0.45;
-        pointer-events: none;
-      }
+      min-width: 200px;
+      height: 44px;
+      font-weight: 600;
     }
-  }
 
-  // Kriterler listesi
-  .import-criteria {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 20px 0;
-    text-align: left;
-    background: var(--surface-color, var(--bg-color-secondary));
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm, 6px);
-    padding: 12px 16px;
-
-    li {
-      font-size: 12px;
-      color: var(--text-color-secondary);
-      line-height: 1.6;
-      padding: 3px 0;
-      padding-left: 14px;
-      position: relative;
-
-      &::before {
-        content: "•";
-        position: absolute;
-        left: 2px;
-        color: var(--primary-color);
-      }
-
-      strong {
-        color: var(--text-color);
-        font-weight: 600;
-      }
-    }
-  }
-
-  // Hint metni (yerleşke seçilmeden dosya seçilemez)
-  .import-hint {
-    font-size: 12px;
-    color: var(--text-color-secondary);
-    margin: 8px 0 0 0;
-    opacity: 0.8;
-  }
-
-  // ── PROGRESS BAR ────────────────────────────────────────────────────────────
-  .import-progress-area {
-    background: var(--bg-color-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius-md);
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .import-progress__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .import-progress__label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-color);
-  }
-
-  .import-progress__count {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--primary-color, #2563eb);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .import-progress__bar-track {
-    width: 100%;
-    height: 8px;
-    background-color: var(--border-color);
-    border-radius: 99px;
-    overflow: hidden;
-  }
-
-  .import-progress__bar-fill {
-    height: 100%;
-    background-color: var(--primary-color, #2563eb);
-    border-radius: 99px;
-    transition: width 0.2s ease;
-    min-width: 4px;
-  }
-
-  // ── SONUÇ ALANI ─────────────────────────────────────────────────────────────
-  .import-result {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-
-    &__summary {
+    .selected-file-area {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      padding: 12px 16px;
-      border-radius: var(--border-radius-md);
-      font-size: 14px;
+      padding: 20px 0;
+      width: 100%;
 
-      &--success {
-        background: rgba(34, 197, 94, 0.1);
-        color: #15803d;
-        border: 1px solid rgba(34, 197, 94, 0.25);
+      .file-ready-icon {
+        font-size: 48px;
+        color: #22c55e;
+        margin-bottom: 16px;
       }
 
-      &--partial {
-        background: rgba(245, 158, 11, 0.1);
-        color: #92400e;
-        border: 1px solid rgba(245, 158, 11, 0.25);
+      .file-info {
+        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .file-name {
+          font-weight: 700;
+          color: var(--text-color);
+          font-size: 16px;
+        }
+
+        .file-size {
+          font-size: 12px;
+          color: var(--text-color-secondary);
+        }
+      }
+
+      .file-hint {
+        font-size: 13px;
+        color: var(--text-color-secondary);
+        margin-bottom: 24px;
+        cursor: pointer;
+
+        u {
+          color: var(--primary-color);
+        }
+
+        &:hover u {
+          opacity: 0.8;
+        }
+      }
+
+      .file-actions {
+        display: flex;
+        gap: 12px;
+        width: 100%;
+        justify-content: center;
+
+        button {
+          min-width: 140px;
+        }
       }
     }
+  }
 
-    &__icon {
+  .import-info-banner {
+    display: flex;
+    gap: 10px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    text-align: left;
+    align-items: center;
+
+    svg {
+      color: #0369a1;
       font-size: 18px;
       flex-shrink: 0;
     }
 
-    &__again-btn {
-      align-self: flex-start;
-      margin-top: 4px;
+    p {
+      color: #0369a1;
+      font-size: 13px;
+      margin: 0;
+      line-height: 1.5;
+      max-width: none;
     }
   }
 
-  // ── HATA LİSTESİ ────────────────────────────────────────────────────────────
-  .import-errors {
-    background: rgba(239, 68, 68, 0.05);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-    border-radius: var(--border-radius-md);
-    padding: 12px 16px;
+  // ── PROGRESS OVERLAY ────────────────────────────────────────────────────────
+  .import-overlay {
+    position: absolute;
+    inset: -20px; // Modal dışına taşmasın ama tüm içeriği kaplasın
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
 
-    &__title {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #dc2626;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin: 0 0 10px 0;
+    &__card {
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      border: 1px solid var(--border-color, #e2e8f0);
+    }
 
-      svg {
-        font-size: 14px;
+    &__spinner {
+      font-size: 40px;
+      color: var(--primary-color);
+      margin-bottom: 16px;
+
+      .spin {
+        animation: spin 1s linear infinite;
       }
     }
 
-    &__list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      max-height: 200px;
-      overflow-y: auto;
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 18px;
     }
 
-    &__item {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      font-size: 12px;
-      padding: 6px 8px;
-      background: rgba(239, 68, 68, 0.05);
-      border-radius: 4px;
-      flex-wrap: wrap;
-    }
-
-    &__name {
-      font-weight: 600;
-      color: var(--text-color);
-      min-width: 100px;
-    }
-
-    &__tc {
+    p {
       color: var(--text-color-secondary);
-      font-variant-numeric: tabular-nums;
+      font-size: 14px;
+      margin-bottom: 32px;
     }
 
-    &__msg {
-      color: #dc2626;
-      flex: 1;
+    &__progress {
+      .progress-text {
+        display: flex;
+        justify-content: space-between;
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: var(--text-color);
+      }
+
+      .progress-bar {
+        height: 10px;
+        background: #f1f5f9;
+        border-radius: 5px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: var(--primary-color);
+        transition: width 0.3s ease;
+      }
     }
   }
 
-  // ── GENEL BUTON EKLERİ ──────────────────────────────────────────────────────
-  .btn--outline {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-color);
+  // ── REPORT MODAL ────────────────────────────────────────────────────────────
+  .import-report {
+    padding: 16px 0;
 
-    &:hover {
-      background: var(--hover-color, rgba(0, 0, 0, 0.05));
-      border-color: var(--primary-color);
-      color: var(--primary-color);
+    &__header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 32px;
+
+      .success-icon {
+        font-size: 56px;
+        color: #22c55e;
+        margin-bottom: 16px;
+      }
+
+      h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-color);
+      }
     }
+
+    &__stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+
+      .stat-card {
+        padding: 20px;
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border: 1px solid transparent;
+
+        &.success {
+          background: #f0fdf4;
+          border-color: #dcfce7;
+
+          .stat-value {
+            color: #15803d;
+          }
+        }
+
+        &.failure {
+          background: #fef2f2;
+          border-color: #fee2e2;
+
+          .stat-value {
+            color: #b91c1c;
+          }
+        }
+
+        .stat-value {
+          font-size: 28px;
+          font-weight: 800;
+          margin-bottom: 4px;
+        }
+
+        .stat-label {
+          font-size: 13px;
+          color: var(--text-color-secondary);
+          font-weight: 500;
+        }
+      }
+    }
+
+    &__errors {
+      h3 {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 12px;
+      }
+
+      .error-list {
+        max-height: 240px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding-right: 8px;
+
+        &::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+          background: #e2e8f0;
+          border-radius: 10px;
+        }
+      }
+
+      .error-item {
+        background: #f8fafc;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 13px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        border: 1px solid #f1f5f9;
+
+        .error-row {
+          font-weight: 700;
+          color: #64748b;
+          min-width: 50px;
+          background: #e2e8f0;
+          padding: 2px 6px;
+          border-radius: 4px;
+          text-align: center;
+        }
+
+        .error-name {
+          font-weight: 600;
+          color: var(--text-color);
+          flex: 1;
+        }
+
+        .error-msg {
+          color: #ef4444;
+          font-size: 12px;
+        }
+      }
+    }
+
+    &__actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 40px;
+
+      button {
+        flex: 1;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }

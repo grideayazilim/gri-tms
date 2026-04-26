@@ -1,16 +1,11 @@
 import { useState, useCallback } from "react";
-import {
-  getUsers,
-  updateUser,
-  deleteUser,
-  updateProfile,
-} from "../../api/userService";
+import { userService } from "../../api";
 
 export const useUsers = () => {
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({
-    total: 0,
-    page: 1,
+    totalRecords: 0,
+    currentPage: 1,
     limit: 10,
     totalPages: 0,
   });
@@ -22,17 +17,11 @@ export const useUsers = () => {
     setError(null);
 
     try {
-      const response = await getUsers(params);
-      console.log("USERS API RESPONSE:", response);
-
-      if (response.success) {
-        setUsers(response.data.users);
-        setPagination(response.data.pagination);
-        return { success: true, data: response.data };
-      }
-      return { success: false, error: "Sunucudan başarısız yanıt döndü" };
+      const response = await userService.getUsers(params);
+      setUsers(response.data?.users || []);
+      setPagination(response.data?.pagination || { totalRecords: 0, currentPage: 1, limit: 10, totalPages: 0 });
+      return { success: true, data: response.data };
     } catch (err) {
-      console.log("ERROR:", err);
       setError(err.message || "Kullanıcılar getirilirken bir hata oluştu");
       return { success: false, error: err.message };
     } finally {
@@ -45,11 +34,8 @@ export const useUsers = () => {
     setError(null);
 
     try {
-      const response = await updateUser(userId, data);
-      if (response.success) {
-        return { success: true, data: response.data };
-      }
-      return { success: false, error: "Güncelleme başarısız" };
+      const response = await userService.updateUser(userId, data);
+      return { success: true, data: response.data };
     } catch (err) {
       setError(err.message || "Kullanıcı güncellenirken bir hata oluştu");
       return { success: false, error: err.message };
@@ -63,11 +49,8 @@ export const useUsers = () => {
     setError(null);
 
     try {
-      const response = await deleteUser(userId);
-      if (response.success) {
-        return { success: true, message: response.message };
-      }
-      return { success: false, error: "Silme işlemi başarısız" };
+      const response = await userService.deleteUser(userId);
+      return { success: true, message: response.message };
     } catch (err) {
       setError(err.message || "Kullanıcı silinirken bir hata oluştu");
       return { success: false, error: err.message };
@@ -81,15 +64,8 @@ export const useUsers = () => {
     setError(null);
 
     try {
-      const response = await updateProfile(data);
-      if (response.success) {
-        return {
-          success: true,
-          data: response.data,
-          message: response.message,
-        };
-      }
-      return { success: false, error: "Profil güncellenemedi" };
+      const response = await userService.updateProfile(data);
+      return { success: true, data: response.data, message: response.message };
     } catch (err) {
       setError(err.message || "Profil güncellenirken bir hata oluştu");
       return { success: false, error: err.message };

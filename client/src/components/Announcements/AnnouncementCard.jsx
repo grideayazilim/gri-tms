@@ -1,5 +1,6 @@
 import { RiDeleteBinLine } from 'react-icons/ri';
 import './Announcements.scss';
+import { formatDate } from '../../utils/dateUtils';
 
 function AnnouncementCard({ announcement, onDelete, onRead, isAdmin }) {
   const isUnread = announcement.isRead === false || announcement.is_read === false;
@@ -8,16 +9,6 @@ function AnnouncementCard({ announcement, onDelete, onRead, isAdmin }) {
     if (isUnread && onRead) {
       onRead(announcement.id);
     }
-  };
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('tr-TR', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
   };
 
   return (
@@ -41,7 +32,7 @@ function AnnouncementCard({ announcement, onDelete, onRead, isAdmin }) {
       <p className="announcement-card__content">{announcement.content}</p>
       
       <div className="announcement-card__footer">
-        <span className="announcement-card__date">{formatDate(announcement.createdAt || announcement.created_at)}</span>
+        <span className="announcement-card__date">{formatDate(announcement.createdAt || announcement.created_at, 'dd MMMM yyyy HH:mm')}</span>
       </div>
     </div>
   );

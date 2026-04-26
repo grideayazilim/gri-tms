@@ -51,9 +51,11 @@
   0% {
     box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.4);
   }
+
   70% {
     box-shadow: 0 0 0 6px rgba(0, 123, 255, 0);
   }
+
   100% {
     box-shadow: 0 0 0 0 rgba(0, 123, 255, 0);
   }
@@ -73,13 +75,12 @@
 .announcement-card__header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-md);
-  margin-bottom: var(--space-md);
+  margin-bottom: var(--space-xs);
 }
 
 .announcement-card__title {
-  font-size: 18px;
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   margin: 0;

@@ -1,353 +1,248 @@
-import { withTransaction } from '../config/database.js';
+/* ========================================================================
+   SETTINGS CONTROLLER (SİSTEM AYARLARI VE ONAY MEKANİZMASI)
+   Sistem genel ayarları, dönem yönetimi ve bekleyen kullanıcı onayları.
+   ======================================================================== */
+import { withTransaction, pool } from '../config/database.js';
 import { toCamelCase } from '../utils/caseMapper.js';
-import { createAuditLog } from '../utils/auditLogger.js';
-import { AUDIT_EVENT } from '../enums/auditEventTypes.js';
+import { createAuditLog, buildActor, diffEntity } from '../utils/auditLogger.js';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_ROLE, USER_STATUS } from '@timesheet/shared';
+import { toISODateString, parseLocalDate, startOfMonth, endOfMonth, eachMonthOfInterval } from '../utils/dateUtils.js';
+import { asyncHandler } from '../middlewares/asyncHandler.js';
+import { conflict, notFound } from '../utils/AppError.js';
+
+const SETTINGS_ID = 1; // Sistem ayarları tablosunda her zaman tek bir satır (ID=1) bulunur
+
 
 // --- PENDING USERS ---
 
-export async function getPendingUsers(req, res) {
-  try {
-    const result = await withTransaction(async (client) => {
-      // Assuming you want to get users with status = 'PENDING'
-      return await client.query(`
-        SELECT u.id, u.username, u.role, u.status, u.created_at, u.last_login_at,
-               l.name as location_name, un.name as unit_name
-        FROM app.users u
-        LEFT JOIN app.locations l ON u.location_id = l.id
-        LEFT JOIN app.units un ON u.unit_id = un.id
-        WHERE u.status = 'PENDING'
-        ORDER BY u.created_at DESC
-      `);
-    });
+export const getPendingUsers = asyncHandler(async (req, res) => {
+  const result = await pool.query(
+    `SELECT u.id, u.username, u.role, u.status, u.created_at, u.last_login_at,
+            l.name as location_name, un.name as unit_name
+     FROM app.users u
+     LEFT JOIN app.locations l ON u.location_id = l.id
+     LEFT JOIN app.units un ON u.unit_id = un.id
+     WHERE u.status = $1
+     ORDER BY u.created_at DESC`,
+    [USER_STATUS.PENDING]
+  );
 
-    res.json({
-      success: true,
-      data: {
-        users: result.rows.map(toCamelCase)
-      }
-    });
+  res.json({ success: true, data: { users: result.rows.map(toCamelCase) } });
+});
 
-  } catch (error) {
-    console.error('getPendingUsers error:', error);
-    res.status(500).json({ success: false, message: 'Onay bekleyen kullanıcılar alınırken hata oluştu' });
-  }
-}
+export const approvePendingUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-export async function approvePendingUser(req, res) {
-  try {
-    const { id } = req.params;
+  const result = await withTransaction(async (client) => {
+    const updateRes = await client.query(
+      `UPDATE app.users
+       SET status = $1, updated_at = NOW()
+       WHERE id = $2 AND status = $3
+       RETURNING *`,
+      [USER_STATUS.ACTIVE, id, USER_STATUS.PENDING]
+    );
 
-    const result = await withTransaction(async (client) => {
-      const updateRes = await client.query(`
-        UPDATE app.users
-        SET status = 'ACTIVE', updated_at = NOW()
-        WHERE id = $1 AND status = 'PENDING'
-        RETURNING *
-      `, [id]);
-
-      if (updateRes.rowCount > 0) {
-        await createAuditLog(client, {
-          username: req.user?.username || 'System',
-          userRole: req.user?.role || 'SYSTEM',
-          eventType: AUDIT_EVENT.USER,
-          description: `Kullanıcı onaylandı: ${updateRes.rows[0].username}`,
-          tableName: 'users',
-          recordId: id,
-          newData: updateRes.rows[0]
-        });
-      }
-      return updateRes;
-    });
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ success: false, message: 'Onay bekleyen kullanıcı bulunamadı' });
+    if (updateRes.rowCount > 0) {
+      await createAuditLog(client, {
+        action: AUDIT_ACTION.USER_APPROVE,
+        actor: buildActor(req),
+        entityType: AUDIT_ENTITY_TYPE.USER,
+        entityId: id,
+        summary: `${updateRes.rows[0].username} adlı kullanıcı onaylandı.`,
+        metadata: {
+          role: updateRes.rows[0].role,
+          unitId: updateRes.rows[0].unit_id || null,
+          locationId: updateRes.rows[0].location_id || null,
+        },
+      });
     }
+    return updateRes;
+  });
 
-    res.json({ success: true, message: 'Kullanıcı onaylandı' });
+  if (result.rowCount === 0) throw notFound('Onay bekleyen kullanıcı bulunamadı');
 
-  } catch (error) {
-    console.error('approvePendingUser error:', error);
-    res.status(500).json({ success: false, message: 'Kullanıcı onaylanırken hata oluştu' });
-  }
-}
+  res.json({ success: true, message: 'Kullanıcı onaylandı' });
+});
 
-export async function rejectPendingUser(req, res) {
-  try {
-    const { id } = req.params;
+export const rejectPendingUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
 
-    const result = await withTransaction(async (client) => {
-      const deleteRes = await client.query(`
-        DELETE FROM app.users
-        WHERE id = $1 AND status = 'PENDING'
-        RETURNING *
-      `, [id]);
+  const result = await withTransaction(async (client) => {
+    const deleteRes = await client.query(
+      `DELETE FROM app.users
+       WHERE id = $1 AND status = $2
+       RETURNING *`,
+      [id, USER_STATUS.PENDING]
+    );
 
-      if (deleteRes.rowCount > 0) {
-        await createAuditLog(client, {
-          username: req.user?.username || 'System',
-          userRole: req.user?.role || 'SYSTEM',
-          eventType: AUDIT_EVENT.USER,
-          description: `Kullanıcı reddedildi ve silindi: ${deleteRes.rows[0].username}`,
-          tableName: 'users',
-          recordId: id,
-          oldData: deleteRes.rows[0]
-        });
-      }
-      return deleteRes;
-    });
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ success: false, message: 'Onay bekleyen kullanıcı bulunamadı' });
+    if (deleteRes.rowCount > 0) {
+      await createAuditLog(client, {
+        action: AUDIT_ACTION.USER_REJECT,
+        actor: buildActor(req),
+        entityType: AUDIT_ENTITY_TYPE.USER,
+        entityId: id,
+        summary: `${deleteRes.rows[0].username} adlı bekleyen kullanıcı reddedildi ve silindi.`,
+        metadata: {
+          role: deleteRes.rows[0].role,
+          unitId: deleteRes.rows[0].unit_id || null,
+          locationId: deleteRes.rows[0].location_id || null,
+        },
+      });
     }
+    return deleteRes;
+  });
 
-    res.json({ success: true, message: 'Kullanıcı reddedildi ve silindi' });
+  if (result.rowCount === 0) throw notFound('Onay bekleyen kullanıcı bulunamadı');
 
-  } catch (error) {
-    console.error('rejectPendingUser error:', error);
-    res.status(500).json({ success: false, message: 'Kullanıcı reddedilirken hata oluştu' });
-  }
-}
+  res.json({ success: true, message: 'Kullanıcı reddedildi ve silindi' });
+});
 
 // --- SYSTEM SETTINGS ---
 
-export async function getSystemSettings(req, res) {
-  try {
-    const result = await withTransaction(async (client) => {
-      return await client.query(`SELECT * FROM app.settings LIMIT 1`);
-    });
+export const getSystemSettings = asyncHandler(async (req, res) => {
+  const result = await pool.query(
+    `SELECT id, daily_wage, max_weekly_days, program_start_date, program_end_date, updated_at
+     FROM app.settings LIMIT 1`
+  );
 
-    const settings = result.rows[0];
-    if (!settings) {
-      return res.json({ success: true, data: { settings: {} } });
+  const settings = result.rows[0];
+  if (!settings) {
+    return res.json({ success: true, data: { settings: {} } });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      settings: toCamelCase({
+        daily_allowance: settings.daily_wage,
+        weekly_limit: settings.max_weekly_days,
+        program_start: toISODateString(settings.program_start_date),
+        program_end: toISODateString(settings.program_end_date)
+      })
+    }
+  });
+});
+
+export const updateSystemSettings = asyncHandler(async (req, res) => {
+  const { dailyAllowance, weeklyLimit, programStart, programEnd, force } = req.body;
+  const dailyAllowanceFloat = dailyAllowance !== undefined && dailyAllowance !== '' ? parseFloat(dailyAllowance) : null;
+
+  await withTransaction(async (client) => {
+    const currentRes = await client.query(
+      `SELECT id, daily_wage, max_weekly_days, program_start_date, program_end_date, updated_at
+       FROM app.settings LIMIT 1`
+    );
+    const current = currentRes.rows[0];
+
+    const formatDate = (d) => toISODateString(d ?? null);
+
+    const newStart = formatDate(programStart);
+    const newEnd = formatDate(programEnd);
+    const oldStart = formatDate(current?.program_start_date);
+    const oldEnd = formatDate(current?.program_end_date);
+
+    const dateChanged = (newStart !== oldStart) || (newEnd !== oldEnd);
+
+    // Tarih Değişimi Koruması: Tarih değişirse tüm dönemler (Periods) silinip yeniden oluşur.
+    // Bu çok riskli bir işlem olduğu için kullanıcıdan "force" onayı (confirm) beklenir.
+    if (dateChanged && !force) {
+      throw conflict('Tarih değişimi algılandı. Onay gerekiyor.');
     }
 
-    res.json({
-      success: true,
-      data: {
-        settings: toCamelCase({
-          daily_allowance: settings.daily_wage,
-          weekly_limit: settings.max_weekly_days,
-          program_start: settings.program_start_date ? new Date(settings.program_start_date).toLocaleDateString("en-CA") : null,
-          program_end: settings.program_end_date ? new Date(settings.program_end_date).toLocaleDateString("en-CA") : null
-        })
-      }
-    });
 
-  } catch (error) {
-    console.error('getSystemSettings error:', error);
-    res.status(500).json({ success: false, message: 'Sistem ayarları alınırken hata oluştu' });
-  }
-}
+    let updatedSettings;
 
-export async function updateSystemSettings(req, res) {
-  try {
-    const { dailyAllowance, weeklyLimit, programStart, programEnd, force } = req.body;
-    const dailyAllowanceFloat = dailyAllowance !== undefined && dailyAllowance !== '' ? parseFloat(dailyAllowance) : null;
+    if (current) {
+      const updateRes = await client.query(
+        `UPDATE app.settings
+         SET daily_wage = $1, max_weekly_days = $2, program_start_date = $3, program_end_date = $4, updated_at = NOW()
+         WHERE id = $5
+         RETURNING *`,
+        [dailyAllowanceFloat, weeklyLimit, newStart, newEnd, current.id]
+      );
+      updatedSettings = updateRes.rows[0];
+    } else {
+      const insertRes = await client.query(
+        `INSERT INTO app.settings (id, daily_wage, max_weekly_days, program_start_date, program_end_date)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING *`,
+        [SETTINGS_ID, dailyAllowanceFloat, weeklyLimit, newStart, newEnd]
+      );
+      updatedSettings = insertRes.rows[0];
+    }
 
-    await withTransaction(async (client) => {
-      const currentRes = await client.query(`SELECT * FROM app.settings LIMIT 1`);
-      const current = currentRes.rows[0];
+    if (dateChanged && force) {
+      if (newStart && newEnd) {
+        const parsedStart = parseLocalDate(newStart);
+        const parsedEnd = parseLocalDate(newEnd);
 
-      const formatToDateStr = (d) => {
-        if (!d) return null;
-        const dt = new Date(d);
-        if (isNaN(dt)) return null;
-        return dt.toLocaleDateString('en-CA');
-      };
+        // 1. Yeni sınırların dışındaki tüm dönemleri sil (is_deleted = true)
+        await client.query(
+          `UPDATE app.periods SET is_deleted = true WHERE start_date < $1 OR end_date > $2`,
+          [newStart, newEnd]
+        );
 
-      const newStart = formatToDateStr(programStart);
-      const newEnd = formatToDateStr(programEnd);
+        // 2. Yeni tarih aralığındaki tüm ayları hesapla
+        const months = eachMonthOfInterval({ start: parsedStart, end: parsedEnd });
 
-      const oldStart = current ? formatToDateStr(current.program_start_date) : null;
-      const oldEnd = current ? formatToDateStr(current.program_end_date) : null;
 
-      const dateChanged = (newStart !== oldStart) || (newEnd !== oldEnd);
+        for (const monthDate of months) {
+          const y = monthDate.getFullYear();
+          const m = monthDate.getMonth() + 1;
 
-      if (dateChanged && !force) {
-        const err = new Error('Tarih değişimi algılandı. Onay gerekiyor.');
-        err.code = 'CONFIRM_PERIOD_CHANGE';
-        throw err;
-      }
+          // Ayın başlangıcı: Eğer programın ilk ayıysa, program başlangıç tarihini baz al
+          const periodStart = (y === parsedStart.getFullYear() && m === parsedStart.getMonth() + 1)
+            ? parsedStart
+            : startOfMonth(monthDate);
 
-      let updatedSettings;
+          // Ayın bitişi: Eğer programın son ayıysa, program bitiş tarihini baz al
+          const periodEnd = (y === parsedEnd.getFullYear() && m === parsedEnd.getMonth() + 1)
+            ? parsedEnd
+            : endOfMonth(monthDate);
 
-      if (current) {
-        const updateRes = await client.query(`
-          UPDATE app.settings
-          SET daily_wage = $1, max_weekly_days = $2, program_start_date = $3, program_end_date = $4, updated_at = NOW()
-          WHERE id = $5
-          RETURNING *
-        `, [dailyAllowanceFloat, weeklyLimit, newStart, newEnd, current.id]);
-        updatedSettings = updateRes.rows[0];
-      } else {
-        const insertRes = await client.query(`
-          INSERT INTO app.settings (id, daily_wage, max_weekly_days, program_start_date, program_end_date)
-          VALUES (1, $1, $2, $3, $4)
-          RETURNING *
-        `, [dailyAllowanceFloat, weeklyLimit, newStart, newEnd]);
-        updatedSettings = insertRes.rows[0];
-      }
-
-      // --- SLIDING WINDOW (KAYAR PENCERE) MANTIGI ---
-      // Program başlangıç ve bitiş tarihleri değiştiğinde, sistemin sadece 
-      // bu aralıktaki dönemleri "aktif" göstermesi, dışındakileri ise "gizlemesi" gerekir.
-      if (dateChanged && force) {
-        if (newStart && newEnd) {
-          // 1) HEDEFLİ GİZLEME: 
-          // Yeni belirlenen tarih aralığının tamamen dışında kalan dönemleri 'is_deleted = true' yaparak gizliyoruz.
-          // Bu sayede geçmiş veriler fiziksel olarak silinmez, sadece kullanıcı arayüzünden kaldırılır.
+          // Dönemi oluştur veya varsa tarihlerini güncelle (Upsert)
           await client.query(
-            `UPDATE app.periods SET is_deleted = true WHERE start_date < $1 OR end_date > $2`,
-            [newStart, newEnd]
+            `INSERT INTO app.periods (year, month, start_date, end_date, is_deleted)
+             VALUES ($1, $2, $3, $4, false)
+             ON CONFLICT (year, month) DO UPDATE
+             SET start_date = EXCLUDED.start_date,
+                 end_date = EXCLUDED.end_date,
+                 is_deleted = false`,
+            [y, m, toISODateString(periodStart), toISODateString(periodEnd)]
           );
-
-          // 2) KAPSAMLI AKTİVASYON VE OLUŞTURMA:
-          // newStart ile newEnd arasındaki her ay için döngü kurarak dönemlerin varlığını garanti altına alıyoruz.
-          let curr = new Date(newStart);
-          const end = new Date(newEnd);
-          while (curr <= end) {
-            const y = curr.getFullYear();
-            const m = curr.getMonth() + 1;
-            const firstDay = new Date(y, m - 1, 1);
-            const lastDay = new Date(y, m, 0);
-
-            // Ayın başladığı gerçek gün (Eğer program ayın ortasında başlıyorsa o günü baz alır)
-            const periodStart =
-              curr.getTime() === new Date(newStart).getTime()
-                ? new Date(newStart)
-                : firstDay;
-
-            // Ayın bittiği gerçek gün (Eğer program ayın ortasında bitiyorsa o günü baz alır)
-            const isLastMonth =
-              y === end.getFullYear() && m === end.getMonth() + 1;
-            const periodEnd = isLastMonth ? new Date(newEnd) : lastDay;
-
-            // UPSERT (INSERT or UPDATE) İŞLEMİ:
-            // Eğer o yıl/ay için bir kayıt varsa tarihlerini güncelleyip 'is_deleted = false' (aktif) yapıyoruz.
-            // Kayıt yoksa yeni bir dönem oluşturuyoruz.
-            await client.query(
-              `
-                INSERT INTO app.periods (year, month, start_date, end_date, is_deleted)
-                VALUES ($1, $2, $3, $4, false)
-                ON CONFLICT (year, month) DO UPDATE 
-                SET start_date = EXCLUDED.start_date, 
-                    end_date = EXCLUDED.end_date, 
-                    is_deleted = false
-              `,
-              [y, m, periodStart, periodEnd]
-            );
-
-            // Bir sonraki aya geç
-            curr.setMonth(curr.getMonth() + 1);
-            curr.setDate(1);
-          }
-        } else {
-          // Eğer geçerli bir tarih aralığı girilmemişse, güvenlik amacıyla tüm dönemleri gizle.
-          await client.query(`UPDATE app.periods SET is_deleted = true`);
         }
 
-        // --- EXPIRY DATE UPDATE MANTIĞI ---
-        // Program bitiş tarihi değiştiyse, tüm ADMIN harici kullanıcıların expiry_date'ini güncelle
-        if (newEnd && newEnd !== oldEnd) {
-          await client.query(`
-            UPDATE app.users 
-            SET expiry_date = $1::date + INTERVAL '20 days'
-            WHERE role != 'ADMIN'
-          `, [newEnd]);
-        }
+      } else {
+        await client.query(`UPDATE app.periods SET is_deleted = true`);
       }
 
-      await createAuditLog(client, {
-        username: req.user?.username || 'System',
-        userRole: req.user?.role || 'SYSTEM',
-        eventType: AUDIT_EVENT.SETTINGS,
-        description: `Sistem ayarları güncellendi.`,
-        tableName: 'settings',
-        oldData: current,
-        newData: updatedSettings
-      });
-    });
-
-    res.json({ success: true, message: 'Sistem ayarları güncellendi' });
-
-  } catch (error) {
-    if (error.code === 'CONFIRM_PERIOD_CHANGE') {
-      return res.status(409).json({ success: false, code: 'CONFIRM_PERIOD_CHANGE', message: error.message });
-    }
-    console.error('updateSystemSettings error:', error);
-    res.status(500).json({ success: false, message: 'Sistem ayarları güncellenirken hata oluştu' });
-  }
-}
-
-// --- MARKERS ---
-
-export async function getMarkers(req, res) {
-  try {
-    const result = await withTransaction(async (client) => {
-      return await client.query(`SELECT * FROM app.markers ORDER BY code ASC`);
-    });
-
-    res.json({
-      success: true,
-      data: {
-        markers: result.rows.map(toCamelCase)
+      if (newEnd && newEnd !== oldEnd) {
+        // Otomatik Süre Uzatma: Program bitiş tarihi değiştiyse, tüm sorumluların (non-admin) 
+        // expiry_date bilgilerini "Bitiş + 20 gün" kuralına göre toplu olarak günceller.
+        await client.query(
+          `UPDATE app.users
+           SET expiry_date = $1::date + INTERVAL '20 days'
+           WHERE role != $2`,
+          [newEnd, USER_ROLE.ADMIN]
+        );
       }
-    });
-
-  } catch (error) {
-    console.error('getMarkers error:', error);
-    res.status(500).json({ success: false, message: 'İşaretçiler alınırken hata oluştu' });
-  }
-}
-
-export async function updateMarkers(req, res) {
-  try {
-    const { markers } = req.body;
-
-    if (!Array.isArray(markers)) {
-      return res.status(400).json({ success: false, message: 'Geçersiz işaretçi listesi' });
     }
 
-    await withTransaction(async (client) => {
-      const currentRes = await client.query(`SELECT code FROM app.markers`);
-      const currentCodes = currentRes.rows.map(row => row.code);
 
-      const newCodes = markers.map(m => m.code);
-      const codesToDelete = currentCodes.filter(c => !newCodes.includes(c));
+    const changes = diffEntity(AUDIT_ENTITY_TYPE.SETTINGS, current || {}, updatedSettings);
 
-      // Delete missing
-      if (codesToDelete.length > 0) {
-        await client.query(`DELETE FROM app.markers WHERE code = ANY($1)`, [codesToDelete]);
-      }
-
-      // Upsert
-      for (const m of markers) {
-        await client.query(`
-           INSERT INTO app.markers (code, label, is_paid)
-           VALUES ($1, $2, $3)
-           ON CONFLICT (code) DO UPDATE 
-           SET label = EXCLUDED.label, is_paid = EXCLUDED.is_paid
-         `, [m.code, m.label, !!m.isPaid]);
-      }
-
-      // Fetch the updated markers to store in audit log
-      const updatedRes = await client.query(`SELECT * FROM app.markers`);
-
-      await createAuditLog(client, {
-        username: req.user?.username || 'System',
-        userRole: req.user?.role || 'SYSTEM',
-        eventType: AUDIT_EVENT.MARKER,
-        description: `Puantaj işaretçileri toplu olarak güncellendi.`,
-        tableName: 'markers',
-        oldData: currentRes.rows,
-        newData: updatedRes.rows
-      });
+    await createAuditLog(client, {
+      action: AUDIT_ACTION.SETTINGS_UPDATE,
+      actor: buildActor(req),
+      entityType: AUDIT_ENTITY_TYPE.SETTINGS,
+      entityId: updatedSettings?.id || null,
+      summary: changes.length > 0
+        ? `Sistem ayarları güncellendi (${changes.length} alan değişti).`
+        : 'Sistem ayarları güncellendi.',
+      changes,
+      metadata: dateChanged ? { periodsRegenerated: true } : {},
     });
+  });
 
-    res.json({ success: true, message: 'İşaretçiler başarıyla güncellendi' });
-
-  } catch (error) {
-    console.error('updateMarkers error:', error);
-    res.status(500).json({ success: false, message: 'İşaretçiler güncellenirken hata oluştu' });
-  }
-}
+  res.json({ success: true, message: 'Sistem ayarları güncellendi' });
+});

@@ -1,4 +1,9 @@
+/* ========================================================================
+   ANNOUNCEMENT SERVICE (DUYURU SERVİSİ)
+   Duyuru listeleme ve okundu işaretleme işlemleri.
+   ======================================================================== */
 import { api } from './httpClient';
+
 
 export const getAnnouncements = async (page = 1, limit = 20) => {
   const response = await api.get(`/announcements?page=${page}&limit=${limit}`);

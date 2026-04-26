@@ -1,15 +1,22 @@
+/* ========================================================================
+   TOKEN YARDIMCILARI (JWT UTILS)
+   Giriş ve yenileme token'larının oluşturulması ve doğrulanması
+   ======================================================================== */
 import jwt from 'jsonwebtoken';
+
 import { jwtConfig } from '../config/jwt.js';
 
-// Access token oluştur (kısa ömürlü)
+// Access Token: Kısa ömürlü, her istekte gönderilen kimlik bilgisi
 export const generateAccessToken = (payload) => {
+
   return jwt.sign(payload, jwtConfig.access.secret, {
     expiresIn: jwtConfig.access.expiresIn,
   });
 };
 
-// Refresh token oluştur (uzun ömürlü)
+// Refresh Token: Uzun ömürlü, yeni Access Token almak için kullanılır
 export const generateRefreshToken = (payload) => {
+
   return jwt.sign(payload, jwtConfig.refresh.secret, {
     expiresIn: jwtConfig.refresh.expiresIn,
   });

@@ -1,17 +1,18 @@
 import express from 'express';
-import { register, login, refresh, logout, getMe, updateMe } from '../controllers/authController.js';
+import { register, login, refresh, logout, getMe } from '../controllers/authController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
+import { validate } from '../middlewares/validate.js';
+import { signInSchema, signUpSchema } from '@timesheet/shared';
 
 const router = express.Router();
 
 // Public routes
-router.post('/register', register);
-router.post('/login', login);
+router.post('/register', validate(signUpSchema), register);
+router.post('/login', validate(signInSchema), login);
 router.post('/refresh', refresh);
 router.post('/logout', logout);
 
 // Protected routes
 router.get('/me', authMiddleware, getMe);
-router.put('/me', authMiddleware, updateMe);
 
 export default router;

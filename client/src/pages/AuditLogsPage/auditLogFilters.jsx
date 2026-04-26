@@ -1,35 +1,31 @@
-import { AUDIT_EVENT_LIST } from '../../constants/auditEvents';
+/* ========================================================================
+   AUDIT LOG FILTERS (SİSTEM LOGLARI FİLTRELERİ)
+   Geçmişe dönük işlem kayıtlarını filtrelemek için kullanılan konfigürasyon.
+   ======================================================================== */
+import { AUDIT_CATEGORY_LIST } from '@timesheet/shared';
 
 export const auditLogFilterConfig = [
-  { 
-    key: 'action', 
-    apiParam: 'eventType',
-    label: 'İşlem Tipi', 
-    type: 'select', 
-    options: AUDIT_EVENT_LIST.map(e => ({ value: e.code, label: e.label })), 
-    defaultOption: 'Tüm İşlemler',
-    apply: (log, value) => log.eventType === value
+
+  {
+    key: 'category',
+    apiParam: 'category',
+    label: 'Kategori',
+    type: 'select',
+    options: AUDIT_CATEGORY_LIST.map((c) => ({ value: c.code, label: c.label })),
+    defaultOption: 'Tüm Kategoriler',
   },
-  { 
-    key: 'beforeDate', 
+  {
+    key: 'beforeDate',
     apiParam: 'endDate',
-    label: 'Şu Tarihten Önce', 
+    label: 'Şu Tarihten Önce',
     type: 'date',
-    apply: (log, value) => {
-      const logDate = new Date(log.createdAt).getTime();
-      const filterDate = new Date(value).getTime();
-      return logDate <= filterDate;
-    }
   },
-  { 
-    key: 'searchActor', 
-    apiParam: 'username',
-    label: 'İşlem Yapan Ara', 
+  {
+    key: 'searchActor',
+    apiParam: 'actor',
+    label: 'İşlem Yapan Ara',
+    // İşlemi gerçekleştiren admin/sorumlu ismine göre arama yapar
     type: 'text',
-    apply: (log, value) => {
-      const searchStr = value.toLowerCase();
-      const matchUsername = log.username && log.username.toLowerCase().includes(searchStr);
-      return matchUsername;
-    }
   },
 ];
+

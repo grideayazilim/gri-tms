@@ -1,4 +1,10 @@
-// JWT Configuration
+/* ========================================================================
+   GÜVENLİK YAPILANDIRMASI (JWT & COOKIE)
+   Token süreleri ve Cookie güvenlik politikaları
+   ======================================================================== */
+
+// JWT Yapılandırması: Access ve Refresh Token sırları ve süreleri
+
 export const jwtConfig = {
   access: {
     secret: process.env.ACCESS_TOKEN_SECRET || 'your_access_token_secret_change_in_production',
@@ -10,7 +16,8 @@ export const jwtConfig = {
   },
 };
 
-// Cookie Configuration
+// Cookie Yapılandırması: Güvenlik bayrakları (httpOnly, sameSite, secure)
+
 export const cookieConfig = {
   httpOnly: true, // JavaScript tarafından erişilemez
   sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',

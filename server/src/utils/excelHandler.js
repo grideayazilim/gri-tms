@@ -1,10 +1,9 @@
-/**
- * Gerçek export kodları ve şablonlar github'a yüklenmiyor. Projeyi çeken kişi,
- * kendi formatına uygun bir "customExcelHandler.js" yazmalıdır.
- * 
- * Eğer customExcelHandler.js yoksa, dışa aktarım tıklandığında UI'da 
- * "Bu sistemin excel çıktı şablonu ve script'i henüz yazılmadı" uyarısı çıkar.
- */
+/* ========================================================================
+   EXCEL HANDLER (DİNAMİK YÜKLEYİCİ)
+   Export işlemlerini projenin customExcelHandler script'ine yönlendirir.
+   Bu sayede hassas şablonlar ve iş mantığı ana koddan ayrıştırılır.
+   ======================================================================== */
+
 
 export async function generateTimesheetExcel(options) {
   try {

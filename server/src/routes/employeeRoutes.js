@@ -7,6 +7,8 @@ import {
   updateEmployee,
   deleteEmployee,
 } from "../controllers/employeeController.js";
+import { validate } from "../middlewares/validate.js";
+import { employeeSchema } from "@timesheet/shared";
 
 const router = express.Router();
 
@@ -14,8 +16,8 @@ const router = express.Router();
 router.use(authMiddleware, adminMiddleware);
 
 router.get("/", getEmployees);
-router.post("/", createEmployee);
-router.put("/:id", updateEmployee);
+router.post("/", validate(employeeSchema), createEmployee);
+router.put("/:id", validate(employeeSchema), updateEmployee);
 router.delete("/:id", deleteEmployee);
 
 export default router;

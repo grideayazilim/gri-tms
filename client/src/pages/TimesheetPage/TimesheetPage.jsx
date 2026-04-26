@@ -1,4 +1,9 @@
+/* ========================================================================
+   TIMESHEET PAGE (PUANTAJ YÖNETİM SAYFASI)
+   Uygulamanın ana işlem merkezi. Veri girişi, filtreleme ve kilit yönetimi.
+   ======================================================================== */
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { AiOutlineBell } from "react-icons/ai";
 import DynamicTable from "../../components/DynamicTable/DynamicTable";
@@ -15,34 +20,10 @@ import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
 import { useAnnouncements } from "../../hooks/data/useAnnouncements";
 import { useToast } from "../../components/ToastBar/ToastContext";
 import { getTimesheetFilterConfig } from "./timesheetFilters";
-import { timesheetService } from "../../api";
-import { PAID_CODES } from "../../constants/markers";
+import { PAID_CODES } from "@timesheet/shared";
 import "../../styles/inputs.scss";
 import "./TimesheetPage.scss";
 
-// Ay isimlerini "YYYY-MM" formatından "2025 Ekim" formatına çeviren yardımcı
-const MONTH_LABELS = [
-  "Ocak",
-  "Şubat",
-  "Mart",
-  "Nisan",
-  "Mayıs",
-  "Haziran",
-  "Temmuz",
-  "Ağustos",
-  "Eylül",
-  "Ekim",
-  "Kasım",
-  "Aralık",
-];
-
-// DB'den gelen period'u { value, label, startDate, endDate } formatına dönüştürür
-const mapPeriod = (p) => ({
-  value: `${p.year}-${String(p.month).padStart(2, "0")}`,
-  label: `${p.year} ${MONTH_LABELS[p.month - 1]}`,
-  startDate: p.start_date,
-  endDate: p.end_date,
-});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
@@ -50,6 +31,7 @@ const mapPeriod = (p) => ({
 
 const TimesheetPage = () => {
   const { user, isAdmin } = useAuth();
+  const isAdminUser = isAdmin;
   const responsibleLocationId = user?.locationId ? String(user.locationId) : "";
   const responsibleUnitId = user?.unitId ? String(user.unitId) : "";
   const { showModal } = useModal();
@@ -72,16 +54,23 @@ const TimesheetPage = () => {
     }
   }, [unreadCount]);
 
+  const PAGE_LIMIT = 10;
+  const [page, setPage] = useState(1);
+
   // ── Puantaj verisi ve işlemleri ──────────────────────────────────────────
   const {
     timesheets,
     setTimesheets,
+    pagination,
     isLoading,
     isSaving,
+    isLocking,
     error,
     fetchTimesheets,
     saveTimesheets,
     toggleLockPeriod,
+    periods,
+    fetchPeriods,
   } = useTimesheets();
 
   // ── Yerleşke / Birim listeleri (filtre dropdown'ları için) ───────────────
@@ -92,67 +81,40 @@ const TimesheetPage = () => {
     fetchUnitsByLocation,
   } = useLocationsAndUnits();
 
-  // ── Dirty state takibi (kaydet butonu gösterimi + isDayCellDirty) ────────
+  // ── Dirty state takibi ──────────────────────────────────────────
+  // Veritabanından gelen ilk hali burada tutulur; tabloda değişiklik 
+  // yapıldığında bu snapshot ile kıyaslanarak "Kaydet" butonu gösterilir.
   const [originalSnapshot, setOriginalSnapshot] = useState([]);
+
 
   // ── Dönem kilit durumu (ADMIN tarafından toggle edilir) ─────────────────
   const [periodIsLocked, setPeriodIsLocked] = useState(false);
 
   // ── Dönem listesi ──────────────────────────────────────
-  const [periods, setPeriods] = useState([]);
-
   useEffect(() => {
-    timesheetService
-      .getPeriods()
-      .then((res) => {
-        if (res?.data?.periods) {
-          setPeriods(res.data.periods.map(mapPeriod));
-        }
-      })
-      .catch((err) =>
-        console.error("[TimesheetPage] Dönemler alınamadı:", err),
-      );
-  }, []);
+    fetchPeriods();
+  }, [fetchPeriods]);
 
   // ── Filtre dropdown seçenekleri ──────────────────────────────────────────
-  // API'den gelen { id, name } shape'ini FilterBar'ın beklediği { value, label } shape'ine çevir
   const locationOptions = useMemo(() => {
     const mapped = apiLocations.map((l) => ({ value: l.id, label: l.name }));
-
-    if (!!isAdmin() || !responsibleLocationId) return mapped;
-
-    return mapped.filter(
-      (location) => String(location.value) === responsibleLocationId,
-    );
-  }, [apiLocations, !isAdmin(), responsibleLocationId]);
+    if (isAdminUser || !responsibleLocationId) return mapped;
+    return mapped.filter((l) => String(l.value) === responsibleLocationId);
+  }, [apiLocations, isAdminUser, responsibleLocationId]);
 
   const unitOptions = useMemo(() => {
     const mapped = apiUnits.map((u) => ({ value: u.id, label: u.name }));
+    if (isAdminUser || !responsibleUnitId) return mapped;
+    return mapped.filter((u) => String(u.value) === responsibleUnitId);
+  }, [apiUnits, isAdminUser, responsibleUnitId]);
 
-    if (!!isAdmin() || !responsibleUnitId) return mapped;
-
-    return mapped.filter((unit) => String(unit.value) === responsibleUnitId);
-  }, [apiUnits, !isAdmin(), responsibleUnitId]);
-
-  const filterConfig = useMemo(() => {
-    const baseConfig = getTimesheetFilterConfig(
-      periods,
-      locationOptions,
-      unitOptions,
-    );
-
-    if (!!isAdmin()) return baseConfig;
-
-    return baseConfig.map((field) => {
-      if (field.key === "location" || field.key === "unit") {
-        const { defaultOption, ...rest } = field;
-        return rest;
-      }
-      return field;
-    });
-  }, [periods, locationOptions, unitOptions, !isAdmin()]);
+  const filterConfig = useMemo(
+    () => getTimesheetFilterConfig(periods, locationOptions, unitOptions, isAdminUser),
+    [periods, locationOptions, unitOptions, isAdminUser],
+  );
 
   // ── Filtreler ─────────────────────────────────────────────────────────────
+  // useFilter hook'u, filtre değerlerini ve backend'e gidecek apiParams'ı yönetir.
   const { filters, apiParams, handleFilterChange, setFilters } = useFilter(
     filterConfig,
     {
@@ -163,12 +125,14 @@ const TimesheetPage = () => {
     },
   );
 
+
   // ── Resmi tatiller ──────────────────────────────────────────────────────
   const { isPublicHoliday, getHolidayName } = usePublicHolidays(filters.period);
 
-  // Birim sorumlusu için yerleşke/birim filtreleri sabitlenir
+  // Birim sorumlusu için yerleşke/birim filtreleri login olduğu bilgilere sabitlenir.
+  // Bu sayede sorumlu kişi başka birimin verisine erişemez.
   useEffect(() => {
-    if (!!isAdmin()) return;
+    if (isAdminUser) return;
 
     setFilters((prev) => {
       const nextLocation = responsibleLocationId || prev.location;
@@ -184,13 +148,13 @@ const TimesheetPage = () => {
         unit: nextUnit,
       };
     });
-  }, [!isAdmin(), responsibleLocationId, responsibleUnitId, setFilters]);
+  }, [isAdminUser, responsibleLocationId, responsibleUnitId, setFilters]);
+
 
   // Dönemler yüklenince mevcut ayı seç, yoksa listedeki ilk dönemi seç
   useEffect(() => {
     if (periods.length > 0 && !filters.period) {
-      const now = new Date();
-      const currentPeriod = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const currentPeriod = format(new Date(), "yyyy-MM");
       const match = periods.find((p) => p.value === currentPeriod);
       setFilters((prev) => ({
         ...prev,
@@ -198,6 +162,11 @@ const TimesheetPage = () => {
       }));
     }
   }, [periods, setFilters, filters.period]);
+
+  // Filtreler değişince sayfayı başa sar
+  useEffect(() => {
+    setPage(1);
+  }, [apiParams]);
 
   // ── Sayfa açılışında yerleşkeleri yükle ──────────────────────────────────
   useEffect(() => {
@@ -209,33 +178,30 @@ const TimesheetPage = () => {
     if (filters.location) {
       fetchUnitsByLocation(filters.location);
     }
-    // Yerleşke temizlenince birim filtresini de sıfırla
     if (!filters.location) {
       handleFilterChange("unit", "");
     }
   }, [filters.location, fetchUnitsByLocation, handleFilterChange]);
 
   useEffect(() => {
-    // Dönem seçili değilse fetch yapma — period ayarlanmadan önce gelen stale
-    // response'un marks'ı silmesini (race condition) önler
     if (!apiParams.month) return;
 
-    fetchTimesheets(apiParams).then((result) => {
+    fetchTimesheets({ ...apiParams, page, limit: PAGE_LIMIT }).then((result) => {
       if (result.success && result.rows) {
-        setOriginalSnapshot(JSON.parse(JSON.stringify(result.rows)));
-        // İlk satırdan dönemin kilit durumunu al
+        setOriginalSnapshot(structuredClone(result.rows));
         const locked = result.rows[0]?.isLocked ?? false;
         setPeriodIsLocked(locked);
       }
+    }).catch(() => {
+      // fetchTimesheets kendi catch bloğunda hata state'ini set ediyor
     });
-  }, [fetchTimesheets, apiParams]);
+  }, [fetchTimesheets, apiParams, page]);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // HÜCRE TIKLAMA — sol tık: X, sağ tık: diğer işaretçiler (markerCode ile gelir)
+  // HÜCRE TIKLAMA
   // ─────────────────────────────────────────────────────────────────────────
   const handleDayClick = useCallback(
     (row, dateStr, markerCode) => {
-      // Resmi tatilde değişiklik yapılmasın
       if (isPublicHoliday(dateStr)) {
         const holidayName = getHolidayName(dateStr) || "Resmi tatil";
         toast({
@@ -245,7 +211,6 @@ const TimesheetPage = () => {
         return;
       }
 
-      // Kilitli dönemde değişiklik yapılmasın
       if (row.isLocked) {
         toast({
           type: "warning",
@@ -258,48 +223,44 @@ const TimesheetPage = () => {
         prev.map((r) => {
           if (r.id !== row.id) return r;
 
-          const key = dateStr;
-
           const newDays = { ...r.timesheet_days };
-          // Aynı marker tekrar tıklanırsa kaldır (toggle)
-          if (newDays[key] === markerCode) {
-            delete newDays[key];
+          // Eğer hücrede zaten aynı işaretçi varsa sil (toggle), yoksa yeni işaretçiyi yaz
+          if (newDays[dateStr] === markerCode) {
+            delete newDays[dateStr];
           } else {
-            newDays[key] = markerCode;
+            newDays[dateStr] = markerCode;
           }
 
-          // Sabit ücretli kodlardan toplam hesapla
-          const work_days_count = Object.values(newDays).filter((v) =>
+          // Güncel fiili çalışma gün sayısını anlık hesapla (PAID_CODES üzerinden)
+          const workDaysCount = Object.values(newDays).filter((v) =>
             PAID_CODES.has(v),
           ).length;
 
-          return { ...r, timesheet_days: newDays, work_days_count };
+          return { ...r, timesheet_days: newDays, workDaysCount };
         }),
       );
     },
+
     [filters.period, setTimesheets, toast, isPublicHoliday, getHolidayName],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
-  // DİRTY STATE — değişen hücreleri işaretler
+  // DİRTY STATE
   // ─────────────────────────────────────────────────────────────────────────
   const isDayCellDirty = useCallback(
     (rowId, dateStr) => {
-      const key = dateStr;
-
       const originalRow = originalSnapshot.find((r) => r.id === rowId);
       if (!originalRow) return false;
 
-      const originalVal = originalRow.timesheet_days?.[key] ?? "";
+      const originalVal = originalRow.timesheet_days?.[dateStr] ?? "";
       const currentVal =
-        timesheets.find((r) => r.id === rowId)?.timesheet_days?.[key] ?? "";
+        timesheets.find((r) => r.id === rowId)?.timesheet_days?.[dateStr] ?? "";
 
       return originalVal !== currentVal;
     },
     [originalSnapshot, timesheets, filters.period],
   );
 
-  // Herhangi bir satırda değişiklik var mı? (Kaydet butonunu göster/gizle)
   const hasGlobalChanges = useMemo(
     () =>
       timesheets.some((r) => {
@@ -313,12 +274,23 @@ const TimesheetPage = () => {
     [timesheets, originalSnapshot],
   );
 
+  const handlePageChange = (newPage) => {
+    // Sayfa değiştirirken kaydedilmemiş veri kaybını önlemek için bloklama yapıyoruz.
+    if (hasGlobalChanges) {
+      toast({
+        type: "warning",
+        message: "Kaydedilmemiş değişiklikleriniz var. Lütfen önce kaydedin veya değişiklikleri geri alın.",
+      });
+      return;
+    }
+    setPage(newPage);
+  };
+
+
   // ─────────────────────────────────────────────────────────────────────────
   // KAYDET
   // ─────────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    // Aktif dönemdeki herhangi bir satırdan periodId alınır;
-    // Tüm görünen satırlar aynı period'a ait (filtre gereği)
     const periodId = timesheets.find((r) => r.periodId)?.periodId;
 
     if (!periodId) {
@@ -326,7 +298,6 @@ const TimesheetPage = () => {
       return;
     }
 
-    // Sadece değişen satırları bul ve gönder
     const dirtyRows = timesheets.filter((r) => {
       const original = originalSnapshot.find((o) => o.id === r.id);
       if (!original) return true;
@@ -340,7 +311,7 @@ const TimesheetPage = () => {
 
     if (result.success) {
       toast({ type: "success", message: "Puantaj başarıyla kaydedildi." });
-      setOriginalSnapshot(JSON.parse(JSON.stringify(timesheets)));
+      setOriginalSnapshot(structuredClone(timesheets));
     } else {
       toast({
         type: "error",
@@ -360,7 +331,6 @@ const TimesheetPage = () => {
     if (result.success) {
       const newState = result.data?.isLocked;
       setPeriodIsLocked(newState);
-      // Satırlardaki isLocked bilgisini de güncelle
       setTimesheets((prev) => prev.map((r) => ({ ...r, isLocked: newState })));
       toast({
         type: "success",
@@ -385,7 +355,7 @@ const TimesheetPage = () => {
       size: "large",
       content: (onClose) => <AnnouncementList onClose={onClose} />,
     });
-    fetchUnreadCount(); // Modal kapandıktan sonra okunmamış sayısını güncelle
+    fetchUnreadCount();
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -405,27 +375,35 @@ const TimesheetPage = () => {
     try {
       const start = parseISO(activePeriod.startDate);
       const end = parseISO(activePeriod.endDate);
-      const interval = eachDayOfInterval({ start, end });
-      return interval.map((d) => format(d, "yyyy-MM-dd"));
+      return eachDayOfInterval({ start, end }).map((d) => format(d, "yyyy-MM-dd"));
     } catch {
       return [];
     }
   }, [activePeriod, filters.period]);
 
+  const columns = useMemo(
+    () => timesheetColumns(periodDays, handleDayClick, isDayCellDirty, filters.period, isPublicHoliday),
+    [periodDays, handleDayClick, isDayCellDirty, filters.period, isPublicHoliday],
+  );
+
   const userName = user?.name || user?.username || "Kullanıcı";
 
   const headerActions = (
-    <>
-      {hasGlobalChanges && (
-        <button
-          className="btn btn--primary"
-          onClick={handleSave}
-          disabled={isSaving}
+    <AnimatePresence>
+      {(hasGlobalChanges || isSaving) && (
+        <motion.div
+          key="save"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
         >
-          {isSaving ? "Kaydediliyor…" : "Değişiklikleri Kaydet"}
-        </button>
+          <button className="btn" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Kaydediliyor…" : "Değişiklikleri Kaydet"}
+          </button>
+        </motion.div>
       )}
-    </>
+    </AnimatePresence>
   );
 
   return (
@@ -454,6 +432,19 @@ const TimesheetPage = () => {
         <span className="user-info">Kullanıcı: {userName}</span>
       </div>
 
+      {error && (
+        <div style={{
+          color: "#dc2626",
+          fontSize: "13px",
+          padding: "8px 12px",
+          background: "rgba(239,68,68,0.08)",
+          borderRadius: "6px",
+          marginBottom: "8px",
+        }}>
+          {error}
+        </div>
+      )}
+
       {/* Filters */}
       <FilterBar
         config={filterConfig}
@@ -462,30 +453,26 @@ const TimesheetPage = () => {
       />
 
       {/* Dönem kilitleme — sadece ADMIN görür */}
-      {isAdmin() && (
+      {isAdminUser && (
         <div className="ts-lock-row">
           <label className="ts-lock-row__label">
             <input
               type="checkbox"
               checked={periodIsLocked}
               onChange={handleToggleLock}
+              disabled={isLocking}
             />
-            <span>Veri Girişini Kilitle</span>
+            <span>{isLocking ? "İşleniyor..." : "Veri Girişini Kilitle"}</span>
           </label>
         </div>
       )}
 
       <DynamicTable
-        columns={timesheetColumns(
-          periodDays,
-          handleDayClick,
-          isDayCellDirty,
-          filters.period,
-          isPublicHoliday,
-        )}
+        columns={columns}
         data={timesheets}
         loading={isLoading}
-        pageSize={10}
+        pagination={pagination}
+        onPageChange={handlePageChange}
       />
     </PageShell>
   );

@@ -1,230 +1,160 @@
+/* ========================================================================
+   EMPLOYEE MODAL (ÇALIŞAN EKLEME/DÜZENLEME MODALI)
+   Hem tekli manuel girişi hem de Excel üzerinden toplu içe aktarmayı (Import) destekler.
+   "Smart Mapping" özelliği ile Excel sütun isimlerini otomatik tanır.
+   ======================================================================== */
 import { useEffect, useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { employeeSchema } from "../../../schemas/employee.schema";
 import { useLocationsAndUnits } from "../../../hooks/data/useLocationsAndUnits";
-import { FiUploadCloud, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
+import { 
+  FiUploadCloud, 
+  FiCheckCircle, 
+  FiAlertCircle, 
+  FiUser, 
+  FiUsers, 
+  FiX, 
+  FiInfo, 
+  FiLoader 
+} from "react-icons/fi";
 import * as XLSX from "xlsx";
 import * as importService from "../../../api/importService";
+import { useToast } from "../../../components/ToastBar/ToastContext";
+import { toISODateString } from "../../../utils/dateUtils";
 import "./EmployeeModal.scss";
 
-// ── Sabit listeler ─────────────────────────────────────────────────────────────
-const TURKISH_MONTHS = [
-  "Ocak",
-  "Şubat",
-  "Mart",
-  "Nisan",
-  "Mayıs",
-  "Haziran",
-  "Temmuz",
-  "Ağustos",
-  "Eylül",
-  "Ekim",
-  "Kasım",
-  "Aralık",
-];
 
-const currentYear = new Date().getFullYear();
-const YEARS = Array.from(
-  { length: currentYear - 2019 },
-  (_, i) => currentYear - i,
-);
+// ── Smart Column Mapping ──────────────────────────────────────────────────────
+// Kullanıcının yüklediği Excel'deki farklı başlık isimlerini (aliases) 
+// veritabanındaki karşılıklarına (keys) eşleyen sözlük.
+const COLUMN_MAP = {
+  tcNo: ["tc", "kimlik", "tc no", "tc kimlik", "tc nk", "tckn"],
+  fullName: ["ad soyad", "isim soyisim", "ad", "isim", "çalışan", "ogrenci", "öğrenci", "adsoy"],
+  locationName: ["yerleşke", "yerleske", "şantiye", "santiye", "lokasyon", "yer"],
+  unitName: ["birim", "departman", "bölüm", "bolum", "kısım", "kisim"],
+  startDate: ["giriş", "işe giriş", "baslangic", "başlangıç", "tarih"],
+  endDate: ["çıkış", "işten çıkış", "bitis", "bitiş"],
+  ibanNo: ["iban", "iban no", "hesap", "hesap no"],
+};
 
-// ── Yardımcı: Excel serial / Date → 'YYYY-MM-DD' ──────────────────────────────
-function excelDateToStr(val) {
-  if (!val) return "";
-  if (val instanceof Date) {
-    const y = val.getFullYear();
-    const m = String(val.getMonth() + 1).padStart(2, "0");
-    const d = String(val.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+
+function getFieldKey(header) {
+  const lower = header.toLowerCase().trim();
+  const lowerTr = header.toLocaleLowerCase('tr-TR').trim();
+    
+  for (const [key, aliases] of Object.entries(COLUMN_MAP)) {
+    if (aliases.some(alias => {
+      const a = alias.toLowerCase();
+      const aTr = alias.toLocaleLowerCase('tr-TR');
+      return lower.includes(a) || lowerTr.includes(aTr);
+    })) {
+      return key;
+    }
   }
+  return null;
+}
+
+// ── Helper: Excel Tarih Formatı ──────────────────────────────────────────────
+// Excel bazen tarihleri "serial number" (örn: 45321) olarak tutar. 
+// Bu fonksiyon hem JS Date objelerini hem de bu sayısal formatı ISO date string'e çevirir.
+function formatExcelDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val.toISOString().split("T")[0];
+  // Excel numeric date check (1900-01-01 tabanlı gün sayısı)
   if (typeof val === "number") {
-    // xlsx serial number → JS Date (UTC)
-    const epoch = new Date(Date.UTC(1899, 11, 30) + val * 86400000);
-    const y = epoch.getUTCFullYear();
-    const m = String(epoch.getUTCMonth() + 1).padStart(2, "0");
-    const d = String(epoch.getUTCDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+    return d.toISOString().split("T")[0];
   }
-  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
-  return "";
+  return val;
 }
 
-// ── Yardımcı: sekme adını esnek bul (Türkçe karakter farklarına karşı) ──────────
-function findSheet(wb, ...candidates) {
-  for (const name of candidates) {
-    if (wb.Sheets[name]) return wb.Sheets[name];
-  }
-  // 2. yol: normalize karşılaştırma
-  const lower = candidates.map((c) => c.toLowerCase());
-  const found = wb.SheetNames.find((n) => lower.includes(n.toLowerCase()));
-  return found ? wb.Sheets[found] : null;
-}
 
-// ── Yardımcı: Excel dosyasını parse et ────────────────────────────────────────
-function parseExcel(arrayBuffer) {
-  const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
 
-  console.log("[Import] Sekmeler:", wb.SheetNames);
-
-  // Sekme adlarını esnek bul — Türkçe İ/i kodlama farkına karşı
-  const infoSheet = findSheet(
-    wb,
-    "İşçi Bilgileri",
-    "Isci Bilgileri",
-    "işçi bilgileri",
+// ── Progress Overlay Component ──────────────────────────────────────────────
+const ProgressOverlay = ({ current, total }) => {
+  const percent = total > 0 ? Math.round((current / total) * 100) : 0;
+  return (
+    <div className="import-overlay">
+      <div className="import-overlay__card">
+        <div className="import-overlay__spinner">
+          <FiLoader className="spin" />
+        </div>
+        <h3>Veriler Aktarılıyor</h3>
+        <p>Lütfen işlem tamamlanana kadar sayfayı kapatmayın.</p>
+        
+        <div className="import-overlay__progress">
+          <div className="progress-text">
+            <span>İşleniyor...</span>
+            <span>{current} / {total}</span>
+          </div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${percent}%` }} />
+          </div>
+        </div>
+      </div>
+    </div>
   );
-  const puantajSheet = findSheet(wb, "Puantaj", "puantaj");
-  const verilerSheet = findSheet(
-    wb,
-    "VERİLER",
-    "VERILER",
-    "Veriler",
-    "veriler",
+};
+
+// ── Report Modal Component ──────────────────────────────────────────────────
+const ReportModal = ({ report, onRestart, onClose }) => {
+  return (
+    <div className="import-report">
+      <div className="import-report__header">
+        <FiCheckCircle className="success-icon" />
+        <h2>İçe Aktarma Tamamlandı</h2>
+      </div>
+
+      <div className="import-report__stats">
+        <div className="stat-card success">
+          <span className="stat-value">{report.successCount}</span>
+          <span className="stat-label">Başarıyla Eklendi</span>
+        </div>
+        <div className="stat-card failure">
+          <span className="stat-value">{report.failures.length}</span>
+          <span className="stat-label">Hatalı Satır</span>
+        </div>
+      </div>
+
+      {report.failures.length > 0 && (
+        <div className="import-report__errors">
+          <h3>Hata Detayları</h3>
+          <div className="error-list">
+            {report.failures.map((err, i) => (
+              <div key={i} className="error-item">
+                <span className="error-row">Satır {err.row}</span>
+                <span className="error-name">{err.name}</span>
+                <span className="error-msg">{err.error}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="import-report__actions">
+        <button className="btn btn--secondary" onClick={onRestart}>Yeni Dosya Yükle</button>
+        <button className="btn btn--secondary" onClick={onClose}>Vazgeç</button>
+      </div>
+    </div>
   );
+};
 
-  if (!infoSheet)
-    throw new Error(
-      '"İşçi Bilgileri" sekmesi bulunamadı. Mevcut sekmeler: ' +
-        wb.SheetNames.join(", "),
-    );
-  if (!puantajSheet)
-    throw new Error(
-      '"Puantaj" sekmesi bulunamadı. Mevcut sekmeler: ' +
-        wb.SheetNames.join(", "),
-    );
-
-  // Orijinal şablonda: A4="GÜNLÜK ÜCRET", B4=değer
-  // Export şablonunda (excelHandler): C5'e yazılır
-  let dailyWage = null;
-  if (verilerSheet) {
-    const verilerRows = XLSX.utils.sheet_to_json(verilerSheet, {
-      header: 1,
-      defval: "",
-      raw: true,
-    });
-    // Yöntem 1: "GÜNLÜK ÜCRET" etiketini A sütununda ara → B sütununu oku
-    for (const row of verilerRows) {
-      const label = String(row[0] || "")
-        .toUpperCase()
-        .trim();
-      if (
-        label.includes("GÜNLÜK ÜCRET") ||
-        (label.includes("GÜNLÜK") && label.includes("ÜCRET"))
-      ) {
-        const val = parseFloat(row[1]);
-        if (!isNaN(val) && val > 0) {
-          dailyWage = val;
-          break;
-        }
-      }
-    }
-    // Yöntem 2: export şablonu C5'e yazar — fallback
-    if (dailyWage === null) {
-      const c5 = verilerSheet["C5"]?.v;
-      const parsed = parseFloat(c5);
-      if (!isNaN(parsed) && parsed > 0) dailyWage = parsed;
-    }
-    console.log("[Import] Günlük ücret:", dailyWage);
-  } else {
-    console.warn("[Import] VERİLER sekmesi bulunamadı, günlük ücret alınamadı");
-  }
-
-  const infoRows = XLSX.utils.sheet_to_json(infoSheet, {
-    header: 1,
-    defval: "",
-    raw: true,
-  });
-  const puantajRows = XLSX.utils.sheet_to_json(puantajSheet, {
-    header: 1,
-    defval: "",
-    raw: true,
-  });
-
-  console.log("[Import] İşçi Bilgileri toplam satır:", infoRows.length);
-  console.log("[Import] Puantaj toplam satır:", puantajRows.length);
-
-  // ── Çalışanları parse et ────────────────────────────────────────────────────
-  // İşçi Bilgileri: satır 2'den (index 1), TC boşsa dur
-  //   A=0(sıra) B=1(Ad Soyad) C=2 D=3(TC) E=4(Birim) F=5(IBAN) G=6 H=7 I=8(Giriş) J=9(Çıkış)
-  //
-  // Puantaj: satır 9'dan (index 8) — i. çalışan (i=1) → index 7+i = 8
-  //   Gün d (1-31) → sütun index d+2 (D=3 for d=1, ..., AH=33 for d=31)
-  const employees = [];
-
-  for (let i = 1; i < infoRows.length; i++) {
-    const infoRow = infoRows[i];
-    const tcRaw = String(infoRow[3] || "").trim();
-    if (!tcRaw) break;
-
-    const fullName = String(infoRow[1] || "").trim();
-    const nameParts = fullName.split(/\s+/);
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ") || "";
-
-    // Puantaj'da aynı sıra numaralı satır
-    const puantajRowIdx = 7 + i; // i=1→8, i=2→9, …
-    const puantajRow = puantajRows[puantajRowIdx] || [];
-
-    // Gün işaretleri
-    const rawMarkers = {};
-    for (let d = 1; d <= 31; d++) {
-      const cellVal = String(puantajRow[d + 2] || "").trim();
-      if (cellVal) rawMarkers[d] = cellVal;
-    }
-
-    const markerCount = Object.keys(rawMarkers).length;
-    console.log(
-      `[Import] Çalışan ${i}: ${fullName} TC:${tcRaw} — ${markerCount} işaret, puantaj satır index:${puantajRowIdx}`,
-    );
-    if (markerCount > 0) console.log("  İşaretler:", rawMarkers);
-
-    employees.push({
-      firstName,
-      lastName,
-      tcNo: tcRaw,
-      unitName: String(infoRow[4] || "").trim(),
-      ibanNo: String(infoRow[5] || "").trim(),
-      startDate: excelDateToStr(infoRow[8]),
-      endDate: excelDateToStr(infoRow[9]),
-      rawMarkers,
-    });
-  }
-
-  if (employees.length === 0) {
-    throw new Error(
-      '"İşçi Bilgileri" sekmesinde çalışan verisi bulunamadı (D sütununda TC No bekleniyor)',
-    );
-  }
-
-  console.log(
-    `[Import] Toplam ${employees.length} çalışan parse edildi, günlük ücret: ${dailyWage}`,
-  );
-  return { employees, dailyWage };
-}
-
-// ── Ana bileşen ────────────────────────────────────────────────────────────────
+// ── Ana Bileşen ─────────────────────────────────────────────────────────────
 const EmployeeModal = ({ employee, onClose, onSave }) => {
+  const toast = useToast();
   const [currentMode, setCurrentMode] = useState("SINGLE");
   const [apiError, setApiError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Bulk import state
-  const [importLocationId, setImportLocationId] = useState("");
-  const [importYear, setImportYear] = useState(currentYear);
-  const [importMonth, setImportMonth] = useState(new Date().getMonth() + 1);
+  // Bulk state
   const [importStatus, setImportStatus] = useState("idle"); // idle | importing | done
-  const [importProgress, setImportProgress] = useState({
-    current: 0,
-    total: 0,
-  });
-  const [importErrors, setImportErrors] = useState([]);
-  const [importSuccessCount, setImportSuccessCount] = useState(0);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
+  const [importReport, setImportReport] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  const { locations, units, fetchLocations, fetchUnitsByLocation } =
-    useLocationsAndUnits();
+  const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
 
   const {
     register,
@@ -232,23 +162,31 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
     setValue,
     watch,
     formState: { errors, isDirty },
-    reset,
+    reset
   } = useForm({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
-      tcNo: employee?.tcNo ?? "",
-      firstName: employee?.firstName ?? "",
-      lastName: employee?.lastName ?? "",
-      locationId: employee?.unit?.location?.id?.toString() ?? "",
-      unitId: employee?.unit?.id?.toString() ?? "",
-      startDate: employee?.startDate ? employee.startDate.slice(0, 10) : "",
-      endDate: employee?.endDate ? employee.endDate.slice(0, 10) : "",
-      ibanNo: employee?.ibanNo ?? "",
-      isActive: employee?.isActive ?? true,
+      tcNo: employee?.tcNo || "",
+      firstName: employee?.firstName || "",
+      lastName: employee?.lastName || "",
+      locationId: employee?.unit?.location?.id?.toString() || "",
+      unitId: employee?.unit?.id?.toString() || "",
+      startDate: toISODateString(employee?.startDate),
+      endDate: toISODateString(employee?.endDate),
+      ibanNo: employee?.ibanNo || "",
+      isActive: employee?.isActive !== undefined ? employee.isActive : true,
     },
   });
 
   const selectedLocationId = watch("locationId");
+  const selectedUnitId = watch("unitId");
+
+  const handleLocationChange = (e) => {
+    const locId = e.target.value;
+    setValue("locationId", locId, { shouldDirty: true });
+    setValue("unitId", "", { shouldDirty: true });
+    if (locId) fetchUnitsByLocation(locId);
+  };
 
   useEffect(() => {
     fetchLocations();
@@ -260,12 +198,6 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
     }
   }, [employee, fetchUnitsByLocation]);
 
-  const handleLocationChange = (e) => {
-    const locId = e.target.value;
-    setValue("locationId", locId, { shouldDirty: true });
-    setValue("unitId", "", { shouldDirty: true });
-    if (locId) fetchUnitsByLocation(locId);
-  };
 
   const onSubmit = async (data) => {
     setApiError(null);
@@ -275,8 +207,10 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
         tcNo: data.tcNo,
         firstName: data.firstName,
         lastName: data.lastName,
+        locationId: data.locationId,
         unitId: data.unitId,
         startDate: data.startDate,
+        // Eğer çalışan hala aktifse işten çıkış tarihi veritabanına null olarak gider
         endDate: data.isActive ? null : data.endDate || null,
         ibanNo: data.ibanNo || null,
         isActive: data.isActive,
@@ -292,637 +226,353 @@ const EmployeeModal = ({ employee, onClose, onSave }) => {
     }
   };
 
-  // ── Bulk: dosya seçildiğinde import başlat ────────────────────────────────
-  const handleFileUpload = async (e) => {
-    console.log("[Import] handleFileUpload tetiklendi");
+
+  const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
-    if (!file) {
-      console.log("[Import] Dosya seçilmedi");
-      return;
-    }
-    console.log("[Import] Dosya:", file.name, "Boyut:", file.size);
-    // input'u sıfırla (aynı dosyanın tekrar seçilebilmesi için)
+    if (!file) return;
+    setSelectedFile(file);
     e.target.value = "";
+  };
 
-    if (!importLocationId) {
-      alert("Lütfen önce bir yerleşke seçin.");
-      return;
-    }
-
-    const selectedLocation = locations.find(
-      (l) => String(l.id) === String(importLocationId),
-    );
-    const locationName = selectedLocation?.name || "";
-    console.log(
-      "[Import] Yerleşke:",
-      locationName,
-      "id:",
-      importLocationId,
-      "Dönem:",
-      importYear,
-      "/",
-      importMonth,
-    );
+  const startImport = async () => {
+    if (!selectedFile) return;
 
     setImportStatus("importing");
     setImportProgress({ current: 0, total: 0 });
-    setImportErrors([]);
-    setImportSuccessCount(0);
 
     try {
-      // 1) Client-side parse
-      const arrayBuffer = await file.arrayBuffer();
-      console.log("[Import] ArrayBuffer alındı, parse başlıyor...");
-      const { employees, dailyWage } = parseExcel(arrayBuffer);
-      console.log(
-        "[Import] Parse tamamlandı — çalışan sayısı:",
-        employees.length,
-        "günlük ücret:",
-        dailyWage,
-      );
+      const arrayBuffer = await selectedFile.arrayBuffer();
+      const wb = XLSX.read(arrayBuffer, { type: "array", cellDates: true });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-      setImportProgress({ current: 0, total: employees.length });
+      if (rows.length < 2) throw new Error("Dosya boş veya başlık satırı eksik.");
 
-      let createdCount = 0;
-      let skippedCount = 0;
-      const errors = [];
-      // Puantaj TIMESHEET audit logu için — işaret girilmiş çalışanlar
-      const timesheetChanges = [];
+      const headers = rows[0].map((h) => String(h || ""));
+      const mapping = {};
+      headers.forEach((h, idx) => {
+        const key = getFieldKey(h);
+        if (key) mapping[key] = idx;
+      });
 
-      // 2) Her çalışan için API çağrısı
-      for (let idx = 0; idx < employees.length; idx++) {
-        const emp = employees[idx];
-
-        // Gün numaralarını (1-31) YYYY-MM-DD formatına çevir
-        const markers = {};
-        for (const [day, code] of Object.entries(emp.rawMarkers)) {
-          const dayNum = parseInt(day, 10);
-          const dateStr = `${importYear}-${String(importMonth).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-          markers[dateStr] = code;
-        }
-
-        try {
-          const res = await importService.importEmployee({
-            tcNo: emp.tcNo,
-            firstName: emp.firstName,
-            lastName: emp.lastName,
-            unitName: emp.unitName,
-            ibanNo: emp.ibanNo,
-            startDate: emp.startDate,
-            endDate: emp.endDate,
-            locationId: importLocationId,
-            year: importYear,
-            month: importMonth,
-            markers,
-          });
-          const daysCount = Object.keys(markers).length;
-          console.log(
-            `[Import] ${emp.firstName} ${emp.lastName} → action:`,
-            res?.data?.action,
-            "markers:",
-            daysCount,
-          );
-          if (res?.data?.action === "created") createdCount++;
-          else skippedCount++;
-          if (daysCount > 0) {
-            timesheetChanges.push({
-              name: `${emp.firstName} ${emp.lastName}`,
-              daysCount,
-            });
-          }
-        } catch (err) {
-          console.error(`[Import] ${emp.firstName} ${emp.lastName} HATA:`, err);
-          errors.push({
-            name: `${emp.firstName} ${emp.lastName}`,
-            tcNo: emp.tcNo,
-            error: err?.message || "Bilinmeyen hata",
-          });
-        }
-
-        setImportProgress({ current: idx + 1, total: employees.length });
+      // Zorunlu alan kontrolü
+      if (
+        mapping.tcNo === undefined ||
+        mapping.fullName === undefined ||
+        mapping.locationName === undefined ||
+        mapping.startDate === undefined ||
+        mapping.ibanNo === undefined
+      ) {
+        throw new Error(
+          "Gerekli sütunlar bulunamadı (TC No, Ad Soyad, Yerleşke, İşe Giriş, IBAN)."
+        );
       }
 
-      // 3) Finalize: günlük ücret güncelle + audit log oluştur
-      try {
-        await importService.finalizeImport({
-          locationId: importLocationId,
-          locationName,
-          year: importYear,
-          month: importMonth,
-          createdCount,
-          skippedCount,
-          dailyWage: dailyWage ?? null,
-          timesheetChanges,
+      const employeesData = [];
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row.some((cell) => cell !== null && cell !== "")) continue; // Boş satırı atla
+
+        employeesData.push({
+          tcNo: String(row[mapping.tcNo] || "").trim(),
+          fullName: String(row[mapping.fullName] || "").trim(),
+          locationName: String(row[mapping.locationName] || "").trim(),
+          unitName:
+            mapping.unitName !== undefined
+              ? String(row[mapping.unitName] || "").trim()
+              : null,
+          ibanNo:
+            mapping.ibanNo !== undefined
+              ? String(row[mapping.ibanNo] || "").trim()
+              : null,
+          startDate:
+            mapping.startDate !== undefined
+              ? formatExcelDate(row[mapping.startDate])
+              : null,
+          endDate:
+            mapping.endDate !== undefined
+              ? formatExcelDate(row[mapping.endDate])
+              : null,
         });
-      } catch {
-        // finalize hatası ana akışı etkilemesin
       }
 
-      const successCount = createdCount + skippedCount;
+      setImportProgress({ current: 0, total: employeesData.length });
 
-      setImportSuccessCount(successCount);
-      setImportErrors(errors);
+      // Chunking (Toplu aktarımı parçalara bölme):
+      // Tarayıcının timeout'a düşmesini önlemek ve kullanıcıya ilerleme bilgisini 
+      // anlık gösterebilmek için verileri 200'erli paketler halinde sunucuya yolluyoruz.
+      const CHUNK_SIZE = 200;
+      let finalSuccessCount = 0;
+      let finalFailures = [];
+
+      for (let i = 0; i < employeesData.length; i += CHUNK_SIZE) {
+        const chunk = employeesData.slice(i, i + CHUNK_SIZE);
+        const res = await importService.bulkImportEmployees({ employees: chunk });
+
+        if (res.data) {
+          finalSuccessCount += res.data.successCount;
+          finalFailures = [...finalFailures, ...res.data.failures];
+        }
+
+        setImportProgress((prev) => ({
+          ...prev,
+          current: Math.min(i + CHUNK_SIZE, employeesData.length),
+        }));
+      }
+
+
+      setImportReport({
+        successCount: finalSuccessCount,
+        failures: finalFailures,
+      });
       setImportStatus("done");
-    } catch (parseError) {
-      console.error("[Import] KRİTİK HATA:", parseError);
-      setImportErrors([
-        {
-          name: "—",
-          tcNo: "—",
-          error: parseError.message || String(parseError),
-        },
-      ]);
-      setImportStatus("done");
+    } catch (err) {
+      toast({ type: "error", message: err.message || "Dosya işlenirken hata oluştu" });
+      setImportStatus("idle");
     }
   };
 
   const resetImport = () => {
     setImportStatus("idle");
-    setImportProgress({ current: 0, total: 0 });
-    setImportErrors([]);
-    setImportSuccessCount(0);
+    setImportReport(null);
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="employee-modal">
-      {!employee && (
+      {!employee && importStatus !== "importing" && importStatus !== "done" && (
         <div className="employee-modal__tabs">
           <button
             type="button"
-            className={`tab-btn ${currentMode === "SINGLE" ? "active" : ""}`}
+            className={`btn tab-btn ${currentMode === "SINGLE" ? "active" : "btn--secondary"}`}
             onClick={() => {
               setCurrentMode("SINGLE");
               resetImport();
             }}
           >
+            <FiUser />
             Tekli Giriş
           </button>
           <button
             type="button"
-            className={`tab-btn ${currentMode === "BULK" ? "active" : ""}`}
+            className={`btn tab-btn ${currentMode === "BULK" ? "active" : "btn--secondary"}`}
             onClick={() => setCurrentMode("BULK")}
           >
+            <FiUsers />
             Toplu Giriş
           </button>
         </div>
       )}
 
-      {currentMode === "SINGLE" ? (
-        /* ── TEKLİ GİRİŞ ── */
-        <form className="modal-form" onSubmit={handleSubmit(onSubmit)}>
-          {/* TC No */}
-          <div className="settings-row">
-            <div className="floating-group flex-full">
-              <input
-                type="text"
-                id="tcNo"
-                className={`input ${errors.tcNo ? "input--error" : ""}`}
-                placeholder=" "
-                maxLength={11}
-                {...register("tcNo")}
-              />
-              <label htmlFor="tcNo" className="floating-group__label">
-                TC No
-              </label>
-              {errors.tcNo && (
-                <span className="input-error-message">
-                  {errors.tcNo.message}
-                </span>
-              )}
-            </div>
-          </div>
+      {importStatus === "importing" && <ProgressOverlay {...importProgress} />}
 
-          {/* Ad + Soyad */}
-          <div className="settings-row">
-            <div className="floating-group">
-              <input
-                type="text"
-                id="firstName"
-                className={`input ${errors.firstName ? "input--error" : ""}`}
-                placeholder=" "
-                {...register("firstName")}
-              />
-              <label htmlFor="firstName" className="floating-group__label">
-                Ad
-              </label>
-              {errors.firstName && (
-                <span className="input-error-message">
-                  {errors.firstName.message}
-                </span>
-              )}
-            </div>
-            <div className="floating-group">
-              <input
-                type="text"
-                id="lastName"
-                className={`input ${errors.lastName ? "input--error" : ""}`}
-                placeholder=" "
-                {...register("lastName")}
-              />
-              <label htmlFor="lastName" className="floating-group__label">
-                Soyad
-              </label>
-              {errors.lastName && (
-                <span className="input-error-message">
-                  {errors.lastName.message}
-                </span>
-              )}
-            </div>
-          </div>
+      {importStatus === "done" && (
+        <ReportModal 
+          report={importReport} 
+          onRestart={resetImport} 
+          onClose={onClose} 
+        />
+      )}
 
-          {/* Yerleşke + Birim */}
-          <div className="settings-row">
-            <div className="floating-group">
-              <select
-                id="locationId"
-                className={`input ${errors.locationId ? "input--error" : ""}`}
-                {...register("locationId")}
-                onChange={handleLocationChange}
-              >
-                <option value="" disabled hidden></option>
-                {locations.map((loc) => (
-                  <option key={loc.id} value={loc.id.toString()}>
-                    {loc.name}
-                  </option>
-                ))}
-              </select>
-              <label htmlFor="locationId" className="floating-group__label">
-                Yerleşke
-              </label>
-              {errors.locationId && (
-                <span className="input-error-message">
-                  {errors.locationId.message}
-                </span>
-              )}
+      {importStatus === "idle" && (
+        currentMode === "SINGLE" ? (
+          <form className="modal-form" onSubmit={handleSubmit(onSubmit)}>
+            {/* Tekli Giriş Formu (Değişmedi) */}
+            <div className="settings-row">
+              <div className="floating-group flex-full">
+                <input
+                  type="text"
+                  id="tcNo"
+                  className={`input ${errors.tcNo ? "input--error" : ""}`}
+                  placeholder=" "
+                  maxLength={11}
+                  {...register("tcNo")}
+                />
+                <label htmlFor="tcNo" className="floating-group__label">TC No</label>
+                {errors.tcNo && <span className="input-error-message">{errors.tcNo.message}</span>}
+              </div>
             </div>
-            <div className="floating-group">
-              <select
-                id="unitId"
-                className={`input ${errors.unitId ? "input--error" : ""}`}
-                {...register("unitId")}
-                disabled={!selectedLocationId}
-              >
-                <option value="" disabled hidden></option>
-                {units.map((unit) => (
-                  <option key={unit.id} value={unit.id.toString()}>
-                    {unit.name}
-                  </option>
-                ))}
-              </select>
-              <label htmlFor="unitId" className="floating-group__label">
-                Birim
-              </label>
-              {errors.unitId && (
-                <span className="input-error-message">
-                  {errors.unitId.message}
-                </span>
-              )}
+
+            <div className="settings-row">
+              <div className="floating-group">
+                <input
+                  type="text"
+                  id="firstName"
+                  className={`input ${errors.firstName ? "input--error" : ""}`}
+                  placeholder=" "
+                  {...register("firstName")}
+                />
+                <label htmlFor="firstName" className="floating-group__label">Ad</label>
+                {errors.firstName && <span className="input-error-message">{errors.firstName.message}</span>}
+              </div>
+              <div className="floating-group">
+                <input
+                  type="text"
+                  id="lastName"
+                  className={`input ${errors.lastName ? "input--error" : ""}`}
+                  placeholder=" "
+                  {...register("lastName")}
+                />
+                <label htmlFor="lastName" className="floating-group__label">Soyad</label>
+                {errors.lastName && <span className="input-error-message">{errors.lastName.message}</span>}
+              </div>
             </div>
-          </div>
 
-          {/* İşe Giriş + İşten Çıkış */}
-          <div className="settings-row">
-            <div className="floating-group">
-              <input
-                type="date"
-                id="startDate"
-                className={`input ${errors.startDate ? "input--error" : ""}`}
-                placeholder=" "
-                {...register("startDate")}
-              />
-              <label htmlFor="startDate" className="floating-group__label">
-                İşe Giriş
-              </label>
-              {errors.startDate && (
-                <span className="input-error-message">
-                  {errors.startDate.message}
-                </span>
-              )}
-            </div>
-            <div className="floating-group">
-              <input
-                type="date"
-                id="endDate"
-                className={`input ${errors.endDate ? "input--error" : ""}`}
-                placeholder=" "
-                disabled={watch("isActive")}
-                {...register("endDate")}
-              />
-              <label htmlFor="endDate" className="floating-group__label">
-                İşten Çıkış
-              </label>
-              {errors.endDate && (
-                <span className="input-error-message">
-                  {errors.endDate.message}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div
-            style={{
-              marginBottom: "16px",
-              display: "flex",
-              gap: "8px",
-              alignItems: "center",
-              cursor: "pointer",
-              color: "var(--text-secondary)",
-              fontSize: "14px",
-            }}
-          >
-            <input
-              type="checkbox"
-              id="isActiveCheck"
-              {...register("isActive")}
-              style={{ width: "16px", height: "16px", cursor: "pointer" }}
-            />
-            <label htmlFor="isActiveCheck" style={{ cursor: "pointer" }}>
-              Çalışmaya devam ediyor mu?
-            </label>
-          </div>
-
-          {/* IBAN */}
-          <div className="floating-group flex-full">
-            <input
-              type="text"
-              id="ibanNo"
-              className={`input ${errors.ibanNo ? "input--error" : ""}`}
-              placeholder=" TR..."
-              {...register("ibanNo")}
-            />
-            <label htmlFor="ibanNo" className="floating-group__label">
-              IBAN
-            </label>
-            {errors.ibanNo && (
-              <span className="input-error-message">
-                {errors.ibanNo.message}
-              </span>
-            )}
-          </div>
-
-          {apiError && (
-            <div
-              style={{
-                color: "#dc2626",
-                fontSize: "13px",
-                marginTop: "8px",
-                padding: "8px 12px",
-                background: "rgba(239,68,68,0.08)",
-                borderRadius: "6px",
-              }}
-            >
-              {apiError}
-            </div>
-          )}
-
-          <div
-            className="modal-form__actions"
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "8px",
-              marginTop: "24px",
-            }}
-          >
-            <button type="button" className="btn" onClick={onClose}>
-              Vazgeç
-            </button>
-            <button
-              type="submit"
-              className="btn btn--primary"
-              disabled={isSaving || (employee ? !isDirty : false)}
-            >
-              {isSaving ? "Kaydediliyor..." : employee ? "Güncelle" : "Kaydet"}
-            </button>
-          </div>
-        </form>
-      ) : (
-        /* ── TOPLU GİRİŞ ── */
-        <div className="bulk-upload-section">
-          {/* Dönem + Yerleşke Seçimi */}
-          <div className="bulk-selectors">
-            <div className="bulk-selectors__row">
+            <div className="settings-row">
               <div className="floating-group">
                 <select
-                  className="input"
-                  value={importLocationId}
-                  onChange={(e) => {
-                    setImportLocationId(e.target.value);
-                    resetImport();
-                  }}
-                  disabled={importStatus === "importing"}
+                  id="locationId"
+                  className={`input ${errors.locationId ? "input--error" : ""}`}
+                  {...register("locationId")}
+                  value={selectedLocationId}
+                  onChange={handleLocationChange}
                 >
                   <option value="" disabled hidden></option>
                   {locations.map((loc) => (
-                    <option key={loc.id} value={loc.id}>
-                      {loc.name}
-                    </option>
+                    <option key={loc.id} value={loc.id.toString()}>{loc.name}</option>
                   ))}
                 </select>
-                <label className="floating-group__label">Yerleşke</label>
+                <label htmlFor="locationId" className="floating-group__label">Yerleşke</label>
+                {errors.locationId && <span className="input-error-message">{errors.locationId.message}</span>}
               </div>
-
               <div className="floating-group">
                 <select
-                  className="input"
-                  value={importYear}
-                  onChange={(e) => {
-                    setImportYear(Number(e.target.value));
-                    resetImport();
-                  }}
-                  disabled={importStatus === "importing"}
+                  id="unitId"
+                  className={`input ${errors.unitId ? "input--error" : ""}`}
+                  {...register("unitId")}
+                  value={selectedUnitId}
+                  disabled={!selectedLocationId}
                 >
-                  {YEARS.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
+                  <option value="" disabled hidden></option>
+                  {units.map((unit) => (
+                    <option key={unit.id} value={unit.id.toString()}>{unit.name}</option>
                   ))}
                 </select>
-                <label className="floating-group__label">Yıl</label>
+                <label htmlFor="unitId" className="floating-group__label">Birim</label>
+                {errors.unitId && <span className="input-error-message">{errors.unitId.message}</span>}
               </div>
+            </div>
 
+            <div className="settings-row">
               <div className="floating-group">
-                <select
-                  className="input"
-                  value={importMonth}
-                  onChange={(e) => {
-                    setImportMonth(Number(e.target.value));
-                    resetImport();
-                  }}
-                  disabled={importStatus === "importing"}
-                >
-                  {TURKISH_MONTHS.map((m, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <label className="floating-group__label">Ay</label>
+                <input 
+                  type="date" 
+                  id="startDate" 
+                  className={`input ${errors.startDate ? "input--error" : ""}`}
+                  {...register("startDate")} 
+                />
+                <label htmlFor="startDate" className="floating-group__label">İşe Giriş</label>
+                {errors.startDate && <span className="input-error-message">{errors.startDate.message}</span>}
+              </div>
+              <div className="floating-group">
+                <input 
+                  type="date" 
+                  id="endDate" 
+                  className={`input ${errors.endDate ? "input--error" : ""}`}
+                  disabled={watch("isActive")} 
+                  {...register("endDate")} 
+                />
+                <label htmlFor="endDate" className="floating-group__label">İşten Çıkış</label>
+                {errors.endDate && <span className="input-error-message">{errors.endDate.message}</span>}
               </div>
             </div>
-          </div>
 
-          {/* Kriterler + Upload kutusu */}
-          {importStatus === "idle" && (
-            <>
-              <div className="upload-box">
-                <FiUploadCloud className="upload-icon" />
-                <h3>Excel Dosyası Yükle</h3>
-                <p>
-                  Yukarıdan yerleşke ve dönemi seçtikten sonra ilgili Excel
-                  dosyasını yükleyin. Sistem dosyayı otomatik okuyarak
-                  çalışanları, puantaj işaretlerini ve günlük ücreti aktarır.
-                </p>
-
-                {/* Kriterler */}
-                <ul className="import-criteria">
-                  <li>
-                    Dosya, sistemden dışa aktarılan{" "}
-                    <strong>puantaj şablonu</strong> (.xlsx) formatında
-                    olmalıdır.
-                  </li>
-                  <li>
-                    <strong>"İşçi Bilgileri"</strong> sekmesindeki çalışanlar
-                    sisteme aktarılır. Aynı TC No'ya sahip çalışanlar tekrar
-                    eklenmez; yalnızca puantaj bilgileri güncellenir.
-                  </li>
-                  <li>
-                    <strong>"Puantaj"</strong> sekmesindeki günlük işaretler (
-                    <strong>X</strong> = Çalışıldı, <strong>İ</strong> = İzin,{" "}
-                    <strong>R</strong> = Rapor vb.) seçilen dönem için puantaj
-                    tablosuna yansıtılır.
-                  </li>
-                  <li>
-                    <strong>"VERİLER"</strong> sekmesindeki günlük ücret
-                    bilgisi, Ayarlar sayfasındaki günlük ödenek değerini
-                    otomatik olarak günceller.
-                  </li>
-                  <li>
-                    Her çalışan için <strong>TC No zorunludur</strong>. Birim
-                    adı, seçili yerleşkedeki birimlerden biriyle eşleşmelidir;
-                    eşleşme sağlanamazsa çalışan mevcut birimine atanır.
-                  </li>
-                </ul>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  id="excel-upload"
-                  accept=".xlsx,.xls"
-                  className="file-input-hidden"
-                  onChange={handleFileUpload}
-                  disabled={!importLocationId}
-                />
-                <label
-                  htmlFor="excel-upload"
-                  className={`btn btn--primary upload-btn ${!importLocationId ? "btn--disabled" : ""}`}
-                  title={!importLocationId ? "Önce yerleşke seçin" : ""}
-                >
-                  Dosya Seç ve Aktar
-                </label>
-                {!importLocationId && (
-                  <p className="import-hint">
-                    Dosya seçmek için önce yerleşke seçin.
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* İlerleme Çubuğu */}
-          {importStatus === "importing" && (
-            <div className="import-progress-area">
-              <div className="import-progress__header">
-                <span className="import-progress__label">Aktarılıyor...</span>
-                <span className="import-progress__count">
-                  {importProgress.current} / {importProgress.total}
-                </span>
-              </div>
-              <div className="import-progress__bar-track">
-                <div
-                  className="import-progress__bar-fill"
-                  style={{
-                    width:
-                      importProgress.total > 0
-                        ? `${(importProgress.current / importProgress.total) * 100}%`
-                        : "0%",
-                  }}
-                />
-              </div>
+            <div className="isActive-checkbox">
+              <input type="checkbox" id="isActiveCheck" {...register("isActive")} />
+              <label htmlFor="isActiveCheck">Çalışmaya devam ediyor mu?</label>
             </div>
-          )}
 
-          {/* Sonuç */}
-          {importStatus === "done" && (
-            <div className="import-result">
-              <div
-                className={`import-result__summary ${importErrors.length === 0 ? "import-result__summary--success" : "import-result__summary--partial"}`}
-              >
-                <FiCheckCircle className="import-result__icon" />
-                <span>
-                  <strong>{importSuccessCount}</strong> çalışan başarıyla
-                  aktarıldı
-                  {importErrors.length > 0 && (
-                    <>
-                      , <strong>{importErrors.length}</strong> çalışan
-                      aktarılamadı
-                    </>
-                  )}
-                  .
-                </span>
-              </div>
+            <div className="floating-group flex-full">
+              <input 
+                type="text" 
+                id="ibanNo" 
+                className={`input ${errors.ibanNo ? "input--error" : ""}`}
+                placeholder=" TR..." 
+                {...register("ibanNo")} 
+              />
+              <label htmlFor="ibanNo" className="floating-group__label">IBAN</label>
+              {errors.ibanNo && <span className="input-error-message">{errors.ibanNo.message}</span>}
+            </div>
 
-              {importErrors.length > 0 && (
-                <div className="import-errors">
-                  <p className="import-errors__title">
-                    <FiAlertCircle /> Aktarılamayan Çalışanlar
-                  </p>
-                  <ul className="import-errors__list">
-                    {importErrors.map((err, i) => (
-                      <li key={i} className="import-errors__item">
-                        <span className="import-errors__name">{err.name}</span>
-                        {err.tcNo !== "—" && (
-                          <span className="import-errors__tc">
-                            TC: {err.tcNo}
-                          </span>
-                        )}
-                        <span className="import-errors__msg">{err.error}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            {apiError && <div className="api-error-alert">{apiError}</div>}
 
-              <button
-                type="button"
-                className="btn btn--outline import-result__again-btn"
-                onClick={resetImport}
-              >
-                Yeni Dosya Aktar
+            <div className="modal-form__actions">
+              <button type="button" className="btn btn--secondary" onClick={onClose}>Vazgeç</button>
+              <button type="submit" className="btn" disabled={isSaving || (!!employee && !isDirty)}>
+                {isSaving ? "Kaydediliyor..." : employee ? "Güncelle" : "Kaydet"}
               </button>
             </div>
-          )}
+          </form>
+        ) : (
+            <div className="upload-box">
+              <div className="upload-box__content">
+                {!selectedFile ? (
+                  <>
+                    <FiUploadCloud className="upload-icon" />
+                    <h3>Excel Dosyası Yükle</h3>
+                    <p>
+                      Toplu eklemek istediğiniz öğrenci/çalışan listesini
+                      yükleyin.
+                    </p>
 
-          <div
-            className="modal-form__actions"
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: "8px",
-              marginTop: "24px",
-            }}
-          >
-            <button
-              type="button"
-              className="btn"
-              onClick={onClose}
-              disabled={importStatus === "importing"}
-            >
-              {importStatus === "done" ? "Kapat" : "Vazgeç"}
-            </button>
-          </div>
-        </div>
+                    <div className="import-info-banner">
+                      <FiInfo />
+                      <p>
+                        Sistem Excel sütunlarını otomatik tanır.{" "}
+                        <strong>
+                          TC, Ad Soyad, Yerleşke, İşe Giriş ve IBAN
+                        </strong>{" "}
+                        sütunları zorunludur. <strong>İşten Çıkış</strong>{" "}
+                        sütunu ise isteğe bağlıdır.
+                      </p>
+                    </div>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      id="excel-upload"
+                      accept=".xlsx,.xls"
+                      className="file-input-hidden"
+                      onChange={handleFileUpload}
+                    />
+                    <label
+                      htmlFor="excel-upload"
+                      className="btn upload-btn"
+                    >
+                      Dosya Seç
+                    </label>
+                  </>
+                ) : (
+                  <div className="selected-file-area">
+                    <FiCheckCircle className="file-ready-icon" />
+                    <div className="file-info">
+                      <span className="file-name">{selectedFile.name}</span>
+                      <span className="file-size">
+                        {(selectedFile.size / 1024).toFixed(1)} KB
+                      </span>
+                    </div>
+                    <p className="file-hint" onClick={() => setSelectedFile(null)}>
+                      Bu dosyayı değiştirmek için <u>buraya tıklayın</u>.
+                    </p>
+
+                    <div className="file-actions">
+                      <button
+                        className="btn btn--secondary"
+                        onClick={() => setSelectedFile(null)}
+                      >
+                        Vazgeç
+                      </button>
+                      <button
+                        className="btn"
+                        onClick={startImport}
+                      >
+                        İşlemi Başlat
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+        )
       )}
     </div>
   );

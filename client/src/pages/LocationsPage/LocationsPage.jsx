@@ -1,4 +1,10 @@
+/* ========================================================================
+   LOCATIONS PAGE (YERLEŞKE VE BİRİM YÖNETİMİ)
+   Hiyerarşik bir yapıda (Yerleşke > Birim) veri yönetimini sağlar.
+   Staged Deletion (Önce silme işaretle, sonra kaydet) ve Undo desteği sunar.
+   ======================================================================== */
 import { useState, useEffect, useRef } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { RiDeleteBinLine, RiArrowRightSLine, RiFileExcel2Line, RiRobot2Line, RiArrowGoBackLine, RiMore2Fill } from "react-icons/ri";
 import "../../styles/inputs.scss";
 import PageShell from "../../components/PageShell/PageShell";
@@ -8,27 +14,30 @@ import { downloadTimesheetExcel, downloadSimpleExcel, downloadBotExcel } from ".
 import { useToast } from "../../components/ToastBar/ToastContext";
 import "./LocationsPage.scss";
 
-const TURKISH_MONTHS = [
-  "Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran",
-  "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık",
-];
+import { TURKISH_MONTHS } from "../../utils/dateUtils";
+import { useOnClickOutside } from "../../hooks/ui/useOnClickOutside";
+
 
 function LocationsPage() {
   // === STATE ===
   const [locations, setLocations] = useState([]);
+  // Değişiklik takibi (Dirty check) için verinin ilk halini tutar
   const [initialLocations, setInitialLocations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  // Silinmek üzere işaretlenen ama henüz sunucuya gönderilmeyen ID listeleri
   const [deletedLocationIds, setDeletedLocationIds] = useState([]);
   const [deletedUnitIds, setDeletedUnitIds] = useState([]);
   const [expandedLocations, setExpandedLocations] = useState([]);
   const [periods, setPeriods] = useState([]);
   const [focusElementId, setFocusElementId] = useState(null);
 
+
   // Export panel state: { locationId, locationName, type: 'simple'|'puantaj' } | null
   const [exportPanel, setExportPanel] = useState(null);
   const [exportPeriodId, setExportPeriodId] = useState("");
   const [isExporting, setIsExporting] = useState(false);
-  
+
   const [mobileMenuId, setMobileMenuId] = useState(null);
   const mobileMenuRef = useRef(null);
 
@@ -40,29 +49,9 @@ function LocationsPage() {
     fetchData();
   }, []);
 
-  // Close export panel on outside click
-  useEffect(() => {
-    if (!exportPanel) return;
-    const handleClick = (e) => {
-      if (exportPanelRef.current && !exportPanelRef.current.contains(e.target)) {
-        setExportPanel(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [exportPanel]);
-
-  // Close mobile menu on outside click
-  useEffect(() => {
-    if (!mobileMenuId) return;
-    const handleClick = (e) => {
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(e.target)) {
-        setMobileMenuId(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [mobileMenuId]);
+  // Close export panel / mobile menu on outside click
+  useOnClickOutside(exportPanelRef, () => setExportPanel(null), !!exportPanel);
+  useOnClickOutside(mobileMenuRef, () => setMobileMenuId(null), !!mobileMenuId);
 
   // Auto-focus on recently added inputs
   useEffect(() => {
@@ -95,7 +84,6 @@ function LocationsPage() {
       const allUnits = unitRes.data?.units || [];
       const fetchedPeriods = periodRes.data?.periods || [];
 
-      // Sort periods by year and month descending
       fetchedPeriods.sort((a, b) => {
         if (b.year !== a.year) return b.year - a.year;
         return b.month - a.month;
@@ -106,11 +94,7 @@ function LocationsPage() {
         const currentM = new Date().getMonth() + 1;
         const currentY = new Date().getFullYear();
         const currentPeriod = fetchedPeriods.find(p => p.month === currentM && p.year === currentY);
-        if (currentPeriod) {
-          setExportPeriodId(String(currentPeriod.id));
-        } else {
-          setExportPeriodId(String(fetchedPeriods[0].id));
-        }
+        setExportPeriodId(String(currentPeriod ? currentPeriod.id : fetchedPeriods[0].id));
       }
 
       const enrichedLocations = locs.map(loc => ({
@@ -137,30 +121,27 @@ function LocationsPage() {
 
   const addLocation = () => {
     const newId = Date.now();
-    const newLocation = {
-      id: newId,
-      name: "",
-      programNo: "",
-      units: [],
-    };
-    setLocations((prev) => [...prev, newLocation]);
+    setLocations((prev) => [...prev, { id: newId, isNew: true, name: "", programNo: "", units: [] }]);
     setExpandedLocations((prev) => [...prev, newId]);
     setFocusElementId(`loc-name-${newId}`);
   };
 
-  const removeLocation = (id) => {
-    if (typeof id === 'number') {
-      // Yeni oluşturulmuş ve henüz kaydedilmemiş bir yerleşkeyi silerse tamamen yokediyoruz
-      setLocations((prev) => prev.filter((loc) => loc.id !== id));
-      setExpandedLocations((prev) => prev.filter((expId) => expId !== id));
+  const removeLocation = (loc) => {
+    // Eğer yeni eklenmişse (henüz DB'de yoksa) direkt listeden sil
+    if (loc.isNew) {
+      setLocations((prev) => prev.filter((l) => l.id !== loc.id));
+      setExpandedLocations((prev) => prev.filter((id) => id !== loc.id));
     } else {
-      setDeletedLocationIds((prev) => [...prev, id]);
+      // DB'de varsa sadece silinecekler listesine ekle (Undo yapılabilir)
+      setDeletedLocationIds((prev) => [...prev, loc.id]);
     }
   };
 
   const undoLocation = (id) => {
+    // Silme işaretini kaldır
     setDeletedLocationIds((prev) => prev.filter((delId) => delId !== id));
   };
+
 
   const handleUnitChange = (locId, unitId, value) => {
     setLocations((prev) =>
@@ -183,79 +164,93 @@ function LocationsPage() {
         if (loc.id !== locId) return loc;
         return {
           ...loc,
-          units: [...loc.units, { id: newId, name: "" }],
+          units: [...loc.units, { id: newId, isNew: true, name: "" }],
         };
       }),
     );
     setFocusElementId(`unit-name-${newId}`);
   };
 
-  const removeUnit = (locId, unitId) => {
-    if (typeof unitId === 'number') {
-      // Yeni oluşturulmuş birim silinirse tamamen yokediyoruz
+  const removeUnit = (locId, unit) => {
+    if (unit.isNew) {
       setLocations((prev) =>
         prev.map((loc) => {
           if (loc.id !== locId) return loc;
-          return {
-            ...loc,
-            units: loc.units.filter((unit) => unit.id !== unitId),
-          };
+          return { ...loc, units: loc.units.filter((u) => u.id !== unit.id) };
         }),
       );
     } else {
-      setDeletedUnitIds((prev) => [...prev, unitId]);
+      setDeletedUnitIds((prev) => [...prev, unit.id]);
     }
   };
 
-  const undoUnit = (locId, unitId) => {
+  const undoUnit = (unitId) => {
     setDeletedUnitIds((prev) => prev.filter((delId) => delId !== unitId));
   };
 
+  const locationHasChanges = (loc) => {
+    if (loc.isNew) return false;
+    const initLoc = initialLocations.find(l => l.id === loc.id);
+    if (!initLoc) return true;
+    if (loc.name !== initLoc.name || loc.programNo !== initLoc.programNo) return true;
+    if (initLoc.units.some(u => deletedUnitIds.includes(u.id))) return true;
+    const activeUnits = loc.units.filter(u => !deletedUnitIds.includes(u.id));
+    if (activeUnits.some(u => u.isNew || isUnitDirty(loc.id, u))) return true;
+    return false;
+  };
+
   const handleSave = async () => {
+    setIsSaving(true);
     try {
-      for (const id of deletedLocationIds) {
-        await locationService.deleteLocation(id);
-      }
+      // Sadece silinmemiş olan ve değişikliği olan (isNew veya kirli) yerleşkeleri senkronize et
+      const locationsToSync = locations.filter(
+        loc => !deletedLocationIds.includes(loc.id) && (loc.isNew || locationHasChanges(loc))
+      );
 
-      for (const loc of locations) {
-        if (typeof loc.id === 'number') {
-          const createRes = await locationService.createLocation({
-            name: loc.name,
-            programNo: loc.programNo
-          });
-
-          const newLocId = createRes.data.location.id;
-
-          if (loc.units && loc.units.length > 0) {
-            await locationService.syncLocationWithUnits(newLocId, {
+      await Promise.all([
+        // 1. Silinecek yerleşkeleri temizle
+        ...deletedLocationIds.map((id) => locationService.deleteLocation(id)),
+        // 2. Yeni veya güncellenen yerleşkeleri/birimleri toplu senkronize et
+        ...locationsToSync.map(async (loc) => {
+          if (loc.isNew) {
+            // Yeni yerleşke önce oluşturulur, sonra birimleri sync edilir
+            const createRes = await locationService.createLocation({ name: loc.name, programNo: loc.programNo });
+            const newLocId = createRes.data.location.id;
+            if (loc.units?.length > 0) {
+              await locationService.syncLocationWithUnits(newLocId, {
+                name: loc.name,
+                programNo: loc.programNo,
+                units: loc.units.map(u => ({ name: u.name })),
+              });
+            }
+          } else {
+            // Mevcut yerleşke ve aktif birimleri tek bir API çağrısı ile senkronize edilir
+            await locationService.syncLocationWithUnits(loc.id, {
               name: loc.name,
               programNo: loc.programNo,
-              units: loc.units.map(u => ({ name: u.name }))
+              units: loc.units
+                .filter(u => !deletedUnitIds.includes(u.id))
+                .map(u => ({ id: u.isNew ? undefined : u.id, name: u.name })),
             });
           }
-        } else {
-          await locationService.syncLocationWithUnits(loc.id, {
-            name: loc.name,
-            programNo: loc.programNo,
-            units: loc.units.map(u => ({
-              id: typeof u.id === 'string' ? u.id : undefined,
-              name: u.name
-            }))
-          });
-        }
-      }
+        }),
+      ]);
 
       toast({ type: "success", message: "Değişiklikler başarıyla kaydedildi" });
       setDeletedLocationIds([]);
-      fetchData();
+      setDeletedUnitIds([]);
+      fetchData(); // Listeyi son haliyle tekrar tazele
     } catch (error) {
       console.error("Error saving locations:", error);
       toast({ type: "error", message: error.message || "Kaydedilirken bir hata oluştu" });
+    } finally {
+      setIsSaving(false);
     }
   };
 
+
   const openExportPanel = (location, type) => {
-    if (typeof location.id !== 'string') {
+    if (location.isNew) {
       toast({ type: "error", message: "Önce değişiklikleri kaydedin" });
       return;
     }
@@ -303,14 +298,14 @@ function LocationsPage() {
   const hasUnsavedChanges = deletedLocationIds.length > 0 || deletedUnitIds.length > 0 || JSON.stringify(locations) !== JSON.stringify(initialLocations);
 
   const isLocationDirty = (loc) => {
-    if (typeof loc.id === 'number') return true;
+    if (loc.isNew) return true;
     const initLoc = initialLocations.find(l => l.id === loc.id);
     if (!initLoc) return true;
     return loc.name !== initLoc.name || loc.programNo !== initLoc.programNo;
   };
 
   const isUnitDirty = (locId, unit) => {
-    if (typeof unit.id === 'number') return true;
+    if (unit.isNew) return true;
     const initLoc = initialLocations.find(l => l.id === locId);
     if (!initLoc) return true;
     const initUnit = initLoc.units.find(u => u.id === unit.id);
@@ -318,11 +313,23 @@ function LocationsPage() {
     return unit.name !== initUnit.name;
   };
 
-  const headerActions = hasUnsavedChanges ? (
-    <button type="button" className="btn btn--primary" onClick={handleSave}>
-      Değişiklikleri Kaydet
-    </button>
-  ) : null;
+  const headerActions = (
+    <AnimatePresence>
+      {hasUnsavedChanges && (
+        <motion.div
+          key="save"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
+        >
+          <button type="button" className="btn" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   if (isLoading) {
     return (
@@ -440,7 +447,7 @@ function LocationsPage() {
                             </div>
                             <button
                               type="button"
-                              className="btn btn--primary export-panel__download-btn"
+                              className="btn export-panel__download-btn"
                               onClick={handleExport}
                               disabled={isExporting}
                             >
@@ -453,7 +460,7 @@ function LocationsPage() {
                       <button
                         type="button"
                         className="btn btn--danger btn--icon-only"
-                        onClick={() => removeLocation(location.id)}
+                        onClick={() => removeLocation(location)}
                         title="Yerleşkeyi Sil"
                       >
                         <RiDeleteBinLine />
@@ -463,7 +470,7 @@ function LocationsPage() {
                     <div className="location-actions-mobile" ref={mobileMenuId === location.id ? mobileMenuRef : null}>
                       <button
                         type="button"
-                        className="btn btn--primary btn--icon-only"
+                        className="btn btn--icon-only"
                         onClick={() => setMobileMenuId(mobileMenuId === location.id ? null : location.id)}
                         title="Seçenekler"
                       >
@@ -478,7 +485,7 @@ function LocationsPage() {
                           <button type="button" className="mobile-action-menu__item" onClick={(e) => { e.stopPropagation(); openExportPanel(location, "bot"); setMobileMenuId(null); }}>
                             <RiRobot2Line size={16} /> Bot Çıktısı Al
                           </button>
-                          <button type="button" className="mobile-action-menu__item mobile-action-menu__item--danger" onClick={(e) => { e.stopPropagation(); removeLocation(location.id); setMobileMenuId(null); }}>
+                          <button type="button" className="mobile-action-menu__item mobile-action-menu__item--danger" onClick={(e) => { e.stopPropagation(); removeLocation(location); setMobileMenuId(null); }}>
                             <RiDeleteBinLine size={16} /> Yerleşkeyi Sil
                           </button>
                         </div>
@@ -514,7 +521,7 @@ function LocationsPage() {
                             <button
                               type="button"
                               className="btn btn--secondary btn--icon-only"
-                              onClick={() => undoUnit(location.id, unit.id)}
+                              onClick={() => undoUnit(unit.id)}
                               title="Geri Al"
                             >
                               <RiArrowGoBackLine />
@@ -523,7 +530,7 @@ function LocationsPage() {
                             <button
                               type="button"
                               className="btn btn--danger btn--icon-only"
-                              onClick={() => removeUnit(location.id, unit.id)}
+                              onClick={() => removeUnit(location.id, unit)}
                               title="Birimi Sil"
                               disabled={deletedLocationIds.includes(location.id)}
                             >

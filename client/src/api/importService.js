@@ -1,17 +1,20 @@
+/* ========================================================================
+   IMPORT SERVICE (İÇE AKTARIM SERVİSİ)
+   Excel'den puantaj ve çalışan verisi aktarma işlemleri.
+   ======================================================================== */
 import httpClient from "./httpClient";
 
-/**
- * Tek bir çalışanı (ve puantaj günlerini) sunucuya aktarır.
- * @param {object} data
- */
-export async function importEmployee(data) {
-  return httpClient.post("/import/employee", data);
-}
+// Tekil çalışan ve puantaj verisi aktar (Excel satırı bazlı)
+export const importEmployee = async (data) => {
+  return httpClient.post('/import/employee', data);
+};
 
-/**
- * İmport tamamlandıktan sonra audit log oluşturur.
- * @param {object} data
- */
-export async function finalizeImport(data) {
-  return httpClient.post("/import/finalize", data);
-}
+// İçe aktarım işlemini özet verilerle tamamla (Audit log oluşturur)
+export const finalizeImport = async (data) => {
+  return httpClient.post('/import/finalize', data);
+};
+
+// Çoklu çalışan listesini toplu olarak aktar
+export const bulkImportEmployees = async (data) => {
+  return httpClient.post('/import/bulk-employees', data);
+};

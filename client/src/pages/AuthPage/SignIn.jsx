@@ -12,6 +12,7 @@ function SignIn({ onToggle }) {
   const { login } = useAuth();
   const navigate = useNavigate();
 
+  // React Hook Form Kurulumu: Zod şeması ile validasyon yapılır.
   const {
     register,
     handleSubmit,
@@ -24,6 +25,8 @@ function SignIn({ onToggle }) {
     },
   });
 
+
+  // Enter tuşuna basıldığında formu otomatik gönderen yardımcı fonksiyon
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -33,20 +36,25 @@ function SignIn({ onToggle }) {
     }
   };
 
+
   const onSubmitForm = async (data) => {
     setGeneralError("");
     setIsLoading(true);
 
+    // AuthContext üzerindeki login metodunu çağır (HTTP-Only Cookie set edilir)
     const result = await login(data.username, data.password);
 
     if (result.success) {
+      // Giriş başarılıysa ana sayfaya yönlendir
       navigate("/");
     } else {
+      // Hata mesajını (örn: Yanlış şifre) ekranda göster
       setGeneralError(result.error || "Giriş başarısız");
     }
 
     setIsLoading(false);
   };
+
 
   return (
     <>

@@ -1,11 +1,12 @@
+/* ========================================================================
+   USER COLUMNS (KULLANICI TABLO SÜTUNLARI)
+   Sistem kullanıcıları tablosu için sütun tanımlamaları.
+   ======================================================================== */
 import { getRoleConfig, getUserStatusConfig } from '../../constants/users';
 import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { formatDate } from '../../utils/dateUtils';
+import Pill from '../../components/Pill/Pill';
 
-const Pill = ({ cfg }) => (
-  <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '12px', fontWeight: 600, background: cfg.bg, color: cfg.color }}>
-    {cfg.label}
-  </span>
-);
 
 export const userColumns = (handleEdit, handleDelete) => [
   { header: "Kullanıcı Adı", accessor: "username", width: "150px" },
@@ -24,17 +25,21 @@ export const userColumns = (handleEdit, handleDelete) => [
   {
     header: "Rol",
     width: "140px",
+    // Kullanıcının yetki seviyesine (ADMIN/RESPONSIBLE) göre etiket döner
     render: (row) => <Pill cfg={getRoleConfig(row.role)} />,
   },
+
   {
     header: "Durum",
     width: "140px",
+    // Kullanıcının aktiflik durumu ve süresinin dolup dolmadığını (expired) kontrol eder
     render: (row) => <Pill cfg={getUserStatusConfig(row.status, row.expiryDate)} />,
   },
+
   {
     header: "Geçerlilik Tarihi",
     width: "150px",
-    render: (row) => row.expiryDate ? new Date(row.expiryDate).toLocaleDateString('tr-TR') : "-",
+    render: (row) => row.expiryDate ? formatDate(row.expiryDate) : "-",
   },
   {
     header: "İşlemler",

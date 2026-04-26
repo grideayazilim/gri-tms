@@ -1,4 +1,10 @@
+/* ========================================================================
+   EXPORT SERVICE (DIŞA AKTARIM SERVİSİ)
+   Puantaj verilerini Maaş, Liste veya Bot formatında Excel olarak indirir.
+   ======================================================================== */
 import httpClient from "./httpClient";
+import { formatPeriodUpper } from "../utils/dateUtils";
+
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -33,28 +39,23 @@ async function fetchBlob(url, params) {
   }
 }
 
-const TURKISH_MONTHS = [
-  "OCAK", "ŞUBAT", "MART", "NİSAN", "MAYIS", "HAZİRAN",
-  "TEMMUZ", "AĞUSTOS", "EYLÜL", "EKİM", "KASIM", "ARALIK"
-];
-
 export async function downloadTimesheetExcel({ locationId, year, month, locationName }) {
   const blob = await fetchBlob("/export/timesheet", { locationId, year, month });
-  const period = `${TURKISH_MONTHS[month - 1]} ${year}`;
+  const period = formatPeriodUpper(year, month);
   const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} MAAŞLAR.xlsm`;
   downloadBlob(blob, filename);
 }
 
 export async function downloadSimpleExcel({ locationId, year, month, locationName }) {
   const blob = await fetchBlob("/export/simple", { locationId, year, month });
-  const period = `${TURKISH_MONTHS[month - 1]} ${year}`;
+  const period = formatPeriodUpper(year, month);
   const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} LİSTE.xlsm`;
   downloadBlob(blob, filename);
 }
 
 export async function downloadBotExcel({ locationId, year, month, locationName }) {
   const blob = await fetchBlob("/export/bot", { locationId, year, month });
-  const period = `${TURKISH_MONTHS[month - 1]} ${year}`;
+  const period = formatPeriodUpper(year, month);
   const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} BOT GİRDİSİ.xlsx`;
   downloadBlob(blob, filename);
 }

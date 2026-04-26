@@ -20,6 +20,7 @@ export const useSettings = () => {
     try {
       const response = await settingsService.getPendingUsers();
       if (response && response.data && response.data.users) {
+        // Bekleyen kullanıcıları yerel state'e kaydet
         setPendingUsers(response.data.users);
       }
       return { success: true, data: response.data };
@@ -30,6 +31,7 @@ export const useSettings = () => {
       setIsPendingUsersLoading(false);
     }
   }, []);
+
 
   const fetchSystemSettings = useCallback(async () => {
     setIsSystemSettingsLoading(true);
@@ -53,13 +55,14 @@ export const useSettings = () => {
   const approveUser = async (id) => {
     try {
       const response = await settingsService.approvePendingUser(id);
-      // Remove from list
+      // Başarılı onay sonrası kullanıcıyı listeden anlık olarak çıkar (Optimistik UI)
       setPendingUsers(prev => prev.filter(user => user.id !== id));
       return { success: true, data: response.data };
     } catch (err) {
       return { success: false, error: err.message || 'Kullanıcı onaylanamadı' };
     }
   };
+
 
   const rejectUser = async (id) => {
     try {
@@ -75,17 +78,19 @@ export const useSettings = () => {
   const updateSystemSettings = async (data) => {
     try {
       const response = await settingsService.updateSystemSettings(data);
-      // Update local state by re-fetching or passing directly
+      // Güncelleme sonrası yeni ayarları sunucudan tekrar çek
       await fetchSystemSettings();
       return { success: true, data: response.data };
     } catch (err) {
-       // Catch CONFIRM_PERIOD_CHANGE specific error (httpClient interceptor returns status: 409)
+       // Çakışma Kontrolü (Conflict): Eğer tarih değişimi varsa sunucu 409 döner.
+       // Bu durumda kullanıcıya modal ile onay sorulması için özel hata kodu (CONFIRM_PERIOD_CHANGE) döndürüyoruz.
        if (err.status === 409) {
          return { success: false, code: 'CONFIRM_PERIOD_CHANGE', error: err.message || 'Tarih değişimi için onay gerekli' };
        }
        return { success: false, error: err.message || 'Sistem ayarları güncellenemedi' };
     }
   };
+
 
   return {
     // States

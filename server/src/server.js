@@ -1,3 +1,7 @@
+/* ========================================================================
+   SUNUCU BAŞLATMA (SERVER ENTRY POINT)
+   Veritabanı bağlantısı, Port dinleme ve Cron Job başlatma
+   ======================================================================== */
 import "dotenv/config";
 import app from "./app.js";
 import { pool } from "./config/database.js";

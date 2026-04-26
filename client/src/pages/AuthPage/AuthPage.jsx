@@ -1,14 +1,20 @@
+/* ========================================================================
+   AUTH PAGE (GİRİŞ VE KAYIT ANA SAYFASI)
+   Giriş (SignIn) ve Kayıt (SignUp) bileşenleri arasında geçişi yönetir.
+   ======================================================================== */
 import { useState } from 'react';
 import SignIn from './SignIn';
 import SignUp from './SignUp';
 import { motion, AnimatePresence } from 'framer-motion';
 import './AuthPage.scss';
 
+
 function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
 
   return (
     <div className="auth-page">
+      {/* Arkaplandaki dalga efekti (SVG Animasyonu) */}
       <svg
         className="auth-page__wave"
         viewBox="0 0 1440 900"
@@ -24,14 +30,16 @@ function AuthPage() {
         />
       </svg>
 
+
+      {/* AnimatePresence: isLogin değiştiğinde eski kartın çıkış (exit), yenisinin giriş animasyonunu yönetir */}
       <AnimatePresence mode="wait">
         {isLogin ? (
           <motion.div
             key="login"
             className="auth-page__card"
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -15 }}
+            initial={{ opacity: 0, scale: 0.95, y: 15 }} // Animasyon başlangıcı
+            animate={{ opacity: 1, scale: 1, y: 0 }}     // Aktif durum
+            exit={{ opacity: 0, scale: 0.95, y: -15 }}    // Çıkış durumu
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             <SignIn onToggle={() => setIsLogin(false)} />
@@ -49,6 +57,7 @@ function AuthPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
     </div>
   );
 }

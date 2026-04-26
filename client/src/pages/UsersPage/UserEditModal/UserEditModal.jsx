@@ -1,19 +1,17 @@
+/* ========================================================================
+   USER EDIT MODAL (KULLANICI DÜZENLEME MODALI)
+   Mevcut bir kullanıcının rolünü, geçerlilik tarihini ve yetki alanını 
+   (Yerleşke/Birim) günceller.
+   ======================================================================== */
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { userEditSchema } from '../../../schemas/user.schema';
 import { useLocationsAndUnits } from '../../../hooks/data/useLocationsAndUnits';
+import { toISODateString } from '../../../utils/dateUtils';
+import { USER_ROLE } from '@timesheet/shared';
 import './UserEditModal.scss';
 
-const getLocalDateString = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
 
 const UserEditModal = ({ user, onClose, onSave }) => {
   const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
@@ -28,7 +26,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
     resolver: zodResolver(userEditSchema),
     defaultValues: {
       role: user?.role || '',
-      validityDate: getLocalDateString(user?.expiryDate),
+      expiryDate: toISODateString(user?.expiryDate),
       locationId: user?.unit?.location?.id?.toString() || '',
       unitId: user?.unit?.id?.toString() || '',
     },
@@ -48,21 +46,27 @@ const UserEditModal = ({ user, onClose, onSave }) => {
     if (user) {
       reset({
         role: user.role || '',
-        validityDate: getLocalDateString(user.expiryDate),
+        expiryDate: toISODateString(user.expiryDate),
         locationId: user.unit?.location?.id?.toString() || '',
         unitId: user.unit?.id?.toString() || '',
       });
     }
   }, [user, reset]);
 
+  const selectedLocationId = watch("locationId");
+  const selectedUnitId = watch("unitId");
+
   const onSubmit = (data) => {
     onSave({
       role: data.role,
-      expiryDate: data.validityDate || null,
+      // Tarih seçilmemişse veritabanına null gönderiyoruz (Süresiz kullanıcı)
+      expiryDate: data.expiryDate || null,
+      // Rol ADMIN ise yerleşke/birim null gönderilir
       locationId: data.locationId || null,
       unitId: data.unitId || null,
     });
   };
+
 
   return (
     <form className="modal-form" onSubmit={handleSubmit(onSubmit)}>
@@ -74,8 +78,8 @@ const UserEditModal = ({ user, onClose, onSave }) => {
             {...register('role')}
           >
             <option value="" disabled hidden></option>
-            <option value="ADMIN">Admin</option>
-            <option value="RESPONSIBLE">Sorumlu</option>
+            <option value={USER_ROLE.ADMIN}>Admin</option>
+            <option value={USER_ROLE.RESPONSIBLE}>Sorumlu</option>
           </select>
           <label htmlFor="role" className="floating-group__label">
             Rol
@@ -88,16 +92,16 @@ const UserEditModal = ({ user, onClose, onSave }) => {
         <div className="floating-group">
           <input
             type="date"
-            id="validityDate"
-            className={`input ${errors.validityDate ? 'input--error' : ''}`}
+            id="expiryDate"
+            className={`input ${errors.expiryDate ? 'input--error' : ''}`}
             placeholder=" "
-            {...register('validityDate')}
+            {...register('expiryDate')}
           />
-          <label htmlFor="validityDate" className="floating-group__label">
+          <label htmlFor="expiryDate" className="floating-group__label">
             Geçerlilik Tarihi
           </label>
-          {errors.validityDate && (
-            <span className="input-error-message">{errors.validityDate.message}</span>
+          {errors.expiryDate && (
+            <span className="input-error-message">{errors.expiryDate.message}</span>
           )}
         </div>
       </div>
@@ -107,8 +111,8 @@ const UserEditModal = ({ user, onClose, onSave }) => {
           <select
             id="locationId"
             className={`input ${errors.locationId ? 'input--error' : ''}`}
-            // Standart register yerine e.target.value ataması yapıp alt menüyü boşaltalım
             {...register('locationId')}
+            value={selectedLocationId}
             onChange={(e) => {
               const locId = e.target.value;
               setValue('locationId', locId, { shouldDirty: true });
@@ -118,7 +122,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
           >
             <option value="" disabled hidden></option>
             {locations.map(loc => (
-              <option key={loc.id} value={loc.id}>{loc.name}</option>
+              <option key={loc.id} value={loc.id.toString()}>{loc.name}</option>
             ))}
           </select>
           <label htmlFor="locationId" className="floating-group__label">
@@ -134,10 +138,11 @@ const UserEditModal = ({ user, onClose, onSave }) => {
             id="unitId"
             className={`input ${errors.unitId ? 'input--error' : ''}`}
             {...register('unitId')}
+            value={selectedUnitId}
           >
             <option value="" disabled hidden></option>
             {units.map(unit => (
-              <option key={unit.id} value={unit.id}>{unit.name}</option>
+              <option key={unit.id} value={unit.id.toString()}>{unit.name}</option>
             ))}
           </select>
           <label htmlFor="unitId" className="floating-group__label">
@@ -149,13 +154,13 @@ const UserEditModal = ({ user, onClose, onSave }) => {
         </div>
       </div>
 
-      <div className="modal-form__actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
-        <button type="button" className="btn" onClick={() => onClose(null)}>
+      <div className="modal-form__actions">
+        <button type="button" className="btn btn--secondary" onClick={() => onClose(null)}>
           Vazgeç
         </button>
         <button
           type="submit"
-          className="btn btn--primary"
+          className="btn"
           disabled={!isDirty}
         >
           Güncelle

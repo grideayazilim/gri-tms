@@ -5,16 +5,15 @@ import {
   exportBot,
 } from "../controllers/exportController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { validate } from "../middlewares/validate.js";
+import { exportQuerySchema } from "@timesheet/shared";
 
 const router = express.Router();
 
-// GET /api/export/timesheet
-router.get("/timesheet", authMiddleware, exportTimesheet);
+const validateExportQuery = validate(exportQuerySchema, 'query');
 
-// GET /api/export/simple
-router.get("/simple", authMiddleware, exportSimple);
-
-// GET /api/export/bot
-router.get("/bot", authMiddleware, exportBot);
+router.get("/timesheet", authMiddleware, validateExportQuery, exportTimesheet);
+router.get("/simple", authMiddleware, validateExportQuery, exportSimple);
+router.get("/bot", authMiddleware, validateExportQuery, exportBot);
 
 export default router;

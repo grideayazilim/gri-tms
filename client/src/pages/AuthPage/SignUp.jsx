@@ -46,25 +46,32 @@ function SignUp({ onToggle }) {
   const role = watch("role");
   const isBirimSorumlusu = role === "RESPONSIBLE";
 
-  // Yerleşkeleri yükle
+  // Sayfa ilk yüklendiğinde mevcut Yerleşkeleri sunucudan çeker
   useEffect(() => {
     fetchLocations();
   }, [fetchLocations]);
 
-  // Yerleşke değiştiğinde birimleri yükle
+  // Yerleşke seçimi değiştiğinde (watch('locationId')), o yerleşkeye bağlı birimleri getirir
   useEffect(() => {
     if (locationId) {
       fetchUnitsByLocation(locationId);
     } else {
+      // Yerleşke seçimi temizlenirse birim seçimini de sıfırla
       setValue("unitId", "");
     }
   }, [locationId, fetchUnitsByLocation, setValue]);
+
 
 
   const onSubmitForm = async (data) => {
     setGeneralError("");
     setIsLoading(true);
 
+    /**
+     * ROL BAZLI KAYIT MANTIĞI:
+     * - Eğer kullanıcı ADMIN ise: Herhangi bir yerleşke veya birime bağlı değildir (null).
+     * - Eğer kullanıcı RESPONSIBLE (Birim Sorumlusu) ise: Zorunlu olarak bir yerleşke ve birim seçmelidir.
+     */
     const result = await authRegister(
       data.username,
       data.password,
@@ -74,17 +81,19 @@ function SignUp({ onToggle }) {
     );
 
     if (result.success) {
+      // Kayıt başarılıysa kullanıcıya bilgi ver ve giriş ekranına yönlendir (Onay bekleme süreci)
       toast({
         type: 'success',
         message: 'Kayıt başarılı! Hesabınızın onaylanması için lütfen bekleyiniz.'
       });
-      onToggle(); // Giriş ekranına dön
+      onToggle(); 
     } else {
       setGeneralError(result.error || "Kayıt başarısız");
     }
 
     setIsLoading(false);
   };
+
 
   return (
     <>

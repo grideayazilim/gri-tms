@@ -1,136 +1,112 @@
-import { withTransaction } from '../config/database.js';
-import { toCamelCase } from '../utils/caseMapper.js';
+/* ========================================================================
+   AUDIT LOG CONTROLLER (DENETİM KAYITLARI KONTROLCÜSÜ)
+   Sistemde yapılan tüm işlemlerin geçmişini filtreleyerek listeler.
+   ======================================================================== */
+import { pool } from '../config/database.js';
+import { asyncHandler } from '../middlewares/asyncHandler.js';
+import { buildPagination } from '../utils/pagination.js';
+import { AUDIT_ACTION_META } from '@timesheet/shared';
 
-/**
- * GET /audit-logs
- * Audit log kayıtlarını filtreli olarak getirir
- * 
- * Query params:
- * - username: Kullanıcı adına göre filtre
- * - eventType: Event type'a göre filtre (LOGIN, USER, EMPLOYEE, vb.)
- * - tableName: Tablo adına göre filtre
- * - startDate: Başlangıç tarihi (YYYY-MM-DD)
- * - endDate: Bitiş tarihi (YYYY-MM-DD)
- * - page: Sayfa numarası (default: 1)
- * - limit: Sayfa başına kayıt (default: 50)
- */
-export async function getAuditLogs(req, res) {
-  try {
-    const {
-      username,
-      eventType,
-      tableName,
-      startDate,
-      endDate,
-      page = 1,
-      limit = 50
-    } = req.query;
 
-    // Query builder
-    let query = 'SELECT * FROM app.audit_logs WHERE 1=1';
-    const params = [];
-    let paramIndex = 1;
+function buildAuditLogFilters({ actor, action, category, entityType, startDate, endDate }) {
+  let where = 'WHERE 1=1';
+  const params = [];
+  let i = 1;
 
-    // Filtreler
-    if (username) {
-      query += ` AND username ILIKE $${paramIndex}`;
-      params.push(`%${username}%`);
-      paramIndex++;
-    }
-
-    if (eventType) {
-      query += ` AND event_type = $${paramIndex}`;
-      params.push(eventType);
-      paramIndex++;
-    }
-
-    if (tableName) {
-      query += ` AND table_name = $${paramIndex}`;
-      params.push(tableName);
-      paramIndex++;
-    }
-
-    if (startDate) {
-      query += ` AND created_at >= $${paramIndex}::timestamp`;
-      params.push(`${startDate} 00:00:00`);
-      paramIndex++;
-    }
-
-    if (endDate) {
-      query += ` AND created_at <= $${paramIndex}::timestamp`;
-      params.push(`${endDate} 23:59:59`);
-      paramIndex++;
-    }
-
-    // Sıralama ve sayfalama
-    query += ` ORDER BY created_at DESC`;
-    query += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-    params.push(limit, (page - 1) * limit);
-
-    // Count query
-    let countQuery = 'SELECT COUNT(*) FROM app.audit_logs WHERE 1=1';
-    const countParams = [];
-    let countParamIndex = 1;
-
-    if (username) {
-      countQuery += ` AND username ILIKE $${countParamIndex}`;
-      countParams.push(`%${username}%`);
-      countParamIndex++;
-    }
-
-    if (eventType) {
-      countQuery += ` AND event_type = $${countParamIndex}`;
-      countParams.push(eventType);
-      countParamIndex++;
-    }
-
-    if (tableName) {
-      countQuery += ` AND table_name = $${countParamIndex}`;
-      countParams.push(tableName);
-      countParamIndex++;
-    }
-
-    if (startDate) {
-      countQuery += ` AND created_at >= $${countParamIndex}::timestamp`;
-      countParams.push(`${startDate} 00:00:00`);
-      countParamIndex++;
-    }
-
-    if (endDate) {
-      countQuery += ` AND created_at <= $${countParamIndex}::timestamp`;
-      countParams.push(`${endDate} 23:59:59`);
-      countParamIndex++;
-    }
-
-    // Execute queries
-    const result = await withTransaction(async (client) => {
-      const logsResult = await client.query(query, params);
-      const countResult = await client.query(countQuery, countParams);
-
-      return {
-        logs: logsResult.rows,
-        total: parseInt(countResult.rows[0].count)
-      };
-    });
-
-    res.json({
-      success: true,
-      data: {
-        auditLogs: toCamelCase(result.logs),
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: result.total,
-          totalPages: Math.ceil(result.total / limit)
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Get audit logs error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Audit log kayıtları alınırken hata oluştu'
-    });
+  // Aktör Filtresi: İşlemi yapan kişinin kullanıcı adına göre arama
+  if (actor) {
+    where += ` AND actor_username ILIKE $${i++}`;
+    params.push(`%${actor}%`);
   }
+  // Aksiyon Filtresi: Belirli bir aksiyon kodu (örn: USER_LOGIN)
+  if (action) {
+    where += ` AND action = $${i++}`;
+    params.push(action);
+  }
+  // Kategori Filtresi: Bir kategoriye ait tüm aksiyonları toplu filtreler (örn: Tüm TIMESHEET aksiyonları)
+  if (category) {
+    const actionsInCategory = Object.entries(AUDIT_ACTION_META)
+      .filter(([, meta]) => meta.category === category)
+      .map(([code]) => code);
+    if (actionsInCategory.length > 0) {
+      where += ` AND action = ANY($${i++})`;
+      params.push(actionsInCategory);
+    } else {
+      where += ` AND 1=0`; // Kategori bulunamazsa sonuç dönmemesini sağlayan dummy koşul
+    }
+  }
+  // Varlık Tipi Filtresi: İşlem yapılan nesnenin tipi (örn: EMPLOYEE)
+  if (entityType) {
+    where += ` AND entity_type = $${i++}`;
+    params.push(entityType);
+  }
+  // Tarih Aralığı Filtresi: Başlangıç ve bitiş tarihlerine göre saat dilimi ekleyerek filtreler
+  if (startDate) {
+    where += ` AND created_at >= $${i++}::timestamp`;
+    params.push(`${startDate} 00:00:00`);
+  }
+  if (endDate) {
+    where += ` AND created_at <= $${i++}::timestamp`;
+    params.push(`${endDate} 23:59:59`);
+  }
+
+  return { where, params, nextParamIndex: i };
 }
 
+
+export const getAuditLogs = asyncHandler(async (req, res) => {
+  const {
+    actor,
+    action,
+    category,
+    entityType,
+    startDate,
+    endDate,
+    page = 1,
+    limit = 50,
+  } = req.query;
+
+  const { where, params, nextParamIndex } = buildAuditLogFilters({
+    actor, action, category, entityType, startDate, endDate,
+  });
+
+  // Paralel Sorgu: Performans için log listesini ve toplam sayıyı aynı anda çeker
+  const [logsResult, countResult] = await Promise.all([
+    pool.query(
+      `SELECT id, action, actor_username, actor_role, entity_type, entity_id,
+              summary, changes, metadata, created_at
+       FROM app.audit_logs ${where}
+       ORDER BY created_at DESC
+       LIMIT $${nextParamIndex} OFFSET $${nextParamIndex + 1}`,
+      [...params, limit, (page - 1) * limit],
+    ),
+    pool.query(
+      `SELECT COUNT(*) FROM app.audit_logs ${where}`,
+      params,
+    ),
+  ]);
+
+
+  const auditLogs = logsResult.rows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    actor: {
+      username: row.actor_username,
+      role: row.actor_role,
+    },
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    summary: row.summary,
+    changes: Array.isArray(row.changes) ? row.changes : [],
+    metadata: row.metadata && typeof row.metadata === 'object' ? row.metadata : {},
+    createdAt: row.created_at,
+  }));
+
+  res.json({
+    success: true,
+    data: {
+      auditLogs,
+      pagination: buildPagination(page, limit, parseInt(countResult.rows[0].count)),
+    },
+  });
+});

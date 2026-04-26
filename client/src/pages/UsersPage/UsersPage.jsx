@@ -1,4 +1,8 @@
-import { useEffect } from "react";
+/* ========================================================================
+   USERS PAGE (KULLANICI YÖNETİM SAYFASI)
+   Sistemdeki yöneticilerin ve birim sorumlularının yönetildiği sayfa.
+   ======================================================================== */
+import { useState, useEffect, useMemo, useCallback } from "react";
 import DynamicTable from "../../components/DynamicTable/DynamicTable";
 import { userColumns } from "./userColumns";
 import FilterBar from "../../components/FilterBar/FilterBar";
@@ -8,61 +12,47 @@ import UserEditModal from "./UserEditModal/UserEditModal";
 import { useFilter } from "../../hooks/data/useFilter";
 import { userFilterConfig } from "./userFilters";
 import { useUsers } from "../../hooks/data/useUsers";
-import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
-import { useMemo } from "react";
+import { useLocationUnitFilter } from "../../hooks/data/useLocationUnitFilter";
+import { useToast } from "../../components/ToastBar/ToastContext";
 import "../../styles/inputs.scss";
 
+
+const PAGE_LIMIT = 10;
+
 const UsersPage = () => {
-  const { users, isLoading, error, fetchUsers, editUser, removeUser } =
+  const { users, pagination, isLoading, fetchUsers, editUser, removeUser } =
     useUsers();
-  
-  const {
-    locations: apiLocations,
-    units: apiUnits,
-    fetchLocations,
-    fetchUnitsByLocation,
-  } = useLocationsAndUnits();
 
-  useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
+  const [page, setPage] = useState(1);
 
-  const locationOptions = useMemo(
-    () => apiLocations.map((l) => ({ label: l.name, value: String(l.id) })),
-    [apiLocations]
+  const { filters, apiParams, handleFilterChange } = useFilter(
+    useMemo(() => userFilterConfig([], []), []),
+    { role: "", status: "", locationId: "", unitId: "", search: "" },
   );
-  const unitOptions = useMemo(
-    () => apiUnits.map((u) => ({ label: u.name, value: String(u.id) })),
-    [apiUnits]
+
+  const handleFilterChangeAndReset = useCallback((key, value) => {
+    handleFilterChange(key, value);
+    setPage(1);
+  }, [handleFilterChange]);
+
+  const { locationOptions, unitOptions } = useLocationUnitFilter(
+    filters.locationId,
+    handleFilterChangeAndReset,
   );
 
   const filterConfig = useMemo(
     () => userFilterConfig(locationOptions, unitOptions),
-    [locationOptions, unitOptions]
+    [locationOptions, unitOptions],
   );
 
-  const { filters, apiParams, handleFilterChange } = useFilter(filterConfig, {
-    role: "",
-    status: "",
-    locationId: "",
-    unitId: "",
-    search: "",
-  });
-
   useEffect(() => {
-    if (filters.locationId) {
-      fetchUnitsByLocation(filters.locationId);
-    }
-    if (!filters.locationId) {
-      handleFilterChange("unitId", "");
-    }
-  }, [filters.locationId, fetchUnitsByLocation, handleFilterChange]);
+    // Filtreler veya sayfa numarası değiştiğinde kullanıcı listesini tazeler
+    fetchUsers({ ...apiParams, page, limit: PAGE_LIMIT });
+  }, [fetchUsers, apiParams, page]);
 
-  useEffect(() => {
-    fetchUsers(apiParams);
-  }, [fetchUsers, apiParams]);
 
-  const { showConfirm, showModal, closeModal } = useModal();
+  const { showConfirm, showModal } = useModal();
+  const toast = useToast();
 
   const handleEdit = async (userId) => {
     const userToEdit = users.find((u) => u.id === userId);
@@ -78,10 +68,11 @@ const UsersPage = () => {
           onSave={async (data) => {
             const result = await editUser(userId, data);
             if (result.success) {
-              await fetchUsers(); // Tabloyu güncelle
+              toast({ type: 'success', message: 'Kullanıcı başarıyla güncellendi' });
+              fetchUsers({ ...apiParams, page, limit: PAGE_LIMIT });
               closeModal(data);
             } else {
-              alert(result.error || "Güncelleme başarısız");
+              toast({ type: 'error', message: result.error || 'Güncelleme işlemi başarısız' });
             }
           }}
         />
@@ -101,30 +92,27 @@ const UsersPage = () => {
     if (confirmed) {
       const result = await removeUser(userId);
       if (result.success) {
-        await fetchUsers(); // Tabloyu güncelle
+        toast({ type: 'success', message: 'Kullanıcı başarıyla silindi' });
+        fetchUsers({ ...apiParams, page, limit: PAGE_LIMIT });
       } else {
-        alert(result.error || "Silme başarısız");
+        toast({ type: 'error', message: result.error || 'Silme işlemi başarısız' });
       }
     }
   };
 
-
-
   return (
     <PageShell title="Kullanıcılar">
-      {/* Filters */}
       <FilterBar
         config={filterConfig}
         filters={filters}
-        onFilterChange={handleFilterChange}
+        onFilterChange={handleFilterChangeAndReset}
       />
-
-      {/* Users Table */}
       <DynamicTable
         columns={userColumns(handleEdit, handleDelete)}
         data={users}
         loading={isLoading}
-        pageSize={10}
+        pagination={pagination}
+        onPageChange={setPage}
       />
     </PageShell>
   );

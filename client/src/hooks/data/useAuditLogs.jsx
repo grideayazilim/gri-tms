@@ -1,41 +1,42 @@
 import { useState, useCallback } from 'react';
 import { auditLogService } from '../../api';
 
+const DEFAULT_LIMIT = 10;
+
 export const useAuditLogs = () => {
   const [auditLogs, setAuditLogs] = useState([]);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    limit: DEFAULT_LIMIT,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const fetchAuditLogs = useCallback(async (apiParams = {}) => {
+  const fetchAuditLogs = useCallback(async (apiParams = {}, page = 1) => {
     setIsLoading(true);
     setError(null);
-
     try {
       const finalParams = {
-        limit: 100,
-        startDate: apiParams.endDate ? '2020-01-01' : undefined,
-        ...apiParams
+        startDate: '2020-01-01',
+        ...apiParams,
+        page,
+        limit: DEFAULT_LIMIT,
       };
-
       const response = await auditLogService.getAuditLogs(finalParams);
-      if (response && response.data && response.data.auditLogs) {
-        setAuditLogs(response.data.auditLogs);
-      } else {
-        setAuditLogs([]);
+      setAuditLogs(response?.data?.auditLogs ?? []);
+      if (response?.data?.pagination) {
+        setPagination(response.data.pagination);
       }
       return { success: true, data: response.data };
     } catch (err) {
-      setError(err.message || 'Audit Loglar alınırken hata oluştu');
+      setError(err.message || 'İşlem kayıtları alınamadı');
       return { success: false, error: err.message };
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  return {
-    auditLogs,
-    isLoading,
-    error,
-    fetchAuditLogs,
-  };
+  return { auditLogs, pagination, isLoading, error, fetchAuditLogs };
 };

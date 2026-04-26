@@ -1,362 +1,239 @@
+/* ========================================================================
+   AUTH CONTROLLER (KİMLİK DOĞRULAMA KONTROLCÜSÜ)
+   Kayıt olma, giriş yapma, token yenileme ve çıkış işlemlerini yönetir.
+   ======================================================================== */
 import bcrypt from 'bcrypt';
-import { withTransaction } from '../config/database.js';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/tokenUtils.js';
+import { pool, withTransaction } from '../config/database.js';
+import { generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyAccessToken } from '../utils/tokenUtils.js';
 import { cookieConfig } from '../config/jwt.js';
 import { toCamelCase } from '../utils/caseMapper.js';
-import { createAuditLog } from '../utils/auditLogger.js';
-import { AUDIT_EVENT } from '../enums/auditEventTypes.js';
+import { createAuditLog, buildActor } from '../utils/auditLogger.js';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_ROLE, USER_STATUS } from '@timesheet/shared';
+import { asyncHandler } from '../middlewares/asyncHandler.js';
+import { unauthorized, forbidden, notFound, conflict } from '../utils/AppError.js';
 
-export async function register(req, res) {
+
+export const register = asyncHandler(async (req, res) => {
+  const { username, password, role, unitId, locationId } = req.body;
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  let result;
   try {
-    const { username, password, role, unitId, locationId } = req.body;
-
-    if (!username || !password || !role) {
-      return res.status(400).json({
-        success: false,
-        message: 'Kullanıcı adı, şifre ve rol gerekli',
-      });
-    }
-
-    if (role === 'RESPONSIBLE' && (!unitId || !locationId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Birim sorumlusu için yerleşke ve birim seçimi zorunlu',
-      });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const result = await withTransaction(async (client) => {
+    result = await withTransaction(async (client) => {
+      // Expiry Date Mantığı: ADMIN rolü süresizdir (NULL). 
+      // Diğer roller için sistem bitiş tarihinden (program_end_date) 20 gün sonrası set edilir.
       const insertRes = await client.query(
         `INSERT INTO app.users (username, password_hash, role, status, unit_id, location_id, expiry_date)
          VALUES (
            $1, $2, $3, $4, $5, $6,
-           CASE 
-             WHEN $3 = 'ADMIN' THEN NULL
+           CASE
+             WHEN $3 = $7 THEN NULL
              ELSE (SELECT program_end_date + INTERVAL '20 days' FROM app.settings LIMIT 1)
            END
          )
+
          RETURNING id, username, role, status, unit_id, location_id`,
-        [username, passwordHash, role, 'PENDING', unitId || null, locationId || null]
+        [username, passwordHash, role, USER_STATUS.PENDING, unitId || null, locationId || null, USER_ROLE.ADMIN]
       );
 
       const newUser = insertRes.rows[0];
 
       await createAuditLog(client, {
-        username: req.user?.username || 'SYSTEM',
-        userRole: req.user?.role || 'SYSTEM',
-        eventType: AUDIT_EVENT.USER,
-        description: `Yeni kullanıcı oluşturuldu: ${newUser.username}`,
-        tableName: 'users',
-        recordId: newUser.id,
-        newData: newUser
+        action: AUDIT_ACTION.USER_REGISTER,
+        actor: buildActor(req),
+        entityType: AUDIT_ENTITY_TYPE.USER,
+        entityId: newUser.id,
+        summary: `${newUser.username} adlı yeni kullanıcı kayıt oldu (onay bekliyor).`,
+        metadata: {
+          role: newUser.role,
+          status: newUser.status,
+          unitId: newUser.unit_id || null,
+          locationId: newUser.location_id || null,
+        },
       });
 
       return insertRes;
     });
-
-    res.status(201).json({
-      success: true,
-      data: {
-        user: toCamelCase(result.rows[0]),
-      },
-      message: 'Kullanıcı başarıyla oluşturuldu',
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-
-    if (error.code === '23505') {
-      return res.status(409).json({
-        success: false,
-        message: 'Bu kullanıcı adı zaten kullanımda',
-      });
-    }
-
-    res.status(500).json({
-      success: false,
-      message: 'Kayıt sırasında bir hata oluştu',
-    });
+  } catch (err) {
+    if (err.code === '23505') throw conflict('Bu kullanıcı adı zaten kullanımda');
+    throw err;
   }
-}
 
-export async function login(req, res) {
-  try {
-    const { username, password } = req.body;
+  res.status(201).json({
+    success: true,
+    data: {
+      user: toCamelCase(result.rows[0]),
+    },
+    message: 'Kullanıcı başarıyla oluşturuldu',
+  });
+});
 
-    if (!username || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Kullanıcı adı ve şifre gerekli',
-      });
-    }
+export const login = asyncHandler(async (req, res) => {
+  const { username, password } = req.body;
 
-    const result = await withTransaction(async (client) => {
-      return await client.query(
-        'SELECT * FROM app.users WHERE username = $1',
-        [username]
-      );
-    });
+  const result = await pool.query(
+    'SELECT * FROM app.users WHERE username = $1',
+    [username]
+  );
 
-    if (result.rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: 'Kullanıcı adı veya şifre yanlış',
-      });
-    }
+  if (result.rows.length === 0) throw unauthorized('Kullanıcı adı veya şifre yanlış');
 
-    const user = result.rows[0];
+  const user = result.rows[0];
 
-    if (user.status === 'EXPIRED') {
-      return res.status(403).json({
-        success: false,
-        message: 'Hesabınızın süresi dolmuştur. Sisteme giriş yapamazsınız.',
-      });
-    }
+  // Hesap Durum Kontrolleri: EXPIRED veya ACTIVE olmayan kullanıcı giriş yapamaz
+  if (user.status === USER_STATUS.EXPIRED) {
+    throw forbidden('Hesabınızın süresi dolmuştur. Sisteme giriş yapamazsınız.');
+  }
 
-    if (user.status !== 'ACTIVE') {
-      return res.status(403).json({
-        success: false,
-        message: 'Hesabınız henüz aktif değil. Admin onayı bekleniyor.',
-      });
-    }
+  if (user.status !== USER_STATUS.ACTIVE) {
+    throw forbidden('Hesabınız henüz aktif değil. Admin onayı bekleniyor.');
+  }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    if (!isPasswordValid) {
-      return res.status(401).json({
-        success: false,
-        message: 'Kullanıcı adı veya şifre yanlış',
-      });
-    }
 
-    const tokenPayload = {
-      id: user.id,
-      username: user.username,
-      role: user.role,
-      unitId: user.unit_id || null,
-      locationId: user.location_id || null,
-    };
+  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+  if (!isPasswordValid) throw unauthorized('Kullanıcı adı veya şifre yanlış');
 
-    const accessToken = generateAccessToken(tokenPayload);
-    const refreshToken = generateRefreshToken(tokenPayload);
+  const tokenPayload = {
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    unitId: user.unit_id || null,
+    locationId: user.location_id || null,
+  };
 
-    res.cookie('accessToken', accessToken, {
-      httpOnly: true,
-      sameSite: cookieConfig.sameSite,
-      secure: cookieConfig.secure,
-      maxAge: cookieConfig.maxAge.access,
-    });
+  const accessToken = generateAccessToken(tokenPayload);
+  const refreshToken = generateRefreshToken(tokenPayload);
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      sameSite: cookieConfig.sameSite,
-      secure: cookieConfig.secure,
-      maxAge: cookieConfig.maxAge.refresh,
-    });
+  // Token'ları HTTP-Only Cookie olarak set et (Güvenlik için JavaScript erişimi kapalıdır)
+  res.cookie('accessToken', accessToken, {
+    httpOnly: true,
+    sameSite: cookieConfig.sameSite,
+    secure: cookieConfig.secure,
+    maxAge: cookieConfig.maxAge.access,
+  });
 
-    // Audit log for login
-    await withTransaction(async (client) => {
-      await createAuditLog(client, {
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    sameSite: cookieConfig.sameSite,
+    secure: cookieConfig.secure,
+    maxAge: cookieConfig.maxAge.refresh,
+  });
+
+
+  await createAuditLog(pool, {
+    action: AUDIT_ACTION.USER_LOGIN,
+    actor: { username: user.username, role: user.role },
+    entityType: AUDIT_ENTITY_TYPE.USER,
+    entityId: user.id,
+    summary: `${user.username} sisteme giriş yaptı.`,
+  });
+
+  res.json({
+    success: true,
+    data: {
+      user: toCamelCase({
+        id: user.id,
         username: user.username,
-        userRole: user.role,
-        eventType: AUDIT_EVENT.LOGIN,
-        description: `${user.username} sisteme giriş yaptı.`
-      });
-    });
+        role: user.role,
+        status: user.status,
+        unit_id: user.unit_id,
+        location_id: user.location_id,
+      }),
+    },
+  });
+});
 
-    // User data döndür (token'lar DEĞİL)
-    res.json({
-      success: true,
-      data: {
-        user: toCamelCase({
-          id: user.id,
-          username: user.username,
-          role: user.role,
-          status: user.status,
-          unit_id: user.unit_id,
-          location_id: user.location_id,
-        }),
-      },
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Giriş yapılırken bir hata oluştu',
-    });
-  }
-}
+export const refresh = asyncHandler(async (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
 
-export async function refresh(req, res) {
+  if (!refreshToken) throw unauthorized('Refresh token bulunamadı');
+
+  let decoded;
   try {
-    const refreshToken = req.cookies.refreshToken;
+    decoded = verifyRefreshToken(refreshToken);
+  } catch {
+    throw unauthorized('Token yenilenemedi');
+  }
 
-    if (!refreshToken) {
-      return res.status(401).json({
-        success: false,
-        message: 'Refresh token bulunamadı',
-      });
+  const newAccessToken = generateAccessToken({
+    id: decoded.id,
+    username: decoded.username,
+    role: decoded.role,
+    unitId: decoded.unitId || null,
+    locationId: decoded.locationId || null,
+  });
+
+  res.cookie('accessToken', newAccessToken, {
+    httpOnly: true,
+    sameSite: cookieConfig.sameSite,
+    secure: cookieConfig.secure,
+    maxAge: cookieConfig.maxAge.access,
+  });
+
+  res.json({
+    success: true,
+    message: 'Token yenilendi',
+  });
+});
+
+export const logout = asyncHandler(async (req, res) => {
+  // Access token'ı (varsa) decode edip log için kullanıcı bilgisini al — başarısız olursa anonim çıkış logla
+  let actor = { username: 'UNKNOWN', role: null };
+  let entityId = null;
+  const accessToken = req.cookies?.accessToken;
+  if (accessToken) {
+    try {
+      const decoded = verifyAccessToken(accessToken);
+      actor = { username: decoded.username, role: decoded.role };
+      entityId = decoded.id || null;
+    } catch {
+      // Token geçersiz; sessizce devam
     }
+  }
 
-    const decoded = verifyRefreshToken(refreshToken);
+  res.clearCookie('accessToken', {
+    httpOnly: true,
+    sameSite: cookieConfig.sameSite,
+    secure: cookieConfig.secure,
+  });
 
-    const newAccessToken = generateAccessToken({
-      id: decoded.id,
-      username: decoded.username,
-      role: decoded.role,
-      unitId: decoded.unitId || null,
-      locationId: decoded.locationId || null,
-    });
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    sameSite: cookieConfig.sameSite,
+    secure: cookieConfig.secure,
+  });
 
-    res.cookie('accessToken', newAccessToken, {
-      httpOnly: true,
-      sameSite: cookieConfig.sameSite,
-      secure: cookieConfig.secure,
-      maxAge: cookieConfig.maxAge.access,
-    });
-
-    res.json({
-      success: true,
-      message: 'Token yenilendi',
-    });
-  } catch (error) {
-    console.error('Refresh error:', error);
-    res.status(401).json({
-      success: false,
-      message: 'Token yenilenemedi',
+  if (actor.username !== 'UNKNOWN') {
+    await createAuditLog(pool, {
+      action: AUDIT_ACTION.USER_LOGOUT,
+      actor,
+      entityType: AUDIT_ENTITY_TYPE.USER,
+      entityId,
+      summary: `${actor.username} sistemden çıkış yaptı.`,
     });
   }
-}
 
-export async function logout(req, res) {
-  try {
-    res.clearCookie('accessToken', {
-      httpOnly: true,
-      sameSite: cookieConfig.sameSite,
-      secure: cookieConfig.secure,
-    });
+  res.json({
+    success: true,
+    message: 'Çıkış yapıldı',
+  });
+});
 
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      sameSite: cookieConfig.sameSite,
-      secure: cookieConfig.secure,
-    });
+export const getMe = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
 
-    res.json({
-      success: true,
-      message: 'Çıkış yapıldı',
-    });
-  } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Çıkış yapılırken bir hata oluştu',
-    });
-  }
-}
+  const result = await pool.query(
+    'SELECT id, username, role, status, unit_id, location_id FROM app.users WHERE id = $1',
+    [userId]
+  );
 
-// Giriş yapan kullanıcının kendi bilgilerini güncelle (username / password)
-export async function updateMe(req, res) {
-  try {
-    const userId = req.user.id;
-    const { username, password } = req.body;
+  if (result.rows.length === 0) throw notFound('Kullanıcı bulunamadı');
 
-    if (!username && !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Güncellenecek en az bir alan (username veya password) gönderilmeli.',
-      });
-    }
-
-    const result = await withTransaction(async (client) => {
-      const current = await client.query(
-        'SELECT id, username, password_hash FROM app.users WHERE id = $1',
-        [userId]
-      );
-
-      if (current.rows.length === 0) {
-        throw Object.assign(new Error('Kullanıcı bulunamadı'), { statusCode: 404 });
-      }
-
-      const newUsername = username || current.rows[0].username;
-      const newPasswordHash = password
-        ? await bcrypt.hash(password, 10)
-        : current.rows[0].password_hash;
-
-      const updateRes = await client.query(
-        `UPDATE app.users
-         SET username = $1, password_hash = $2, updated_at = NOW()
-         WHERE id = $3
-         RETURNING id, username, role, status`,
-        [newUsername, newPasswordHash, userId]
-      );
-
-      const updatedUser = updateRes.rows[0];
-
-      await createAuditLog(client, {
-        username: req.user.username,
-        userRole: req.user.role,
-        eventType: AUDIT_EVENT.USER,
-        description: `${current.rows[0].username} adlı kullanıcı profil bilgilerini güncelledi.`,
-        tableName: 'users',
-        recordId: userId,
-        oldData: { id: userId, username: current.rows[0].username },
-        newData: { id: userId, username: updatedUser.username }
-      });
-
-      return updateRes;
-    });
-
-    res.json({
-      success: true,
-      message: 'Bilgiler güncellendi.',
-      data: {
-        user: toCamelCase(result.rows[0]),
-      },
-    });
-  } catch (error) {
-    console.error('updateMe error:', error);
-
-    if (error.statusCode === 404) {
-      return res.status(404).json({ success: false, message: error.message });
-    }
-
-    if (error.code === '23505') {
-      return res.status(409).json({ success: false, message: 'Bu kullanıcı adı zaten kullanımda.' });
-    }
-
-    res.status(500).json({ success: false, message: 'Bilgiler güncellenirken hata oluştu.' });
-  }
-}
-
-export async function getMe(req, res) {
-  try {
-    const userId = req.user.id;
-
-    const result = await withTransaction(async (client) => {
-      return await client.query(
-        'SELECT id, username, role, status, unit_id, location_id FROM app.users WHERE id = $1',
-        [userId]
-      );
-    });
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'Kullanıcı bulunamadı',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        user: toCamelCase(result.rows[0]),
-      },
-    });
-  } catch (error) {
-    console.error('Get me error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Kullanıcı bilgileri alınırken hata oluştu',
-    });
-  }
-}
+  res.json({
+    success: true,
+    data: {
+      user: toCamelCase(result.rows[0]),
+    },
+  });
+});

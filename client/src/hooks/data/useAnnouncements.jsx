@@ -1,12 +1,12 @@
 import { useState, useCallback } from 'react';
 import { announcementService } from '../../api';
+import { useAsync } from '../useAsync';
 
 export const useAnnouncements = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [pagination, setPagination] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { isLoading, error, run } = useAsync();
 
   const fetchUnreadCount = useCallback(async () => {
     try {
@@ -14,44 +14,29 @@ export const useAnnouncements = () => {
       if (response && response.data && typeof response.data.count !== 'undefined') {
         setUnreadCount(response.data.count);
       }
-    } catch (err) {
-      console.error('Okunmamış duyuru sayısı alınamadı', err);
+    } catch {
+      // Hata sessizce yutulur — unread badge gösterilmez
     }
   }, []);
 
-  const fetchAnnouncements = useCallback(async (page = 1, limit = 20) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await announcementService.getAnnouncements(page, limit);
-      if (response && response.data) {
-        setAnnouncements(response.data.announcements || []);
-        setPagination(response.data.pagination);
-      }
-      return { success: true, data: response.data };
-    } catch (err) {
-      setError(err.message || 'Duyurular alınırken hata oluştu');
-      return { success: false, error: err.message };
-    } finally {
-      setIsLoading(false);
+  const fetchAnnouncements = useCallback((page = 1, limit = 20) => run(async () => {
+    const response = await announcementService.getAnnouncements(page, limit);
+    if (response?.data) {
+      setAnnouncements(response.data.announcements || []);
+      setPagination(response.data.pagination);
     }
-  }, []);
+    return { success: true, data: response.data };
+  }), [run]);
 
   const markAsRead = async (id) => {
     try {
       await announcementService.markAsRead(id);
-      
-      // Local state update
-      setAnnouncements(prev => 
-        prev.map(ann => 
-          ann.id === id ? { ...ann, isRead: true, is_read: true } : ann
-        )
+      setAnnouncements(prev =>
+        prev.map(ann => ann.id === id ? { ...ann, isRead: true, is_read: true } : ann)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
-      
       return { success: true };
     } catch (err) {
-      console.error('Duyuru okundu işaretlenemedi', err);
       return { success: false, error: err.message };
     }
   };
@@ -59,7 +44,6 @@ export const useAnnouncements = () => {
   const addAnnouncement = async (title, content) => {
     try {
       const response = await announcementService.createAnnouncement(title, content);
-      // We refetch to maintain ordering and pagination correctness
       await fetchAnnouncements();
       return { success: true, data: response.data };
     } catch (err) {
@@ -98,6 +82,6 @@ export const useAnnouncements = () => {
     markAsRead,
     addAnnouncement,
     editAnnouncement,
-    removeAnnouncement
+    removeAnnouncement,
   };
 };

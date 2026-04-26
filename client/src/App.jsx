@@ -1,3 +1,7 @@
+/* ========================================================================
+   APP COMPONENT (ANA UYGULAMA BİLEŞENİ)
+   Route tanımlamaları, Navbar ve genel layout yapısı.
+   ======================================================================== */
 import "./App.scss";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -11,6 +15,7 @@ import {
   adminRoutes,
   notFoundRoute,
 } from "./routes";
+
 
 function App() {
   const { isAuthenticated } = useAuth();

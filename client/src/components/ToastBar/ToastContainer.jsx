@@ -20,7 +20,7 @@ function ToastContainer({ toasts }) {
         const Icon = toastIcons[toast.type];
 
         return (
-          <div key={toast.id} className={`toast toast--${toast.type}`}>
+          <div key={toast.id} className={`toast toast--${toast.type}${toast.removing ? " toast--removing" : ""}`}>
             <div className="toast__icon">{Icon && <Icon size={18} />}</div>
             <div className="toast__message">{toast.message}</div>
           </div>

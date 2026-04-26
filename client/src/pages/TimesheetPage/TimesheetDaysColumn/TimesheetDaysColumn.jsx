@@ -1,9 +1,15 @@
+/* ========================================================================
+   TIMESHEET DAYS COLUMN (GÜN HÜCRELERİ BİLEŞENİ)
+   Tablodaki her bir çalışanın ay bazındaki gün hücrelerini render eder.
+   Tıklama (Sol), Sağ Tık (Context Menu) ve Uzun Basma (Mobil) destekler.
+   ======================================================================== */
 import { useState, useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
-import { MARKER_LIST, MARKERS } from "../../../constants/markers";
+import { MARKER_LIST, MARKERS } from "@timesheet/shared";
 import "./TimesheetDaysColumn.scss";
+
 
 const getDayValue = (timesheetDays, dateStr) => {
   if (!timesheetDays || !dateStr) return "";
@@ -57,6 +63,16 @@ const TimesheetDaysColumn = ({
   const hoverTimer = useRef(null);
   const hoverCloseTimer = useRef(null);
 
+  // Unmount'ta tüm timer'ları temizle — memory leak önlemi
+  useEffect(() => {
+    return () => {
+      clearTimeout(longPressTimer.current);
+      clearTimeout(menuLeaveTimer.current);
+      clearTimeout(hoverTimer.current);
+      clearTimeout(hoverCloseTimer.current);
+    };
+  }, []);
+
   // Animasyonlu kapanış
   const closeMenu = useCallback(() => {
     if (!contextMenu || menuClosing) return;
@@ -89,6 +105,7 @@ const TimesheetDaysColumn = ({
       if (!dateStr) return "";
       try {
         const date = parseISO(dateStr);
+        // Örn: "5 Şubat Çarşamba — 2025"
         return format(date, "d MMMM EEEE — yyyy", { locale: tr });
       } catch {
         return dateStr;
@@ -97,12 +114,14 @@ const TimesheetDaysColumn = ({
     [],
   );
 
+
   // ── Sağ tık — marker menüsü aç (desktop) ──────────────────────────────
   const handleContextMenu = (e, dateStr) => {
     e.preventDefault();
+    // Kilitli dönemlerde veya resmi tatillerde menü açılmaz
     if (isLocked || isPublicHoliday?.(dateStr)) return;
 
-    // Hover varsa hemen sıfırla
+    // Hover tooltip'i varsa temizle
     clearTimeout(hoverCloseTimer.current);
     clearTimeout(hoverTimer.current);
     setHoverDay(null);
@@ -118,6 +137,8 @@ const TimesheetDaysColumn = ({
     });
   };
 
+
+  // ── Mobil Uzun Basma (Long Press) Yönetimi ───────────────────────────
   const handleTouchStart = (e, dateStr) => {
     longPressTriggered.current = false;
     clearTimeout(hoverCloseTimer.current);
@@ -127,6 +148,7 @@ const TimesheetDaysColumn = ({
 
     const rect = e.currentTarget.getBoundingClientRect();
 
+    // 500ms basılı tutulursa sağ tık menüsünü aç
     longPressTimer.current = setTimeout(() => {
       if (isLocked || isPublicHoliday?.(dateStr)) return;
       longPressTriggered.current = true;
@@ -135,10 +157,11 @@ const TimesheetDaysColumn = ({
         day: dateStr,
         centerX: rect.left + rect.width / 2,
         y: rect.bottom + 8,
-        showDate: true,
+        showDate: true, // Mobilde tarih bilgisini menü içinde de göster
       });
     }, 500);
   };
+
 
   const handleTouchEnd = () => {
     clearTimeout(longPressTimer.current);
@@ -148,7 +171,7 @@ const TimesheetDaysColumn = ({
     clearTimeout(longPressTimer.current);
   };
 
-  // Sol tık — long press tetiklendiyse tıklamayı yoksay
+  // Sol tık — Eğer long press tetiklendiyse tıklamayı (X işaretlemeyi) yoksay
   const handleClick = (dateStr) => {
     if (longPressTriggered.current) {
       longPressTriggered.current = false;
@@ -158,8 +181,10 @@ const TimesheetDaysColumn = ({
     clearTimeout(hoverTimer.current);
     setHoverDay(null);
     setHoverClosing(false);
+    // Sol tık varsayılan olarak 'X' (Fiili Çalışma) işaretler
     onDayClick(dateStr, MARKERS.X.code);
   };
+
 
   // ── Hover tooltip işlemleri ──────────────────────────────────────────────
   const handleMouseEnter = (e, dateStr) => {

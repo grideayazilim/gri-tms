@@ -151,11 +151,11 @@ function ConfirmContent({ message, type, confirmText, cancelText, onConfirm, onC
     <div>
       <p className="confirm-dialog-message">{message}</p>
       <div className="confirm-dialog-actions">
-        <button className="btn btn--sm" onClick={() => onClose(false)} disabled={loading}>
+        <button className="btn btn--secondary" onClick={() => onClose(false)} disabled={loading}>
           {cancelText}
         </button>
         <button
-          className={`btn btn--sm ${type === "danger" ? "btn--danger" : "btn--primary"}`}
+          className={`btn ${type === "danger" ? "btn--danger" : ""}`}
           onClick={handleConfirm}
           disabled={loading}
         >
@@ -178,24 +178,21 @@ export function ModalProvider({ children }) {
 
   /**
    * showModal - Generic modal açma fonksiyonu
-   * @param {Object} options - Modal ayarları
-   * @param {string} options.title - Modal başlığı
-   * @param {ReactNode|Function} options.content - Modal içeriği (component veya render function)
-   * @param {string} options.size - Modal boyutu: 'small' | 'medium' | 'large' | 'full'
-   * @param {boolean} options.showCloseButton - X butonu göster (default: true)
-   * @returns {Promise} Modal kapanınca resolve olur
+   * Bir Promise döner; modal kapandığında resolve olur.
    */
   const showModal = useCallback((options) => {
     return new Promise((resolve) => {
       const id = Date.now() + Math.random();
+      // Modalları bir array'de tutarak üst üste açılabilmelerini (stackable) sağlıyoruz
       setModals(prev => [...prev, {
         id,
         type: 'modal',
         ...options,
-        resolve,
+        resolve, // Modal'ı kapatırken bu Promise'i sonlandıracağız
       }]);
     });
   }, []);
+
 
   /**
    * showConfirm - Confirm dialog açma (backward compatible with ConfirmContext)
@@ -205,7 +202,7 @@ export function ModalProvider({ children }) {
   const showConfirm = useCallback((options) => {
     return showModal({
       title: options?.title || "Emin misiniz?",
-      size: 'small',
+      size: options?.size || 'small',
       content: (closeModal) => (
         <ConfirmContent
           message={options?.message || ""}
@@ -220,34 +217,36 @@ export function ModalProvider({ children }) {
   }, [showModal]);
 
   /**
-   * closeModal - Modal'ı kapat
-   * @param {number} id - Modal ID
-   * @param {*} result - Modal sonucu (promise'e dönecek)
+   * closeModal - Modal'ı kapat ve sonucu döndür
    */
   const closeModal = useCallback((id, result) => {
     setModals(prev => {
       const modal = prev.find(m => m.id === id);
+      // Promise'i kullanıcıdan gelen sonuç (result) ile resolve et
       if (modal?.resolve) {
         modal.resolve(result);
       }
+      // Modal'ı array'den çıkararak UI'dan sil
       return prev.filter(m => m.id !== id);
     });
   }, []);
+
 
   return (
     <ModalContext.Provider value={{ showModal, showConfirm, closeModal }}>
       {children}
       
-      {/* Generic Modals */}
+      {/* Birden fazla modal açılırsa her birini z-index arttırarak render et */}
       {modals.map((modal, index) => (
         <Modal
           key={modal.id}
           {...modal}
-          zIndex={3000 + index}
+          zIndex={3000 + index} // Her yeni modal bir öncekinin üstünde görünür
           onClose={(result) => closeModal(modal.id, result)}
         />
       ))}
     </ModalContext.Provider>
+
   );
 }
 

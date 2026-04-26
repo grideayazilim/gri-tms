@@ -8,6 +8,8 @@ import {
 } from '../controllers/settingsController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { adminMiddleware } from '../middlewares/adminMiddleware.js';
+import { validate } from '../middlewares/validate.js';
+import { systemSettingsSchema } from '@timesheet/shared';
 
 const router = express.Router();
 
@@ -18,6 +20,6 @@ router.delete('/pending-users/:id/reject', authMiddleware, adminMiddleware, reje
 
 // 2. System Settings
 router.get('/system', authMiddleware, adminMiddleware, getSystemSettings);
-router.put('/system', authMiddleware, adminMiddleware, updateSystemSettings);
+router.put('/system', authMiddleware, adminMiddleware, validate(systemSettingsSchema), updateSystemSettings);
 
 export default router;

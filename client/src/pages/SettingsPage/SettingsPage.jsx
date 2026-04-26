@@ -1,7 +1,12 @@
+/* ========================================================================
+   SETTINGS PAGE (AYARLAR SAYFASI)
+   Hem kişisel profil (şifre/username) hem de global sistem ayarlarını yönetir.
+   ======================================================================== */
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSettingsSchema, systemSettingsSchema } from "../../schemas/settings.schema";
+import { toISODateString } from "../../utils/dateUtils";
 import "../../styles/inputs.scss";
 import PageShell from "../../components/PageShell/PageShell";
 import PendingUserList from "./PendingUserList/PendingUserList";
@@ -10,7 +15,9 @@ import { useModal } from "../../components/Modal";
 import { useToast } from "../../components/ToastBar/ToastContext";
 import { useSettings } from "../../hooks/data/useSettings";
 import { useUsers } from "../../hooks/data/useUsers";
+import { USER_STATUS } from "@timesheet/shared";
 import "./SettingsPage.scss";
+
 
 function SettingsPage() {
   const { isAdmin, user, updateProfile } = useAuth();
@@ -30,21 +37,26 @@ function SettingsPage() {
   const onLoginSubmit = async (data) => {
     const payload = {
       username: data.username,
+      // Şifre alanı boşsa payload'a eklemiyoruz (Sadece kullanıcı adı güncelleme durumu)
       ...(data.password ? { newPassword: data.password } : {})
     };
 
     const result = await editProfile(payload);
     if (result.success) {
       toast({ type: "success", message: "Giriş bilgileriniz güncellendi." });
+      // AuthContext'i güncelle ki Navbar'daki isim anlık değişsin
       updateProfile({ username: result.data?.username || data.username });
+      // Formu temizle ve yeni kullanıcı adını default yap
       resetLogin({ username: result.data?.username || data.username, password: "" });
     } else {
       toast({ type: "error", message: result.error || "Güncelleme başarısız." });
+      // Eğer kullanıcı adı başkası tarafından alınmışsa (409 Conflict)
       if (result.status === 409 || result.error?.includes('kullanımda') || result.error?.includes('already in use')) {
         setLoginError('username', { type: 'manual', message: 'Bu kullanıcı adı zaten kullanımda.' });
       }
     }
   };
+
 
   const { showConfirm } = useModal();
   const toast = useToast();
@@ -65,22 +77,23 @@ function SettingsPage() {
   } = useUsers();
 
   useEffect(() => {
-    if (isAdmin()) {
-      fetchPendingUsers({ status: 'PENDING' });
+    if (isAdmin) {
+      fetchPendingUsers({ status: USER_STATUS.PENDING });
     }
   }, [isAdmin, fetchPendingUsers]);
 
   const handleApprove = async (userId) => {
-    const result = await approveUser(userId, { status: 'ACTIVE' });
+    const result = await approveUser(userId, { status: USER_STATUS.ACTIVE });
     if (result.success) {
       toast({ type: "success", message: "Kullanıcı başarıyla onaylandı." });
-      fetchPendingUsers({ status: 'PENDING' });
+      fetchPendingUsers({ status: USER_STATUS.PENDING });
     } else {
       toast({ type: "error", message: result.error || "Kullanıcı onaylanamadı." });
     }
   };
 
   const handleReject = async (userId) => {
+    // Reddetme işlemi geri alınamaz olduğu için kullanıcıdan teyit alıyoruz
     const confirmed = await showConfirm({
       title: 'Kullanıcıyı Reddet',
       message: 'Adayı reddetmek istediğinizden emin misiniz?',
@@ -93,12 +106,13 @@ function SettingsPage() {
       const result = await rejectUser(userId);
       if (result.success) {
         toast({ type: "success", message: "Kullanıcı reddedildi ve silindi." });
-        fetchPendingUsers({ status: 'PENDING' });
+        fetchPendingUsers({ status: USER_STATUS.PENDING });
       } else {
         toast({ type: "error", message: result.error || "Kullanıcı reddedilemedi." });
       }
     }
   };
+
 
   // SİSTEM BİLGİLERİ FORM
   const {
@@ -122,15 +136,18 @@ function SettingsPage() {
       toast({ type: "success", message: "Sistem ayarları güncellendi." });
       resetSystem(data);
     } else {
+      // Eğer sunucu CONFIRM_PERIOD_CHANGE (409) dönerse, kullanıcıya tarih değişimi uyarısı göster
       if (result.code === 'CONFIRM_PERIOD_CHANGE') {
         const confirmed = await showConfirm({
           title: 'Tarih Değişimi Onayı',
           message: 'Program tarihleri değiştiğinde mevcut dönemler silinip yeniden oluşturulacaktır. Yeni tarih aralığı dışında kalan aylara ait veriler silinebilir. Bu işlemi onaylıyor musunuz?',
           type: 'warning',
+          size: 'medium',
           confirmText: 'Onayla ve Güncelle',
           cancelText: 'Vazgeç',
         });
         if (confirmed) {
+          // Kullanıcı onayladıysa isteği "force: true" parametresi ile tekrar yolla
           const forceResult = await updateSystemSettings({ ...data, force: true });
           if (forceResult.success) {
             toast({ type: "success", message: "Sistem ayarları güncellendi ve dönemler yeniden oluşturuldu." });
@@ -145,33 +162,27 @@ function SettingsPage() {
     }
   };
 
+
   useEffect(() => {
-    if (isAdmin()) {
+    if (isAdmin) {
       fetchSystemSettings();
     }
   }, [isAdmin, fetchSystemSettings]);
 
   useEffect(() => {
     if (systemSettings) {
-      const formatDate = (dateStr) => {
-        if (!dateStr) return "";
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return "";
-        return d.toISOString().split('T')[0];
-      };
-
       resetSystem({
         dailyAllowance: systemSettings.dailyAllowance || "",
         weeklyLimit: systemSettings.weeklyLimit || "",
-        programStart: formatDate(systemSettings.programStart),
-        programEnd: formatDate(systemSettings.programEnd)
+        programStart: toISODateString(systemSettings.programStart),
+        programEnd: toISODateString(systemSettings.programEnd),
       });
     }
   }, [systemSettings, resetSystem]);
 
   return (
     <PageShell title="Ayarlar">
-      {isAdmin() && (
+      {isAdmin && (
         <PendingUserList
           pendingUsers={pendingUsers}
           onApprove={handleApprove}
@@ -217,7 +228,7 @@ function SettingsPage() {
 
         <button
           type="submit"
-          className="btn btn--primary settings-card__submit"
+          className="btn settings-card__submit"
           disabled={!isLoginDirty}
         >
           Giriş Bilgilerini Güncelle
@@ -225,7 +236,7 @@ function SettingsPage() {
       </form>
 
       {/* --- SİSTEM BİLGİLERİ --- */}
-      {isAdmin() && (
+      {isAdmin && (
         <form className="settings-card" onSubmit={handleSystemSubmit(onSystemSubmit)}>
           <h2 className="settings-card__title">Sistem Ayarları</h2>
 
@@ -298,7 +309,7 @@ function SettingsPage() {
 
         <button
           type="submit"
-          className="btn btn--primary settings-card__submit"
+          className="btn settings-card__submit"
           disabled={!isSystemDirty}
         >
           Sistem Ayarlarını Güncelle

@@ -1,33 +1,26 @@
-// KULLANIM
-// Component içerisinde: const { isPhone, isTablet, isDesktop } = useBreakpoint();
+import { useState, useEffect } from "react";
 
-import { useEffect, useState } from "react";
+const PHONE_MAX = 768;
+const TABLET_MAX = 1024;
+
+function getBreakpoint(width) {
+  if (width < PHONE_MAX) return "phone";
+  if (width < TABLET_MAX) return "tablet";
+  return "desktop";
+}
 
 export function useBreakpoint() {
-  const getBreakpoint = () => {
-    const width = window.innerWidth;
-    if (width <= 500) return "phone";
-    if (width <= 1024) return "tablet";
-    return "desktop";
-  };
-
-  const [breakpoint, setBreakpoint] = useState(() => getBreakpoint());
+  const [bp, setBp] = useState(() => getBreakpoint(window.innerWidth));
 
   useEffect(() => {
-    const handleResize = () => {
-      const newBreakpoint = getBreakpoint();
-      setBreakpoint(prev =>
-        prev !== newBreakpoint ? newBreakpoint : prev
-      );
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    const handler = () => setBp(getBreakpoint(window.innerWidth));
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
   }, []);
 
   return {
-    isPhone: breakpoint === "phone",
-    isTablet: breakpoint === "tablet",
-    isDesktop: breakpoint === "desktop",
+    isPhone: bp === "phone",
+    isTablet: bp === "tablet",
+    isDesktop: bp === "desktop",
   };
 }

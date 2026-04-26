@@ -65,11 +65,11 @@ function AnnouncementForm({ onSubmit, onCancel }) {
           onClick={onCancel}
           disabled={isSubmitting}
         >
-          İptal
+          Vazgeç
         </button>
         <button
           type="submit"
-          className="btn btn--primary"
+          className="btn"
           disabled={isSubmitting}
         >
           {isSubmitting ? 'Oluşturuluyor...' : 'Oluştur'}

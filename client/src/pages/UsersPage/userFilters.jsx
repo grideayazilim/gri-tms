@@ -1,4 +1,11 @@
+/* ========================================================================
+   USER FILTERS (KULLANICI FİLTRE KONFİGÜRASYONU)
+   Sistem kullanıcıları (Admin/Sorumlu) listesi için filtre yapısı.
+   ======================================================================== */
+import { USER_ROLE, USER_STATUS } from '@timesheet/shared';
+
 export const userFilterConfig = (locations, units) => [
+
   {
     key: 'locationId',
     apiParam: 'locationId',
@@ -21,8 +28,8 @@ export const userFilterConfig = (locations, units) => [
     label: 'Rol',
     type: 'select',
     options: [
-      { value: 'ADMIN', label: 'Admin' },
-      { value: 'RESPONSIBLE', label: 'Sorumlu' }
+      { value: USER_ROLE.ADMIN, label: 'Admin' },
+      { value: USER_ROLE.RESPONSIBLE, label: 'Sorumlu' }
     ],
     defaultOption: 'Tüm Roller',
   },
@@ -32,8 +39,8 @@ export const userFilterConfig = (locations, units) => [
     label: 'Durum',
     type: 'select',
     options: [
-      { value: 'ACTIVE', label: 'Aktif' },
-      { value: 'PENDING', label: 'Onay Bekliyor' }
+      { value: USER_STATUS.ACTIVE, label: 'Aktif' },
+      { value: USER_STATUS.PENDING, label: 'Onay Bekliyor' }
     ],
     defaultOption: 'Tüm Durumlar',
   },
@@ -41,6 +48,8 @@ export const userFilterConfig = (locations, units) => [
     key: 'search',
     apiParam: 'search',
     label: 'Kullanıcı Ara',
+    // Kullanıcı adı üzerinden arama yapar
     type: 'text',
   },
 ];
+

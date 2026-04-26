@@ -1,5 +1,8 @@
-// Service'lerde kullanılmak üzere hazır istek gönderecek fonksiyonları içeren dosya
-
+/* ========================================================================
+   HTTP CLIENT (AXIOS KONFİGÜRASYONU)
+   Tüm API isteklerini yöneten merkezi Axios istemcisi. 
+   Otomatik Token yenileme (refresh) ve global hata yönetimi içerir.
+   ======================================================================== */
 import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -11,8 +14,9 @@ const httpClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Cookie'leri otomatik gönder
+  withCredentials: true, // HTTP-Only Cookie'lerin (session) her isteğe eklenmesini sağlar
 });
+
 
 // Response interceptor - 401 durumunda auto-refresh
 httpClient.interceptors.response.use(
@@ -20,7 +24,7 @@ httpClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Eğer login, register, refresh veya me endpoint'i fail olduysa, auto-refresh yapma
+    // İstisna Durumlar: Temel auth endpoint'lerinde hata oluşursa döngüye girmemek için auto-refresh yapma
     if (
       originalRequest.url?.includes('/auth/refresh') ||
       originalRequest.url?.includes('/auth/me') ||
@@ -36,18 +40,20 @@ httpClient.interceptors.response.use(
       return Promise.reject({ message: 'Sunucuya ulaşılamıyor', status: 0 });
     }
 
-    // 401 ve henüz retry yapılmadıysa
+
+    // 401 Unauthorized ve henüz retry yapılmadıysa (Süre dolan Session'ı yenile)
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
-        // Token'ı yenile
+        // Token'ı (Cookie) yenilemek için refresh endpoint'ine git
         await httpClient.post('/auth/refresh');
 
-        // Orijinal isteği tekrar dene
+        // Refresh başarılıysa, kullanıcının asıl isteğini aynı ayarlarla tekrar dene
         return httpClient(originalRequest);
       } catch (refreshError) {
-        // Refresh başarısız - auth'a yönlendir (eğer zaten auth sayfasında değilsek)
+        // Refresh de başarısızsa (örn: Refresh token süresi de dolduysa)
+        // Kullanıcıyı giriş sayfasına yönlendir
         if (window.location.pathname !== '/auth') {
           window.location.href = '/auth';
         }
@@ -55,16 +61,18 @@ httpClient.interceptors.response.use(
       }
     }
 
-    // Diğer hatalar
+
+    // Global Hata Yakalama
     if (error.response) {
       let errorMessage = 'Bir hata oluştu';
+      // Excel Export gibi Blob tipinde dönen hataları parse etme mantığı
       if (error.response.data instanceof Blob) {
         try {
           const text = await error.response.data.text();
           const json = JSON.parse(text);
           errorMessage = json.message || errorMessage;
         } catch (e) {
-          // parse hatası vs yoksay, fallback mesaja kal
+          // Parse edilemezse varsayılan hataya kalır
         }
       } else {
         errorMessage = error.response.data?.message || errorMessage;
@@ -75,6 +83,7 @@ httpClient.interceptors.response.use(
         status: error.response.status,
       });
     }
+
 
     return Promise.reject({
       message: 'Sunucuya ulaşılamıyor',

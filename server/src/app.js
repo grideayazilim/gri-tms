@@ -1,4 +1,9 @@
+/* ========================================================================
+   BACKEND UYGULAMA YAPILANDIRMASI (EXPRESS)
+   Middleware zinciri, Route tanımlamaları ve Global hata yönetimi
+   ======================================================================== */
 import express from 'express';
+
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes from './routes/authRoutes.js';
@@ -12,11 +17,11 @@ import employeeRoutes from './routes/employeeRoutes.js';
 import holidayRoutes from './routes/holidayRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
 import importRoutes from './routes/importRoutes.js';
-//import markerRoutes from './routes/markerRoutes.js';
 
 const app = express();
 
-// CORS - Cookie'lerin çalışması için credentials: true
+// CORS Yapılandırması: Cookie bazlı Auth için credentials: true olmalı
+
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -41,7 +46,6 @@ app.use('/api/employees', employeeRoutes);
 app.use('/api/holidays', holidayRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/import', importRoutes);
-//app.use('/api/markers', markerRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -56,12 +60,21 @@ app.use((req, res) => {
   });
 });
 
-// Error handler
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  // PostgreSQL Unique Violation (Hata Kodu 23505): Çakışan kayıt durumunda 409 döndürür
+  if (err.code === '23505') {
+    return res.status(409).json({ success: false, message: 'Bu kayıt zaten mevcut' });
+  }
+  // Diğer özel hatalar veya standart 500 hataları
+  const status = err.status || 500;
+
+  if (status === 500) {
+    console.error(`[${req.method} ${req.path}]`, err.message, err.stack);
+  }
+  res.status(status).json({
     success: false,
-    message: 'Sunucu hatası',
+    message: status === 500 ? 'Sunucu hatası' : err.message,
   });
 });
 

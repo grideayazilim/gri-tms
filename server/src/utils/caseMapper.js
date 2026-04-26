@@ -1,4 +1,8 @@
-// Tek bir string'i snake_case'den camelCase'e çevir
+/* ========================================================================
+   CASE MAPPER (VERİ DÖNÜŞTÜRÜCÜ)
+   Veritabanından gelen snake_case alan adlarını camelCase formatına çevirir.
+   ======================================================================== */
+// snakeToCamel: Tek bir string'i snake_case'den camelCase'e çevirir (örn: first_name -> firstName)
 function snakeToCamel(str) {
   return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
 }

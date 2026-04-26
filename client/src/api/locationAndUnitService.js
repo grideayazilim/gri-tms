@@ -1,4 +1,9 @@
+/* ========================================================================
+   LOCATION & UNIT SERVICE (YERLEŞKE VE BİRİM SERVİSİ)
+   Yerleşke/Birim listeleme ve senkronizasyon işlemleri.
+   ======================================================================== */
 import { api } from './httpClient';
+
 
 // Tüm yerleşkeleri getir
 export const getLocations = async () => {
@@ -26,8 +31,9 @@ export const updateLocation = async (locationId, data) => {
 };
 
 // Yerleşke ve birimleri senkronize et (Toplu güncelleme/ekleme/silme)
+// Yerleşke ve bağlı birimlerini tek seferde senkronize et (Ekle/Sil/Güncelle)
 export const syncLocationWithUnits = async (locationId, data) => {
-  return await api.put(`/locationAndUnits/locations/${locationId}/sync`, data);
+  return api.put(`/locations/${locationId}/sync`, data);
 };
 
 // Yerleşke sil

@@ -1,4 +1,8 @@
-import { useState, useEffect } from 'react';
+/* ========================================================================
+   AUDIT LOGS PAGE (SİSTEM LOGLARI SAYFASI)
+   Sistemdeki tüm kritik işlemlerin (Ekleme, Silme, Güncelleme) listelendiği sayfa.
+   ======================================================================== */
+import { useState, useEffect, useCallback } from 'react';
 import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { auditLogColumns } from './auditLogColumns';
 import FilterBar from '../../components/FilterBar/FilterBar';
@@ -9,34 +13,41 @@ import { useAuditLogs } from '../../hooks/data/useAuditLogs';
 import '../../styles/inputs.scss';
 import './AuditLogsPage.scss';
 
+
 const AuditLogsPage = () => {
-  const { auditLogs, fetchAuditLogs, isLoading, error } = useAuditLogs();
+  const { auditLogs, pagination, fetchAuditLogs, isLoading, error } = useAuditLogs();
+
+  const [page, setPage] = useState(1);
 
   const { filters, apiParams, handleFilterChange } = useFilter(auditLogFilterConfig, {
-    action: '',
-    beforeDate: '', // Ön tanımlı olarak tüm zamanları getir
+    category: '',
+    beforeDate: '',
     searchActor: '',
   });
 
+  const handleFilterChangeAndReset = useCallback((key, value) => {
+    handleFilterChange(key, value);
+    setPage(1);
+  }, [handleFilterChange]);
+
   useEffect(() => {
-    fetchAuditLogs(apiParams);
-  }, [fetchAuditLogs, apiParams]); 
+    // Sayfa numarası veya filtreler değiştiğinde logları sunucudan çeker
+    fetchAuditLogs(apiParams, page);
+  }, [fetchAuditLogs, apiParams, page]);
+
 
   return (
     <PageShell title="İşlem Kayıtları" isLoading={isLoading}>
-      {/* Filters */}
-      <FilterBar config={auditLogFilterConfig} filters={filters} onFilterChange={handleFilterChange} />
-
-      {/* Logs List */}
+      <FilterBar config={auditLogFilterConfig} filters={filters} onFilterChange={handleFilterChangeAndReset} />
       {error && <div className="error-message">{error}</div>}
       <DynamicTable
         columns={auditLogColumns}
         data={auditLogs}
-        pageSize={10}
+        pagination={pagination}
+        onPageChange={setPage}
       />
     </PageShell>
   );
 };
 
 export default AuditLogsPage;
-

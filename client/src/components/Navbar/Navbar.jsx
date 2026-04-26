@@ -38,7 +38,7 @@ function Navbar() {
   // Kullanıcının görebileceği management route'ları filtrele
   const visibleManagementRoutes = managementRoutes.filter(route => {
     if (route.adminOnly) {
-      return isAdmin();
+      return isAdmin;
     }
     return true;
   });

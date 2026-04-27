@@ -5,18 +5,26 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "db:init": "node database/init-db.js",
+    "db:introspect": "drizzle-kit introspect",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node database/migrator.js",
+    "db:seed": "node database/seeder.js",
+    "db:studio": "drizzle-kit studio"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@timesheet/shared": "*",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
@@ -24,10 +32,10 @@
     "pg": "^8.18.0",
     "xlsx": "^0.18.5",
     "xlsx-populate": "^1.21.0",
-    "zod": "^3.22.4",
-    "@timesheet/shared": "*"
+    "zod": "^3.22.4"
   },
   "devDependencies": {
+    "drizzle-kit": "^0.31.10",
     "nodemon": "^3.1.11"
   }
 }

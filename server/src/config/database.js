@@ -3,6 +3,8 @@
    Connection Pool ayarları ve Transaction yardımcı fonksiyonları
    ======================================================================== */
 import pg from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
+import * as schema from "../../database/schema.js";
 
 const { Pool } = pg;
 
@@ -16,6 +18,9 @@ export const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
+
+// Drizzle ORM instance with the existing pool
+export const db = drizzle(pool, { schema });
 
 // withTransaction: Verilen fonksiyonu bir Transaction bloğu içinde çalıştırır.
 // Hata durumunda otomatik ROLLBACK, başarı durumunda COMMIT yapar.

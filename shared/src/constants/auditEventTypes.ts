@@ -48,7 +48,7 @@ export const AUDIT_ACTION = Object.freeze({
   EXCEL_IMPORT: 'EXCEL_IMPORT',
   EXCEL_EXPORT: 'EXCEL_EXPORT',
   BULK_EMPLOYEE_IMPORT: 'BULK_EMPLOYEE_IMPORT',
-});
+} as const);
 
 export type AuditAction = typeof AUDIT_ACTION[keyof typeof AUDIT_ACTION];
 
@@ -63,7 +63,7 @@ export const AUDIT_ENTITY_TYPE = Object.freeze({
   LOCATION: 'locations',
   UNIT: 'units',
   SETTINGS: 'settings',
-});
+} as const);
 
 export type AuditEntityType = typeof AUDIT_ENTITY_TYPE[keyof typeof AUDIT_ENTITY_TYPE];
 

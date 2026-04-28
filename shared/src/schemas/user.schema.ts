@@ -9,14 +9,14 @@ import { USER_ROLE_LIST, USER_ROLE } from '../constants/userConstants';
 // Admin Panelinden Kullanıcı Güncelleme: Rol, Tarih ve Yerleşke/Birim kontrolleri
 
 export const userEditSchema = z.object({
-    role: z.enum(USER_ROLE_LIST as [string, ...string[]], {
+    role: z.enum(USER_ROLE_LIST, {
         message: 'Rol seçimi zorunludur',
     }),
     expiryDate: z.string().optional().nullable(),
     locationId: z.string().optional().nullable(),
     unitId: z.string().optional().nullable(),
 }).superRefine((val, ctx) => {
-    // Birim Sorumlusu (RESPONSIBLE) için ek kısıtlamalar: 
+    // Birim Sorumlusu (RESPONSIBLE) için ek kısıtlamalar:
     // Hesap süresi (expiryDate), Yerleşke ve Birim tanımlı olmalıdır.
     if (val.role === USER_ROLE.RESPONSIBLE) {
 
@@ -53,7 +53,7 @@ export const profileUpdateSchema = z.object({
     oldPassword: z.string().optional(),
     newPassword: z.string().min(3, 'Yeni şifre en az 3 karakter olmalıdır').optional(),
 }).superRefine((val, ctx) => {
-    // Şifre güncelleme mantığı: Eğer eski şifre veya yeni şifre alanlarından biri doluysa, 
+    // Şifre güncelleme mantığı: Eğer eski şifre veya yeni şifre alanlarından biri doluysa,
     // diğeri de dolu olmak zorundadır. Sadece birini doldurmak hata döndürür.
     if ((val.oldPassword && !val.newPassword) || (!val.oldPassword && val.newPassword)) {
 

@@ -21,13 +21,13 @@ export type SignInType = z.infer<typeof signInSchema>;
 export const signUpSchema = z.object({
     username: z.string().min(3, 'Kullanıcı adı en az 3 karakter olmalıdır'),
     password: z.string().min(3, 'Şifre en az 3 karakter olmalıdır'),
-    role: z.enum(USER_ROLE_LIST as [string, ...string[]], {
+    role: z.enum(USER_ROLE_LIST, {
         message: 'Kullanıcı türü seçimi zorunludur',
     }),
     locationId: z.string().optional().nullable(),
     unitId: z.string().optional().nullable(),
 }).superRefine((val, ctx) => {
-    // Sorumlu (RESPONSIBLE) rolü için Yerleşke ve Birim seçimi zorunludur. 
+    // Sorumlu (RESPONSIBLE) rolü için Yerleşke ve Birim seçimi zorunludur.
     // ADMIN rolünde bu alanlar boş (null) bırakılabilir.
     if (val.role === USER_ROLE.RESPONSIBLE) {
 

@@ -8,7 +8,9 @@ export const MARKERS = Object.freeze({
     DT: { code: "DT", label: "Devlet Tatili", isPaid: false },
     R: { code: "R", label: "Raporlu", isPaid: false },
     RT: { code: "RT", label: "Resmi Tatil", isPaid: false },
-});
+} as const);
+
+export type MarkerCode = typeof MARKERS[keyof typeof MARKERS]['code'];
 
 export const MARKER_LIST = Object.values(MARKERS);
 export const PAID_CODES = new Set(MARKER_LIST.filter(m => m.isPaid).map(m => m.code));

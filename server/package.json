@@ -4,13 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "db:init": "node database/init-db.js",
+    "start": "node dist/src/server.js",
+    "dev": "tsx watch src/server.js",
+    "build": "tsc -p . && tsc-alias -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "db:init": "tsx database/init-db.js",
     "db:introspect": "drizzle-kit introspect",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node database/migrator.js",
-    "db:seed": "node database/seeder.js",
+    "db:migrate": "tsx database/migrator.js",
+    "db:seed": "tsx database/seeder.js",
     "db:studio": "drizzle-kit studio"
   },
   "keywords": [],
@@ -35,7 +37,17 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.14",
     "drizzle-kit": "^0.31.10",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
   }
 }

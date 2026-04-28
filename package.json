@@ -10,6 +10,23 @@
     "client:dev": "npm run dev -w client",
     "server:dev": "npm run dev -w server",
     "shared:build": "npm run build -w shared",
-    "shared:dev": "npm run dev -w shared"
+    "shared:dev": "npm run dev -w shared",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "npm run lint -w shared; npm run lint -w server; npm run lint -w client",
+    "build": "npm run build -w shared && npm run build -w server && npm run build -w client"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-import-resolver-typescript": "^3.0.0",
+    "eslint-plugin-import": "^2.31.0",
+    "prettier": "^3.0.0",
+    "tsc-alias": "^1.8.16",
+    "tsx": "^4.19.4",
+    "type-coverage": "^2.29.7",
+    "typescript": "^5.8.3"
   }
 }

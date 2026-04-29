@@ -1,18 +1,67 @@
 /* ========================================================================
    AUDIT LOGGER (DENETİM GÜNLÜĞÜ)
    Sistemdeki kritik aksiyonları veritabanına loglar.
-   Kullanım: createAuditLog(client, { action, actor, entityType, ... })
+   Kullanım: createAuditLog(executor, { action, actor, entityType, ... })
    ======================================================================== */
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared';
+import type { AuditAction, AuditEntityType, AuthUser } from '@timesheet/shared';
+import type { Request } from 'express';
 
+import { auditLogs } from '../../database/schema.js';
+import type { DbExecutor } from '../types/db.js';
 
+// Legacy PoolClient uyumluluk tipi — Phase 2'de kaldırılacak
+interface LegacyPoolClient {
+  query: (sql: string, params?: unknown[]) => Promise<unknown>;
+}
+
+// Phase 1 geçiş: executor hem Drizzle (DbExecutor) hem legacy PoolClient olabilir
+type AuditExecutor = DbExecutor | LegacyPoolClient;
+
+// ============================================================
+// Audit logger tipleri
+// ============================================================
+
+interface FieldConfig {
+  readonly label: string;
+  readonly format: (v: unknown) => string;
+}
+
+type AuditActorRole = string;
+
+interface AuditActor {
+  readonly username: string;
+  readonly role?: AuditActorRole | null;
+}
+
+interface CreateAuditLogParams {
+  readonly action: AuditAction;
+  readonly actor: AuditActor;
+  readonly entityType?: AuditEntityType | null;
+  readonly entityId?: string | null;
+  readonly summary: string;
+  readonly changes?: readonly string[];
+  readonly metadata?: Record<string, unknown>;
+}
+
+// Legacy raw SQL — Phase 2'de silinecek
 const SQL_INSERT = `
   INSERT INTO app.audit_logs
     (action, actor_username, actor_role, entity_type, entity_id, summary, changes, metadata)
   VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
 `;
 
-export async function createAuditLog(client, {
+// Runtime check: executor Drizzle instance mı yoksa legacy PoolClient mı?
+function isDrizzleExecutor(executor: AuditExecutor): executor is DbExecutor {
+  return 'insert' in executor && typeof executor.insert === 'function';
+}
+
+// ============================================================
+// Core audit log writer — Envanter A + S: raw SQL → Drizzle insert, DbExecutor kabul eder
+// Legacy PoolClient backward compat korunuyor — Phase 2'de kaldırılacak
+// ============================================================
+
+export async function createAuditLog(executor: AuditExecutor, {
   action,
   actor,
   entityType = null,
@@ -20,7 +69,7 @@ export async function createAuditLog(client, {
   summary,
   changes = [],
   metadata = {},
-}) {
+}: CreateAuditLogParams): Promise<void> {
   if (!action) {
     console.error('[AUDIT] action zorunludur');
     return;
@@ -34,18 +83,36 @@ export async function createAuditLog(client, {
     return;
   }
 
+  const changesArr = Array.isArray(changes) ? [...changes] : [];
+  const metadataObj = metadata && typeof metadata === 'object' ? { ...metadata } : {};
+
   try {
-    await client.query(SQL_INSERT, [
-      action,
-      actor.username,
-      actor.role ?? null,
-      entityType,
-      entityId,
-      summary,
-      JSON.stringify(Array.isArray(changes) ? changes : []),
-      JSON.stringify(metadata && typeof metadata === 'object' ? metadata : {}),
-    ]);
-  } catch (err) {
+    if (isDrizzleExecutor(executor)) {
+      // Drizzle path — Phase 1+ callers (cronJobs.ts vb.)
+      await executor.insert(auditLogs).values({
+        action,
+        actorUsername: actor.username,
+        actorRole: actor.role ?? null,
+        entityType: entityType ?? null,
+        entityId: entityId ?? null,
+        summary,
+        changes: changesArr,
+        metadata: metadataObj,
+      });
+    } else {
+      // Legacy PoolClient path — Phase 2'de silinecek
+      await executor.query(SQL_INSERT, [
+        action,
+        actor.username,
+        actor.role ?? null,
+        entityType,
+        entityId,
+        summary,
+        JSON.stringify(changesArr),
+        JSON.stringify(metadataObj),
+      ]);
+    }
+  } catch (err: unknown) {
     // Audit log hatası ana işlemi durdurmamalı
     console.error('[AUDIT] log kaydedilemedi:', err);
   }
@@ -55,42 +122,46 @@ export async function createAuditLog(client, {
 // Actor helpers
 // ============================================================
 
-export function buildActor(req) {
-  if (req?.user?.username) {
+export function buildActor(req: Request): AuditActor {
+  if (req.user?.username) {
     return { username: req.user.username, role: req.user.role || null };
   }
   return { username: 'SYSTEM', role: 'SYSTEM' };
 }
 
-export const SYSTEM_CRON_ACTOR = { username: 'SYSTEM_CRON', role: 'SYSTEM' };
+export const SYSTEM_CRON_ACTOR: AuditActor = { username: 'SYSTEM_CRON', role: 'SYSTEM' };
 
 // ============================================================
 // Value formatters
 // ============================================================
 
-const fmtStr   = (v) => (v == null || v === '' ? '—' : String(v));
-const fmtDate  = (v) => {
+const fmtStr = (v: unknown): string => (v == null || v === '' ? '—' : String(v));
+
+const fmtDate = (v: unknown): string => {
   if (v == null || v === '') return '—';
-  const d = v instanceof Date ? v : new Date(v);
+  const d = v instanceof Date ? v : new Date(String(v));
   if (isNaN(d.getTime())) return String(v);
   return d.toISOString().slice(0, 10);
 };
-const fmtBool   = (v) => (v == null ? '—' : v ? 'Evet' : 'Hayır');
-const fmtActive = (v) => (v == null ? '—' : v ? 'Aktif' : 'Pasif');
-const fmtMoney  = (v) => {
+
+const fmtBool = (v: unknown): string => (v == null ? '—' : v ? 'Evet' : 'Hayır');
+
+const fmtActive = (v: unknown): string => (v == null ? '—' : v ? 'Aktif' : 'Pasif');
+
+const fmtMoney = (v: unknown): string => {
   if (v == null || v === '') return '—';
   const n = Number(v);
   if (Number.isNaN(n)) return String(v);
   return `${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL`;
 };
 
-function valuesEqual(a, b) {
+function valuesEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a == null && b == null) return true;
   if (a == null || b == null) return false;
   if (a instanceof Date || b instanceof Date) {
-    const aT = a instanceof Date ? a.getTime() : new Date(a).getTime();
-    const bT = b instanceof Date ? b.getTime() : new Date(b).getTime();
+    const aT = a instanceof Date ? a.getTime() : new Date(String(a)).getTime();
+    const bT = b instanceof Date ? b.getTime() : new Date(String(b)).getTime();
     return aT === bT;
   }
   // Sayı/string karşılaştırmasında '500' vs 500 gibi durumlar için string'e indir
@@ -98,8 +169,9 @@ function valuesEqual(a, b) {
 }
 
 // FIELD_MAPS: Entity tipine göre hangi alanların loglanacağını belirleyen Whitelist.
-// Key -> { label: 'Görünen İsim', format: 'Değer Biçimlendirici' }
-export const FIELD_MAPS = {
+// Not: Key'ler hâlâ snake_case — mevcut controller'lar raw SQL row'ları gönderiyor.
+// Phase 2'de controller'lar Drizzle'a geçtiğinde key'ler camelCase'e çevrilecek.
+export const FIELD_MAPS: Record<string, Record<string, FieldConfig>> = {
 
   [AUDIT_ENTITY_TYPE.EMPLOYEE]: {
     tc_no:      { label: 'TC No',                 format: fmtStr },
@@ -147,12 +219,16 @@ export const FIELD_MAPS = {
  * Eski/yeni satırlardan değişen alanlar için
  * "Ad: 'Ahmet' → 'Mehmet'" formatında string array döner.
  */
-export function diffFieldsAsChanges(oldRow, newRow, fieldMap) {
+export function diffFieldsAsChanges(
+  oldRow: Record<string, unknown>,
+  newRow: Record<string, unknown>,
+  fieldMap: Record<string, FieldConfig>,
+): string[] {
   if (!oldRow || !newRow || !fieldMap) return [];
-  const out = [];
+  const out: string[] = [];
   for (const [key, cfg] of Object.entries(fieldMap)) {
-    const oldVal = oldRow[key];
-    const newVal = newRow[key];
+    const oldVal: unknown = oldRow[key];
+    const newVal: unknown = newRow[key];
     if (valuesEqual(oldVal, newVal)) continue;
     const fmt = cfg.format || fmtStr;
     out.push(`${cfg.label}: ${fmt(oldVal)} → ${fmt(newVal)}`);
@@ -161,7 +237,11 @@ export function diffFieldsAsChanges(oldRow, newRow, fieldMap) {
 }
 
 /** Entity tipine göre whitelist'li diff. */
-export function diffEntity(entityType, oldRow, newRow) {
+export function diffEntity(
+  entityType: string,
+  oldRow: Record<string, unknown>,
+  newRow: Record<string, unknown>,
+): string[] {
   const fieldMap = FIELD_MAPS[entityType];
   if (!fieldMap) return [];
   return diffFieldsAsChanges(oldRow, newRow, fieldMap);
@@ -169,18 +249,23 @@ export function diffEntity(entityType, oldRow, newRow) {
 
 // diffEntityWithLookups: ID alanlarını (Birim ID vb.) isimle göstermek için lookup haritası kullanır.
 // lookups: { unit_id: { 'uuid': 'Birim Adı' } } şeklinde bir Payload bekler.
-export function diffEntityWithLookups(entityType, oldRow, newRow, lookups = {}) {
+export function diffEntityWithLookups(
+  entityType: string,
+  oldRow: Record<string, unknown>,
+  newRow: Record<string, unknown>,
+  lookups: Record<string, Record<string, string>> = {},
+): string[] {
   const fieldMap = FIELD_MAPS[entityType];
   if (!fieldMap || !oldRow || !newRow) return [];
-  const out = [];
+  const out: string[] = [];
   for (const [key, cfg] of Object.entries(fieldMap)) {
-    const oldVal = oldRow[key];
-    const newVal = newRow[key];
+    const oldVal: unknown = oldRow[key];
+    const newVal: unknown = newRow[key];
     if (valuesEqual(oldVal, newVal)) continue;
     const fmt = cfg.format || fmtStr;
-    const lookup = lookups[key] || {};
-    const fmtOld = oldVal != null && lookup[oldVal] != null ? lookup[oldVal] : fmt(oldVal);
-    const fmtNew = newVal != null && lookup[newVal] != null ? lookup[newVal] : fmt(newVal);
+    const lookup = lookups[key] ?? {};
+    const fmtOld = oldVal != null && typeof oldVal === 'string' && lookup[oldVal] != null ? lookup[oldVal] : fmt(oldVal);
+    const fmtNew = newVal != null && typeof newVal === 'string' && lookup[newVal] != null ? lookup[newVal] : fmt(newVal);
     out.push(`${cfg.label}: ${fmtOld} → ${fmtNew}`);
   }
   return out;
@@ -190,9 +275,9 @@ export function diffEntityWithLookups(entityType, oldRow, newRow, lookups = {}) 
  * Bir array'i max N öğeye truncate eder.
  * Son satırda "... ve N kayıt daha" notu bırakır.
  */
-export function truncateChanges(items, max = 50) {
+export function truncateChanges(items: readonly string[], max = 50): string[] {
   if (!Array.isArray(items)) return [];
-  if (items.length <= max) return items;
+  if (items.length <= max) return [...items];
   const remaining = items.length - max;
   return [...items.slice(0, max), `... ve ${remaining} kayıt daha`];
 }

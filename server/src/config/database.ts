@@ -30,7 +30,7 @@ export type TransactionClient = Parameters<Parameters<typeof db.transaction>[0]>
 export type { TransactionClient as DrizzleTransactionClient };
 
 // withTransaction: Phase 0 — mevcut .js controller'larla backward compat (pool.connect tabanlı).
-// Phase 1+ geçişinde controller'lar db.transaction() kullanacak; bu helper kaldırılacak.
+// Phase 2+ geçişinde controller'lar db.transaction() kullanacak; bu helper kaldırılacak.
 export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   try {
@@ -45,3 +45,9 @@ export async function withTransaction<T>(fn: (client: PoolClient) => Promise<T>)
     client.release();
   }
 }
+
+// Drizzle-native transaction helper — Phase 1+ utils ve Phase 2+ controller'lar için
+export async function withDrizzleTransaction<T>(fn: (tx: TransactionClient) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => fn(tx));
+}
+

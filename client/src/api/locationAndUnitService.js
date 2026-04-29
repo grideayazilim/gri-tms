@@ -33,7 +33,7 @@ export const updateLocation = async (locationId, data) => {
 // Yerleşke ve birimleri senkronize et (Toplu güncelleme/ekleme/silme)
 // Yerleşke ve bağlı birimlerini tek seferde senkronize et (Ekle/Sil/Güncelle)
 export const syncLocationWithUnits = async (locationId, data) => {
-  return api.put(`/locations/${locationId}/sync`, data);
+  return api.put(`/locationAndUnits/locations/${locationId}/sync`, data);
 };
 
 // Yerleşke sil

@@ -265,6 +265,9 @@ export const syncLocationWithUnits = asyncHandler(async (req, res) => {
         [name, programNo, locationId]
       );
 
+      const renamedUnits = [];
+      const processedUnitIds = [];
+      const addedUnits = [];
 
       // 2. Birimleri İşle (Ekle veya Güncelle)
       for (const unit of units) {

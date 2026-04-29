@@ -101,13 +101,22 @@ export const getTimesheets = asyncHandler(async (req: Request, res: Response) =>
     const totalWorkDays = days.filter((d) => PAID_CODES.has(d.markerCode)).length;
 
     return {
-      id: row.timesheetId,
       employee: {
         id: row.employeeId,
         firstName: row.firstName,
         lastName: row.lastName,
         tcNo: row.tcNo,
         ibanNo: row.ibanNo,
+        isActive: true,
+        startDate: null,
+        endDate: null,
+      },
+      unit: row.unitId ? { id: row.unitId, name: row.unitName } : null,
+      location: row.locationId ? { id: row.locationId, name: row.locationName } : null,
+      timesheet: {
+        id: row.timesheetId,
+        periodId: period.id,
+        days,
       },
       period: {
         id: period.id,
@@ -117,16 +126,8 @@ export const getTimesheets = asyncHandler(async (req: Request, res: Response) =>
         endDate: period.endDate,
         isLocked: period.isLocked,
       },
-      unit: {
-        id: row.unitId,
-        name: row.unitName,
-        location: { id: row.locationId, name: row.locationName, programNo: row.programNo },
-      },
-      days,
       totalWorkDays,
       totalPaidAmount: totalWorkDays * dailyWage,
-      createdAt: row.timesheetCreatedAt?.toISOString() ?? null,
-      updatedAt: row.timesheetUpdatedAt?.toISOString() ?? null,
     };
   });
 

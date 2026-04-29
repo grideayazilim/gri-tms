@@ -236,9 +236,9 @@ function SettingsPage() {
 
         <div className="floating-group">
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             id="dailyAllowance"
-            step="0.01"
             className={`input ${systemErrors.dailyAllowance ? 'input--error' : ''}`}
             placeholder=" "
             {...systemRegister('dailyAllowance')}
@@ -253,7 +253,8 @@ function SettingsPage() {
 
         <div className="floating-group">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             id="weeklyLimit"
             className={`input ${systemErrors.weeklyLimit ? 'input--error' : ''}`}
             placeholder=" "

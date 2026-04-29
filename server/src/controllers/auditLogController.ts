@@ -36,10 +36,8 @@ export const getAuditLogs = asyncHandler(async (req: Request, res: Response) => 
   const auditLogs = logsResult.map((row) => ({
     id: row.id,
     action: row.action,
-    actor: {
-      username: row.actorUsername,
-      role: row.actorRole,
-    },
+    actorUsername: row.actorUsername,
+    actorRole: row.actorRole,
     entityType: row.entityType,
     entityId: row.entityId,
     summary: row.summary,

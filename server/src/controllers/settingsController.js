@@ -8,7 +8,7 @@ import { createAuditLog, buildActor, diffEntity } from '../utils/auditLogger.js'
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_ROLE, USER_STATUS } from '@timesheet/shared';
 import { toISODateString, parseLocalDate, startOfMonth, endOfMonth, eachMonthOfInterval } from '../utils/dateUtils.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { conflict, notFound } from '../utils/AppError.js';
+import { notFound } from '../utils/AppError.js';
 
 const SETTINGS_ID = 1; // Sistem ayarları tablosunda her zaman tek bir satır (ID=1) bulunur
 
@@ -124,7 +124,7 @@ export const getSystemSettings = asyncHandler(async (req, res) => {
 });
 
 export const updateSystemSettings = asyncHandler(async (req, res) => {
-  const { dailyAllowance, weeklyLimit, programStart, programEnd, force } = req.body;
+  const { dailyAllowance, weeklyLimit, programStart, programEnd } = req.body;
   const dailyAllowanceFloat = dailyAllowance !== undefined && dailyAllowance !== '' ? parseFloat(dailyAllowance) : null;
 
   await withTransaction(async (client) => {
@@ -142,12 +142,6 @@ export const updateSystemSettings = asyncHandler(async (req, res) => {
     const oldEnd = formatDate(current?.program_end_date);
 
     const dateChanged = (newStart !== oldStart) || (newEnd !== oldEnd);
-
-    // Tarih Değişimi Koruması: Tarih değişirse tüm dönemler (Periods) silinip yeniden oluşur.
-    // Bu çok riskli bir işlem olduğu için kullanıcıdan "force" onayı (confirm) beklenir.
-    if (dateChanged && !force) {
-      throw conflict('Tarih değişimi algılandı. Onay gerekiyor.');
-    }
 
 
     let updatedSettings;
@@ -171,7 +165,7 @@ export const updateSystemSettings = asyncHandler(async (req, res) => {
       updatedSettings = insertRes.rows[0];
     }
 
-    if (dateChanged && force) {
+    if (dateChanged) {
       if (newStart && newEnd) {
         const parsedStart = parseLocalDate(newStart);
         const parsedEnd = parseLocalDate(newEnd);
@@ -235,7 +229,7 @@ export const updateSystemSettings = asyncHandler(async (req, res) => {
       action: AUDIT_ACTION.SETTINGS_UPDATE,
       actor: buildActor(req),
       entityType: AUDIT_ENTITY_TYPE.SETTINGS,
-      entityId: updatedSettings?.id || null,
+      entityId: null, // Settings singleton'ı integer ID taşır, audit_logs UUID bekler
       summary: changes.length > 0
         ? `Sistem ayarları güncellendi (${changes.length} alan değişti).`
         : 'Sistem ayarları güncellendi.',

@@ -78,16 +78,10 @@ export const useSettings = () => {
   const updateSystemSettings = async (data) => {
     try {
       const response = await settingsService.updateSystemSettings(data);
-      // Güncelleme sonrası yeni ayarları sunucudan tekrar çek
       await fetchSystemSettings();
       return { success: true, data: response.data };
     } catch (err) {
-       // Çakışma Kontrolü (Conflict): Eğer tarih değişimi varsa sunucu 409 döner.
-       // Bu durumda kullanıcıya modal ile onay sorulması için özel hata kodu (CONFIRM_PERIOD_CHANGE) döndürüyoruz.
-       if (err.status === 409) {
-         return { success: false, code: 'CONFIRM_PERIOD_CHANGE', error: err.message || 'Tarih değişimi için onay gerekli' };
-       }
-       return { success: false, error: err.message || 'Sistem ayarları güncellenemedi' };
+      return { success: false, error: err.message || 'Sistem ayarları güncellenemedi' };
     }
   };
 

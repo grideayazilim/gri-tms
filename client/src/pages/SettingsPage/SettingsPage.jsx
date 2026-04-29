@@ -131,34 +131,28 @@ function SettingsPage() {
   });
 
   const onSystemSubmit = async (data) => {
+    const norm = (v) => v || null;
+    const datesChanged =
+      norm(systemSettings?.programStart) !== norm(data.programStart) ||
+      norm(systemSettings?.programEnd) !== norm(data.programEnd);
+
+    if (datesChanged) {
+      const confirmed = await showConfirm({
+        title: 'Tarih Değişikliği',
+        message: 'Program tarihleri değiştiğinde tüm dönemler yeniden oluşturulur. Devam etmek istiyor musunuz?',
+        type: 'warning',
+        confirmText: 'Evet, Güncelle',
+        cancelText: 'Vazgeç',
+      });
+      if (!confirmed) return;
+    }
+
     const result = await updateSystemSettings(data);
     if (result.success) {
       toast({ type: "success", message: "Sistem ayarları güncellendi." });
       resetSystem(data);
     } else {
-      // Eğer sunucu CONFIRM_PERIOD_CHANGE (409) dönerse, kullanıcıya tarih değişimi uyarısı göster
-      if (result.code === 'CONFIRM_PERIOD_CHANGE') {
-        const confirmed = await showConfirm({
-          title: 'Tarih Değişimi Onayı',
-          message: 'Program tarihleri değiştiğinde mevcut dönemler silinip yeniden oluşturulacaktır. Yeni tarih aralığı dışında kalan aylara ait veriler silinebilir. Bu işlemi onaylıyor musunuz?',
-          type: 'warning',
-          size: 'medium',
-          confirmText: 'Onayla ve Güncelle',
-          cancelText: 'Vazgeç',
-        });
-        if (confirmed) {
-          // Kullanıcı onayladıysa isteği "force: true" parametresi ile tekrar yolla
-          const forceResult = await updateSystemSettings({ ...data, force: true });
-          if (forceResult.success) {
-            toast({ type: "success", message: "Sistem ayarları güncellendi ve dönemler yeniden oluşturuldu." });
-            resetSystem(data);
-          } else {
-            toast({ type: "error", message: forceResult.error });
-          }
-        }
-      } else {
-        toast({ type: "error", message: result.error });
-      }
+      toast({ type: "error", message: result.error });
     }
   };
 

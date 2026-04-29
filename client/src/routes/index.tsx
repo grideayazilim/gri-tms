@@ -1,16 +1,22 @@
+/* ========================================================================
+   ROUTE KONFİGÜRASYONU
+   Uygulama sayfa yönlendirmeleri ve navigasyon yapılandırması.
+   ======================================================================== */
+import type { ComponentType, ReactNode } from 'react';
+
 // =================== ICON IMPORTLARI
 // Puantaj yönetimi
-import { AiOutlineFile } from "react-icons/ai";
+import { AiOutlineFile } from 'react-icons/ai';
 // Yerleşke ve Birimler
-import { PiBuildingOffice } from "react-icons/pi";
+import { PiBuildingOffice } from 'react-icons/pi';
 // Kullanıcılar
-import { LiaUserTieSolid } from "react-icons/lia";
+import { LiaUserTieSolid } from 'react-icons/lia';
 // Çalışanlar
-import { PiHardHat } from "react-icons/pi";
+import { PiHardHat } from 'react-icons/pi';
 // İşlem kayıtları
-import { RiFileList3Line } from "react-icons/ri";
+import { RiFileList3Line } from 'react-icons/ri';
 // Ayarlar
-import { IoSettingsOutline } from "react-icons/io5";
+import { IoSettingsOutline } from 'react-icons/io5';
 
 // =================== PAGE IMPORTLARI
 import TimesheetPage from '../pages/TimesheetPage/TimesheetPage';
@@ -22,8 +28,20 @@ import AuditLogsPage from '../pages/AuditLogsPage/AuditLogsPage';
 import NotFoundPage from '../pages/NotFoundPage/NotFoundPage';
 import AuthPage from '../pages/AuthPage/AuthPage';
 
+// ─── Tipler ───────────────────────────────────────────────────────────────────
+
+export interface RouteConfig {
+  path: string;
+  element: ComponentType;
+  name: string;
+  icon?: ReactNode;
+  adminOnly?: boolean;
+}
+
+// ─── Route Tanımları ──────────────────────────────────────────────────────────
+
 // Public routes (herkes erişebilir, authentication gerektirmez)
-export const publicRoutes = [
+export const publicRoutes: RouteConfig[] = [
   {
     path: '/auth',
     element: AuthPage,
@@ -32,7 +50,7 @@ export const publicRoutes = [
 ];
 
 // Management routes (giriş yapmış herkes görebilir, admin değilse sadece Puantaj İşaretleme görecek)
-export const managementRoutes = [
+export const managementRoutes: RouteConfig[] = [
   {
     path: '/',
     element: TimesheetPage,
@@ -71,7 +89,7 @@ export const managementRoutes = [
 ];
 
 // Settings route (ayrı kategori, herkes görebilir)
-export const settingsRoute = {
+export const settingsRoute: RouteConfig = {
   path: '/settings',
   element: SettingsPage,
   name: 'Ayarlar',
@@ -79,14 +97,14 @@ export const settingsRoute = {
 };
 
 // 404 route
-export const notFoundRoute = {
+export const notFoundRoute: RouteConfig = {
   path: '*',
   element: NotFoundPage,
   name: '404',
 };
 
 // Tüm protected routes (managementRoutes + settingsRoute)
-export const protectedRoutes = [...managementRoutes, settingsRoute];
+export const protectedRoutes: RouteConfig[] = [...managementRoutes, settingsRoute];
 
 // Admin routes (sadece adminOnly: true olanlar)
-export const adminRoutes = managementRoutes.filter(route => route.adminOnly);
+export const adminRoutes: RouteConfig[] = managementRoutes.filter(route => route.adminOnly);

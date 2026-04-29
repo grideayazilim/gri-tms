@@ -1,4 +1,9 @@
-// Export all API services
+/* ========================================================================
+   API SERVİS MODÜLÜ
+   Tüm API servislerinin tek noktadan dışa aktarımı.
+   ======================================================================== */
+
+// Servisler
 export * as authService from './authService';
 export * as timesheetService from './timesheetService';
 export * as employeeService from './employeeService';

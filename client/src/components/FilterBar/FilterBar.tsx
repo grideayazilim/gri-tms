@@ -1,22 +1,18 @@
+import type { FilterField } from '../../hooks/data/useFilter';
+
 import './FilterBar.scss';
 
-/**
- * `useFilter` hook'undan gelen konfigürasyona ve state'e göre arayüz çizen dinamik ortak bileşen.
- * 
- * @param {Array} config - `useFilter` ile aynı config dizisini bekler. Görsel özellikleri burada kullanılır.
- *   - `key`: Input'ları ayırmak için eşsiz kimlik (useFilter kısmında tanımlandı).
- *   - `label`: Ekranda input/select'in üstünde görünecek yazı.
- *   - `type`: 'text', 'select', 'date' vs. Hangi HTML input elementinin çizileceğini belirler.
- *   - `options`: SADECE `type: 'select'` ise kullanılır. {value, label} objelerinden oluşacak dropdown seçenekleri.
- *   - `defaultOption`: (Opsiyonel) SADECE `type: 'select'` ise, ilk sıradaki boş varsayılan seçeneğin metni.
- * 
- * @param {Object} filters - `useFilter`'dan dönen, inputların o anki dolu halini barındıran state objesi.
- * @param {Function} onFilterChange - Input değiştiğinde `(key, value)` göndererek `useFilter` içindeki state'i güncelleyen fonksiyon.
- * 
- * // Tam kullanım örneği için useFilter.jsx'e bak
- * // 
- */
-const FilterBar = ({ config, filters, onFilterChange }) => {
+// ─── Tipler ───────────────────────────────────────────────────────────────────
+
+interface FilterBarProps {
+  config: readonly FilterField[];
+  filters: Partial<Record<string, string>>;
+  onFilterChange: (key: string, value: string) => void;
+}
+
+// ─── Bileşen ──────────────────────────────────────────────────────────────────
+
+const FilterBar = ({ config, filters, onFilterChange }: FilterBarProps) => {
   return (
     <div className="filter-bar">
       {/* Config içindeki her alanı döngü ile tek tek arayüze bas */}
@@ -26,7 +22,7 @@ const FilterBar = ({ config, filters, onFilterChange }) => {
           {field.type === 'select' ? (
             <select
               className="input"
-              value={filters[field.key] || ''}
+              value={filters[field.key] ?? ''}
               onChange={(e) => onFilterChange(field.key, e.target.value)}
             >
               {field.defaultOption && (
@@ -48,10 +44,10 @@ const FilterBar = ({ config, filters, onFilterChange }) => {
           ) : (
             // Select değilse standart 'input' (text, date vs.) olarak çizer.
             <input
-              type={field.type || 'text'}
+              type={field.type ?? 'text'}
               className="input"
               placeholder=" "
-              value={filters[field.key] || ''}
+              value={filters[field.key] ?? ''}
               onChange={(e) => onFilterChange(field.key, e.target.value)}
             />
           )}

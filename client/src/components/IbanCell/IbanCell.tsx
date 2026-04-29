@@ -1,10 +1,23 @@
 import { useState } from 'react';
+
 import { FiCopy } from 'react-icons/fi';
 
-const IbanCell = ({ iban }) => {
-    const [tooltipState, setTooltipState] = useState({ show: false, text: iban, x: 0, y: 0, closing: false });
+interface IbanCellProps {
+  iban: string;
+}
 
-    const handleMouseEnter = (e) => {
+interface TooltipState {
+  show: boolean;
+  text: string;
+  x: number;
+  y: number;
+  closing: boolean;
+}
+
+const IbanCell = ({ iban }: IbanCellProps) => {
+    const [tooltipState, setTooltipState] = useState<TooltipState>({ show: false, text: iban, x: 0, y: 0, closing: false });
+
+    const handleMouseEnter = (e: React.MouseEvent<HTMLButtonElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
         setTooltipState({ show: true, text: iban, x: rect.left + rect.width / 2, y: rect.top, closing: false });
     };
@@ -14,9 +27,9 @@ const IbanCell = ({ iban }) => {
         setTimeout(() => setTooltipState(prev => ({ ...prev, show: false, closing: false })), 150);
     };
 
-    const handleCopy = (e) => {
+    const handleCopy = (e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
-        navigator.clipboard.writeText(iban);
+        void navigator.clipboard.writeText(iban);
         setTooltipState(prev => ({ ...prev, text: 'Kopyalandı!' }));
         setTimeout(() => {
             setTooltipState(prev => ({ ...prev, text: iban }));

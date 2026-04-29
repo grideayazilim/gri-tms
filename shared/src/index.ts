@@ -7,6 +7,7 @@
 // Tipler (Types)
 export * from './types/api';
 export * from './types/auth';
+export * from './types/domain';
 
 // Sabitler (Constants)
 export * from './constants/markers';

@@ -1,0 +1,40 @@
+/* ========================================================================
+   TIMESHEET SERVICE (PUANTAJ SERVİSİ)
+   Çalışanların puantaj girişleri ve dönem kilitleri.
+   ======================================================================== */
+import type { ApiResponse, PaginationMeta, TimesheetListItem, PeriodItem, TimesheetSaveType } from '@timesheet/shared';
+
+import { api } from './httpClient';
+
+// ─── Tipler ───────────────────────────────────────────────────────────────────
+
+interface TimesheetListQuery {
+  periodId?: string;
+  locationId?: string;
+  unitId?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+interface TimesheetListData {
+  timesheets: TimesheetListItem[];
+  pagination: PaginationMeta;
+}
+
+// ─── Servis ───────────────────────────────────────────────────────────────────
+
+// Puantaj listesini getir (Ay/Yıl, Birim, Yerleşke filtreleri ile)
+export const getTimesheets = (params: TimesheetListQuery = {}) =>
+  api.get<ApiResponse<TimesheetListData>>('/timesheets', { params });
+
+// Puantajları toplu olarak kaydet veya güncelle
+export const saveTimesheets = (periodId: string, timesheets: TimesheetSaveType['timesheets']) =>
+  api.post<ApiResponse<Record<string, never>>>('/timesheets', { periodId, timesheets });
+
+// Bir dönemi kilitle veya kilidini aç
+export const toggleLockPeriod = (periodId: string) =>
+  api.patch<ApiResponse<{ period: PeriodItem }>>(`/timesheets/${periodId}/lock`);
+
+export const getPeriods = () =>
+  api.get<ApiResponse<{ periods: PeriodItem[] }>>('/timesheets/periods');

@@ -1,7 +1,16 @@
+import type { ReactNode } from 'react';
+
 import { motion } from 'framer-motion';
+
 import './PageShell.scss';
 
-const PageShell = ({ title, headerActions, children }) => {
+interface PageShellProps {
+  title?: ReactNode;
+  headerActions?: ReactNode;
+  children: ReactNode;
+}
+
+const PageShell = ({ title, headerActions, children }: PageShellProps) => {
   return (
     <motion.main 
       className="page-container"

@@ -26,8 +26,8 @@ function Navbar() {
 
   // ========== REFERANSLAR
   // Dikey ve yatay hareket indicator için
-  const indicatorRef = useRef(null);
-  const navRef = useRef(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
 
   // ========== YARDIMCI FONKSİYONLAR
   const handleLogout = async () => {
@@ -45,7 +45,7 @@ function Navbar() {
 
   // Bulunulan sayfanın route'unun array'deki objesini alır
   const activeManagementRoute =
-    visibleManagementRoutes.find((r) => r.path === location.pathname) || null;
+    visibleManagementRoutes.find((r) => r.path === location.pathname) ?? null;
 
   // Yukarıdaki değişken undefined ise (route, management route değil) bu değeri false yap
   const isManagementRouteActive = !!activeManagementRoute;
@@ -57,11 +57,11 @@ function Navbar() {
     const indicator = indicatorRef.current;
     if (!nav || !indicator) return;
 
-    const active = nav.querySelector(".nav__link.active");
+    const active = nav.querySelector<HTMLElement>(".nav__link.active");
     const navRect = nav.getBoundingClientRect();
 
     // Dikey indicatör stili (desktop'ta)
-    const setVerticalIndicator = (rect) => {
+    const setVerticalIndicator = (rect: DOMRect) => {
       Object.assign(indicator.style, {
         left: "0px",
         top: rect.top - navRect.top + "px",
@@ -71,7 +71,7 @@ function Navbar() {
     };
 
     // Yatay indicatör stili (tablet ve telefonda)
-    const setHorizontalIndicator = (rect) => {
+    const setHorizontalIndicator = (rect: DOMRect) => {
       Object.assign(indicator.style, {
         top: "auto",
         bottom: "0px",
@@ -85,7 +85,7 @@ function Navbar() {
     if (isPhone) {
       // Management route aktifse, çizgiyi navigator'ün altına getir
       if (isManagementRouteActive) {
-        const managementNav = nav.querySelector(".nav__management-navigator");
+        const managementNav = nav.querySelector<HTMLElement>(".nav__management-navigator");
         if (!managementNav) return;
 
         const rect = managementNav.getBoundingClientRect();
@@ -186,7 +186,7 @@ function Navbar() {
           {settingsRoute.icon}
           <p className="nav__link-text">{settingsRoute.name}</p>
         </NavLink>
-        <div className="nav__link nav__link--logout" onClick={handleLogout}>
+        <div className="nav__link nav__link--logout" onClick={() => void handleLogout()}>
           <LiaPowerOffSolid /> <p className="nav__link-text">Çıkış Yap</p>
         </div>
       </div>

@@ -1,6 +1,22 @@
+import type { ReactNode } from 'react';
+
 import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+
 import './Modal.scss';
+
+// ─── Tipler ───────────────────────────────────────────────────────────────────
+
+export interface ModalProps {
+  title: string;
+  content: ReactNode | ((onClose: (result: unknown) => void) => ReactNode);
+  size?: 'small' | 'medium' | 'large' | 'full';
+  showCloseButton?: boolean;
+  zIndex?: number;
+  onClose: (result: unknown) => void;
+}
+
+// ─── Bileşen ──────────────────────────────────────────────────────────────────
 
 function Modal({
   title,
@@ -9,14 +25,14 @@ function Modal({
   showCloseButton = true,
   zIndex = 3000,
   onClose,
-}) {
-  const handleOverlayClick = (e) => {
+}: ModalProps) {
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose(null);
     }
   };
 
-  const handleEscKey = (e) => {
+  const handleEscKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose(null);
     }
@@ -72,4 +88,3 @@ function Modal({
 }
 
 export default Modal;
-

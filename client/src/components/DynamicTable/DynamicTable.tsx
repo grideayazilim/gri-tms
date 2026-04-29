@@ -1,13 +1,35 @@
+import type { ReactNode } from 'react';
+
+import type { PaginationMeta } from '@timesheet/shared';
+
 import './DynamicTable.scss';
 
-/**
- * @param {Array}    columns
- * @param {Array}    data              - Sunucudan gelen mevcut sayfa verisi
- * @param {boolean}  loading
- * @param {{ currentPage: number, totalPages: number, totalRecords: number }} [pagination]
- * @param {(page: number) => void} [onPageChange]
- */
-const DynamicTable = ({ columns, data, loading, pagination, onPageChange }) => {
+// ─── Tipler ───────────────────────────────────────────────────────────────────
+
+export interface Column<T> {
+  header: ReactNode;
+  width?: string;
+  accessor?: keyof T;
+  render?: (row: T) => ReactNode;
+}
+
+interface DynamicTableProps<T extends { id?: string | number }> {
+  columns: Column<T>[];
+  data: T[];
+  loading?: boolean;
+  pagination?: PaginationMeta;
+  onPageChange?: (page: number) => void;
+}
+
+// ─── Bileşen ──────────────────────────────────────────────────────────────────
+
+function DynamicTable<T extends { id?: string | number }>({
+  columns,
+  data,
+  loading,
+  pagination,
+  onPageChange,
+}: DynamicTableProps<T>) {
   if (loading) return <div className="dynamic-table-loading">Yükleniyor...</div>;
 
   const hasPagination = pagination && onPageChange;
@@ -41,7 +63,7 @@ const DynamicTable = ({ columns, data, loading, pagination, onPageChange }) => {
                       {col.render
                         ? col.render(row)
                         : col.accessor
-                          ? row[col.accessor]
+                          ? (row[col.accessor] as ReactNode)
                           : null}
                     </td>
                   ))}
@@ -85,6 +107,6 @@ const DynamicTable = ({ columns, data, loading, pagination, onPageChange }) => {
       )}
     </div>
   );
-};
+}
 
 export default DynamicTable;

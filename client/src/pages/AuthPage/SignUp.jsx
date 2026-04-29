@@ -72,13 +72,13 @@ function SignUp({ onToggle }) {
      * - Eğer kullanıcı ADMIN ise: Herhangi bir yerleşke veya birime bağlı değildir (null).
      * - Eğer kullanıcı RESPONSIBLE (Birim Sorumlusu) ise: Zorunlu olarak bir yerleşke ve birim seçmelidir.
      */
-    const result = await authRegister(
-      data.username,
-      data.password,
-      data.role,
-      data.role === "RESPONSIBLE" ? data.unitId : null,
-      data.role === "RESPONSIBLE" ? data.locationId : null
-    );
+    const result = await authRegister({
+      username: data.username,
+      password: data.password,
+      role: data.role,
+      unitId: data.role === "RESPONSIBLE" ? data.unitId : null,
+      locationId: data.role === "RESPONSIBLE" ? data.locationId : null,
+    });
 
     if (result.success) {
       // Kayıt başarılıysa kullanıcıya bilgi ver ve giriş ekranına yönlendir (Onay bekleme süreci)

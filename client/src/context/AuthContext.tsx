@@ -5,7 +5,7 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 
 import { USER_ROLE } from '@timesheet/shared';
-import type { AuthUser, Result } from '@timesheet/shared';
+import type { AuthUser, Result, SignUpType } from '@timesheet/shared';
 
 import { authService } from '../api';
 
@@ -18,14 +18,7 @@ export interface AuthContextValue {
   isAdmin: boolean;
   isResponsible: boolean;
   login: (username: string, password: string) => Promise<Result<Record<string, never>>>;
-  /** Phase 2'de authService.register SignUpType payload'a geçince bu da güncellenecek */
-  register: (
-    username: string,
-    password: string,
-    role: string,
-    unitId: string | null,
-    locationId: string | null,
-  ) => Promise<Result<Record<string, never>>>;
+  register: (payload: SignUpType) => Promise<Result<Record<string, never>>>;
   logout: () => Promise<void>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<Result<Record<string, never>>>;
   updateProfile: (updatedUser: Partial<AuthUser>) => void;
@@ -84,15 +77,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const register = async (
-    username: string,
-    password: string,
-    role: string,
-    unitId: string | null,
-    locationId: string | null,
-  ): Promise<Result<Record<string, never>>> => {
+  const register = async (payload: SignUpType): Promise<Result<Record<string, never>>> => {
     try {
-      const response = await authService.register(username, password, role, unitId, locationId);
+      const response = await authService.register(payload);
       const registered = (response as { data?: { user?: AuthUser } }).data?.user;
       if (!registered) throw new Error('Invalid response structure');
       return { success: true, data: {} };

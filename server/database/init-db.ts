@@ -13,7 +13,7 @@ const { Client } = pg;
 // .env dosyasından gelen yapılandırma
 const config = {
   host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
+  port: parseInt(process.env.DB_PORT || '5432', 10),
   user: process.env.DB_SUPER_USER, // Superuser (postgres veya sistem kullanıcısı)
   password: process.env.DB_SUPER_PASSWORD,
   database: 'postgres', // İlk bağlantı için varsayılan sistem veritabanı
@@ -46,7 +46,6 @@ async function run() {
     console.log('🧪 uuid-ossp eklentisi etkinleştiriliyor...');
     await extensionClient.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
     await extensionClient.end();
-
 
     // 2. Rolleri (Kullanıcıları) Oluştur
     console.log('👤 Roller oluşturuluyor...');

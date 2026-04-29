@@ -12,4 +12,3 @@ router.use(authMiddleware, adminMiddleware);
 router.get('/', getAuditLogs);
 
 export default router;
-

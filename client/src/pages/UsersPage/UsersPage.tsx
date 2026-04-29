@@ -1,42 +1,37 @@
-/* ========================================================================
-   USERS PAGE (KULLANICI YÖNETİM SAYFASI)
-   Sistemdeki yöneticilerin ve birim sorumlularının yönetildiği sayfa.
-   ======================================================================== */
-import { useState, useEffect, useMemo, useCallback } from "react";
-import DynamicTable from "../../components/DynamicTable/DynamicTable";
-import { userColumns } from "./userColumns";
-import FilterBar from "../../components/FilterBar/FilterBar";
-import PageShell from "../../components/PageShell/PageShell";
-import { useModal } from "../../components/Modal";
-import UserEditModal from "./UserEditModal/UserEditModal";
-import { useFilter } from "../../hooks/data/useFilter";
-import { userFilterConfig } from "./userFilters";
-import { useUsers } from "../../hooks/data/useUsers";
-import { useLocationUnitFilter } from "../../hooks/data/useLocationUnitFilter";
-import { useToast } from "../../components/ToastBar/ToastContext";
-import "../../styles/inputs.scss";
-
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import DynamicTable from '../../components/DynamicTable/DynamicTable';
+import { userColumns } from './userColumns';
+import FilterBar from '../../components/FilterBar/FilterBar';
+import PageShell from '../../components/PageShell/PageShell';
+import { useModal } from '../../components/Modal';
+import UserEditModal from './UserEditModal/UserEditModal';
+import { useFilter } from '../../hooks/data/useFilter';
+import { userFilterConfig } from './userFilters';
+import { useUsers } from '../../hooks/data/useUsers';
+import { useLocationUnitFilter } from '../../hooks/data/useLocationUnitFilter';
+import { useToast } from '../../components/ToastBar/ToastContext';
+import '../../styles/inputs.scss';
+import type { UserEditType } from '@timesheet/shared';
 
 const PAGE_LIMIT = 10;
 
 const UsersPage = () => {
-  const { users, pagination, isLoading, fetchUsers, editUser, removeUser } =
-    useUsers();
+  const { users, pagination, isLoading, fetchUsers, editUser, removeUser } = useUsers();
 
   const [page, setPage] = useState(1);
 
   const { filters, apiParams, handleFilterChange } = useFilter(
     useMemo(() => userFilterConfig([], []), []),
-    { role: "", status: "", locationId: "", unitId: "", search: "" },
+    { role: '', status: '', locationId: '', unitId: '', search: '' },
   );
 
-  const handleFilterChangeAndReset = useCallback((key, value) => {
+  const handleFilterChangeAndReset = useCallback((key: string, value: string) => {
     handleFilterChange(key, value);
     setPage(1);
   }, [handleFilterChange]);
 
   const { locationOptions, unitOptions } = useLocationUnitFilter(
-    filters.locationId,
+    filters.locationId || '',
     handleFilterChangeAndReset,
   );
 
@@ -54,13 +49,13 @@ const UsersPage = () => {
   const { showConfirm, showModal } = useModal();
   const toast = useToast();
 
-  const handleEdit = async (userId) => {
+  const handleEdit = async (userId: string) => {
     const userToEdit = users.find((u) => u.id === userId);
     if (!userToEdit) return;
 
     await showModal({
-      title: "Kullanıcıyı Düzenle",
-      size: "medium",
+      title: 'Kullanıcıyı Düzenle',
+      size: 'medium',
       content: (closeModal) => (
         <UserEditModal
           user={userToEdit}
@@ -80,13 +75,13 @@ const UsersPage = () => {
     });
   };
 
-  const handleDelete = async (userId) => {
+  const handleDelete = async (userId: string) => {
     const confirmed = await showConfirm({
-      title: "Kullanıcıyı Sil",
-      message: "Bu kullanıcıyı silmek istediğinizden emin misiniz?",
-      type: "danger",
-      confirmText: "Sil",
-      cancelText: "Vazgeç",
+      title: 'Kullanıcıyı Sil',
+      message: 'Bu kullanıcıyı silmek istediğinizden emin misiniz?',
+      type: 'danger',
+      confirmText: 'Sil',
+      cancelText: 'Vazgeç',
     });
 
     if (confirmed) {

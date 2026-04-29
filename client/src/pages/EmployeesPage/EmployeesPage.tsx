@@ -1,7 +1,3 @@
-/* ========================================================================
-   EMPLOYEES PAGE (ÇALIŞAN YÖNETİM SAYFASI)
-   Tüm çalışanların listelendiği, filtrelendiği ve yönetildiği ana sayfa.
-   ======================================================================== */
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { employeeColumns } from './employeeColumns';
@@ -15,7 +11,7 @@ import { useEmployees } from '../../hooks/data/useEmployees';
 import { useLocationUnitFilter } from '../../hooks/data/useLocationUnitFilter';
 import { useToast } from '../../components/ToastBar/ToastContext';
 import '../../styles/inputs.scss';
-
+import type { EmployeeType } from '@timesheet/shared';
 
 const PAGE_LIMIT = 10;
 
@@ -41,14 +37,14 @@ const EmployeesPage = () => {
 
   // Herhangi bir filtre değiştiğinde sayfayı otomatik olarak 1. sayfaya çeker.
   // Bu sayede örn: 5. sayfadayken bir arama yapıldığında boş sonuç görme riski engellenir.
-  const handleFilterChangeAndReset = useCallback((key, value) => {
+  const handleFilterChangeAndReset = useCallback((key: string, value: string) => {
     handleFilterChange(key, value);
     setPage(1);
   }, [handleFilterChange]);
 
 
   const { locationOptions, unitOptions } = useLocationUnitFilter(
-    filters.locationId,
+    filters.locationId || '',
     handleFilterChangeAndReset,
   );
 
@@ -61,7 +57,7 @@ const EmployeesPage = () => {
     fetchEmployees({ ...apiParams, page, limit: PAGE_LIMIT });
   }, [fetchEmployees, apiParams, page]);
 
-  const handleDelete = async (employeeId) => {
+  const handleDelete = async (employeeId: string) => {
     const confirmed = await showConfirm({
       title: 'Çalışanı Sil',
       message: 'Bu çalışanı silmek istediğinizden emin misiniz?',
@@ -80,7 +76,7 @@ const EmployeesPage = () => {
     }
   };
 
-  const handleEdit = async (employeeId) => {
+  const handleEdit = async (employeeId: string) => {
     const employeeToEdit = employees.find(e => e.id === employeeId);
     if (!employeeToEdit) return;
 
@@ -115,7 +111,7 @@ const EmployeesPage = () => {
         <EmployeeModal
           onClose={() => closeModal(null)}
           onSave={async (newData) => {
-            const result = await addEmployee(newData);
+            const result = await addEmployee(newData as EmployeeType);
             if (result.success) {
               toast({ type: 'success', message: 'Çalışan başarıyla eklendi' });
               // Yeni eklenen en üstte görünsün diye sayfayı 1'e çekiyoruz
@@ -129,7 +125,6 @@ const EmployeesPage = () => {
       ),
     });
   };
-
 
   const headerActions = (
     <div className="page-header__actions">

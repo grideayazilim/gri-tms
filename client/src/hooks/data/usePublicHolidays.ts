@@ -1,19 +1,28 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { holidayService } from "../../api";
+import { useState, useEffect, useCallback, useMemo } from 'react';
+
+import type { PublicHoliday } from '@timesheet/shared';
+
+import { holidayService } from '../../api';
+
+export interface UsePublicHolidaysReturn {
+  holidayDays: Set<string>;
+  holidayNames: Map<string, string>;
+  isPublicHoliday: (day: string) => boolean;
+  getHolidayName: (day: string) => string | null;
+}
 
 /**
  * Seçili dönemin resmi tatillerini Nager.Date API'den çeker.
  *
- * @param {string} period - "YYYY-MM" formatında dönem
- * @returns {{ holidayDays: Set<number>, holidayNames: Map<number, string>, isPublicHoliday: (day: number) => boolean, getHolidayName: (day: number) => string|null }}
+ * @param period - "YYYY-MM" formatında dönem
  */
-export const usePublicHolidays = (period) => {
-  const [holidays, setHolidays] = useState([]);
+export const usePublicHolidays = (period: string | null): UsePublicHolidaysReturn => {
+  const [holidays, setHolidays] = useState<PublicHoliday[]>([]);
 
   // Period'dan yıl ve ay bilgisini ayrıştır
-  const [year, month] = useMemo(() => {
+  const [year] = useMemo(() => {
     if (!period) return [null, null];
-    const parts = period.split("-").map(Number);
+    const parts = period.split('-').map(Number);
     return [parts[0], parts[1]];
   }, [period]);
 
@@ -26,21 +35,21 @@ export const usePublicHolidays = (period) => {
     holidayService
       .getPublicHolidays(year)
       .then((res) => {
-        if (res?.data?.holidays) {
+        if (res.success && res.data?.holidays) {
           setHolidays(res.data.holidays);
         }
       })
       .catch((err) => {
-        console.error("[usePublicHolidays] Resmi tatiller alınamadı:", err);
+        console.error('[usePublicHolidays] Resmi tatiller alınamadı:', err);
         setHolidays([]);
       });
   }, [year]);
 
   // Seçili aya ait tatil günlerini Set olarak hesapla
   const holidayDays = useMemo(() => {
-    if (holidays.length === 0) return new Set();
+    if (holidays.length === 0) return new Set<string>();
 
-    const days = new Set();
+    const days = new Set<string>();
     for (const h of holidays) {
       days.add(h.date);
     }
@@ -49,9 +58,9 @@ export const usePublicHolidays = (period) => {
 
   // Tatil günü adları (tooltip'te göstermek için)
   const holidayNames = useMemo(() => {
-    if (holidays.length === 0) return new Map();
+    if (holidays.length === 0) return new Map<string, string>();
 
-    const names = new Map();
+    const names = new Map<string, string>();
     for (const h of holidays) {
       names.set(h.date, h.localName);
     }
@@ -59,12 +68,12 @@ export const usePublicHolidays = (period) => {
   }, [holidays]);
 
   const isPublicHoliday = useCallback(
-    (dateStr) => holidayDays.has(dateStr),
+    (dateStr: string) => holidayDays.has(dateStr),
     [holidayDays],
   );
 
   const getHolidayName = useCallback(
-    (dateStr) => holidayNames.get(dateStr) || null,
+    (dateStr: string) => holidayNames.get(dateStr) || null,
     [holidayNames],
   );
 

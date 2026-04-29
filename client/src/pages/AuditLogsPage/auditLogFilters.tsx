@@ -1,11 +1,7 @@
-/* ========================================================================
-   AUDIT LOG FILTERS (SİSTEM LOGLARI FİLTRELERİ)
-   Geçmişe dönük işlem kayıtlarını filtrelemek için kullanılan konfigürasyon.
-   ======================================================================== */
 import { AUDIT_CATEGORY_LIST } from '@timesheet/shared';
+import type { FilterField } from '../../hooks/data/useFilter';
 
-export const auditLogFilterConfig = [
-
+export const auditLogFilterConfig: FilterField[] = [
   {
     key: 'category',
     apiParam: 'category',
@@ -24,8 +20,6 @@ export const auditLogFilterConfig = [
     key: 'searchActor',
     apiParam: 'actor',
     label: 'İşlem Yapan Ara',
-    // İşlemi gerçekleştiren admin/sorumlu ismine göre arama yapar
     type: 'text',
   },
 ];
-

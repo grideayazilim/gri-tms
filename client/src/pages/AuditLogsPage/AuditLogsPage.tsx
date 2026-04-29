@@ -1,7 +1,3 @@
-/* ========================================================================
-   AUDIT LOGS PAGE (SİSTEM LOGLARI SAYFASI)
-   Sistemdeki tüm kritik işlemlerin (Ekleme, Silme, Güncelleme) listelendiği sayfa.
-   ======================================================================== */
 import { useState, useEffect, useCallback } from 'react';
 import DynamicTable from '../../components/DynamicTable/DynamicTable';
 import { auditLogColumns } from './auditLogColumns';
@@ -12,7 +8,6 @@ import { auditLogFilterConfig } from './auditLogFilters';
 import { useAuditLogs } from '../../hooks/data/useAuditLogs';
 import '../../styles/inputs.scss';
 import './AuditLogsPage.scss';
-
 
 const AuditLogsPage = () => {
   const { auditLogs, pagination, fetchAuditLogs, isLoading, error } = useAuditLogs();
@@ -25,7 +20,7 @@ const AuditLogsPage = () => {
     searchActor: '',
   });
 
-  const handleFilterChangeAndReset = useCallback((key, value) => {
+  const handleFilterChangeAndReset = useCallback((key: string, value: string) => {
     handleFilterChange(key, value);
     setPage(1);
   }, [handleFilterChange]);
@@ -34,7 +29,6 @@ const AuditLogsPage = () => {
     // Sayfa numarası veya filtreler değiştiğinde logları sunucudan çeker
     fetchAuditLogs(apiParams, page);
   }, [fetchAuditLogs, apiParams, page]);
-
 
   return (
     <PageShell title="İşlem Kayıtları" isLoading={isLoading}>

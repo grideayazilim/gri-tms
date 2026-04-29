@@ -8,6 +8,7 @@ interface PageShellProps {
   title?: ReactNode;
   headerActions?: ReactNode;
   children: ReactNode;
+  isLoading?: boolean;
 }
 
 const PageShell = ({ title, headerActions, children }: PageShellProps) => {

@@ -1,9 +1,9 @@
-/* ========================================================================
-   EMPLOYEE FILTERS (ÇALIŞAN FİLTRE KONFİGÜRASYONU)
-   Çalışan listesi sayfasındaki filtre barının yapısını tanımlar.
-   ======================================================================== */
-export const getEmployeeFilterConfig = (locations, units) => [
+import type { FilterField } from '../../hooks/data/useFilter';
 
+export const getEmployeeFilterConfig = (
+  locations: { label: string; value: string }[],
+  units: { label: string; value: string }[]
+): FilterField[] => [
   {
     key: 'locationId',
     apiParam: 'locationId',
@@ -26,8 +26,8 @@ export const getEmployeeFilterConfig = (locations, units) => [
     label: 'Durum',
     type: 'select',
     options: [
-      { label: "Devam edenler", value: "active" },
-      { label: "İşten çıkarılanlar", value: "inactive" },
+      { label: 'Devam edenler', value: 'active' },
+      { label: 'İşten çıkarılanlar', value: 'inactive' },
     ],
     defaultOption: 'Tüm durumlar',
   },
@@ -35,8 +35,6 @@ export const getEmployeeFilterConfig = (locations, units) => [
     key: 'search',
     apiParam: 'search',
     label: 'Çalışan Ara',
-    // Ad, Soyad veya TC No ile arama yapar
     type: 'text',
   },
 ];
-

@@ -1,19 +1,20 @@
-/* ========================================================================
-   USER EDIT MODAL (KULLANICI DÜZENLEME MODALI)
-   Mevcut bir kullanıcının rolünü, geçerlilik tarihini ve yetki alanını 
-   (Yerleşke/Birim) günceller.
-   ======================================================================== */
 import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { userEditSchema } from '../../../schemas/user.schema';
+import { userEditSchema } from '@timesheet/shared';
 import { useLocationsAndUnits } from '../../../hooks/data/useLocationsAndUnits';
 import { toISODateString } from '../../../utils/dateUtils';
 import { USER_ROLE } from '@timesheet/shared';
+import type { UserListItem, UserEditType } from '@timesheet/shared';
 import './UserEditModal.scss';
 
+interface UserEditModalProps {
+  user: UserListItem;
+  onClose: (data: unknown) => void;
+  onSave: (data: UserEditType) => void;
+}
 
-const UserEditModal = ({ user, onClose, onSave }) => {
+const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
   const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
   const {
     register,
@@ -22,11 +23,11 @@ const UserEditModal = ({ user, onClose, onSave }) => {
     watch,
     formState: { errors, isDirty },
     reset,
-  } = useForm({
+  } = useForm<UserEditType>({
     resolver: zodResolver(userEditSchema),
     defaultValues: {
-      role: user?.role || '',
-      expiryDate: toISODateString(user?.expiryDate),
+      role: user?.role || ('' as any),
+      expiryDate: toISODateString(user?.expiryDate) || '',
       locationId: user?.unit?.location?.id?.toString() || '',
       unitId: user?.unit?.id?.toString() || '',
     },
@@ -45,18 +46,18 @@ const UserEditModal = ({ user, onClose, onSave }) => {
   useEffect(() => {
     if (user) {
       reset({
-        role: user.role || '',
-        expiryDate: toISODateString(user.expiryDate),
+        role: user.role || ('' as any),
+        expiryDate: toISODateString(user.expiryDate) || '',
         locationId: user.unit?.location?.id?.toString() || '',
         unitId: user.unit?.id?.toString() || '',
       });
     }
   }, [user, reset]);
 
-  const selectedLocationId = watch("locationId");
-  const selectedUnitId = watch("unitId");
+  const selectedLocationId = watch('locationId');
+  const selectedUnitId = watch('unitId');
 
-  const onSubmit = (data) => {
+  const onSubmit = (data: UserEditType) => {
     onSave({
       role: data.role,
       // Tarih seçilmemişse veritabanına null gönderiyoruz (Süresiz kullanıcı)
@@ -85,7 +86,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
             Rol
           </label>
           {errors.role && (
-            <span className="input-error-message">{errors.role.message}</span>
+            <span className="input-error-message">{errors.role.message as string}</span>
           )}
         </div>
 
@@ -101,7 +102,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
             Geçerlilik Tarihi
           </label>
           {errors.expiryDate && (
-            <span className="input-error-message">{errors.expiryDate.message}</span>
+            <span className="input-error-message">{errors.expiryDate.message as string}</span>
           )}
         </div>
       </div>
@@ -112,7 +113,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
             id="locationId"
             className={`input ${errors.locationId ? 'input--error' : ''}`}
             {...register('locationId')}
-            value={selectedLocationId}
+            value={selectedLocationId || ''}
             onChange={(e) => {
               const locId = e.target.value;
               setValue('locationId', locId, { shouldDirty: true });
@@ -129,7 +130,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
             Yerleşke
           </label>
           {errors.locationId && (
-            <span className="input-error-message">{errors.locationId.message}</span>
+            <span className="input-error-message">{errors.locationId.message as string}</span>
           )}
         </div>
 
@@ -138,7 +139,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
             id="unitId"
             className={`input ${errors.unitId ? 'input--error' : ''}`}
             {...register('unitId')}
-            value={selectedUnitId}
+            value={selectedUnitId || ''}
           >
             <option value="" disabled hidden></option>
             {units.map(unit => (
@@ -149,7 +150,7 @@ const UserEditModal = ({ user, onClose, onSave }) => {
             Birim
           </label>
           {errors.unitId && (
-            <span className="input-error-message">{errors.unitId.message}</span>
+            <span className="input-error-message">{errors.unitId.message as string}</span>
           )}
         </div>
       </div>

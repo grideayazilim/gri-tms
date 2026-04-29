@@ -1,15 +1,15 @@
-/* ========================================================================
-   EMPLOYEE COLUMNS (ÇALIŞAN TABLO SÜTUNLARI)
-   DataTable bileşenine verilecek olan çalışan tablosu tanımlamaları.
-   ======================================================================== */
 import { getEmployeeStatusConfig } from '../../constants/employees';
 import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { formatDate } from '../../utils/dateUtils';
 import Pill from '../../components/Pill/Pill';
 import IbanCell from '../../components/IbanCell/IbanCell';
+import type { EmployeeListItem } from '@timesheet/shared';
+import type { Column } from '../../components/DynamicTable/DynamicTable';
 
-
-export const employeeColumns = (handleEdit, handleDelete) => [
+export const employeeColumns = (
+    handleEdit: (id: string) => void,
+    handleDelete: (id: string) => void
+): Column<EmployeeListItem>[] => [
     {
         header: 'TC No',
         accessor: 'tcNo',
@@ -28,22 +28,18 @@ export const employeeColumns = (handleEdit, handleDelete) => [
     },
     {
         header: 'IBAN',
-        // IBAN numarasını gruplayarak (4'erli) ve kopyalanabilir şekilde gösterir
         render: (row) => row.ibanNo
             ? <IbanCell iban={row.ibanNo} />
             : <span style={{ color: 'var(--color-text-muted)' }}>—</span>,
     },
-
     {
         header: 'İşe Giriş',
         render: (row) => row.startDate ? formatDate(row.startDate) : '-',
     },
     {
         header: 'Durum',
-        // Aktif/Pasif durumuna göre renkli etiket (Pill) döner
         render: (row) => <Pill cfg={getEmployeeStatusConfig(row.isActive)} />,
     },
-
     {
         header: 'İşlemler',
         width: '100px',

@@ -3,103 +3,101 @@
    Kayıt olma, giriş yapma, token yenileme ve çıkış işlemlerini yönetir.
    ======================================================================== */
 import bcrypt from 'bcrypt';
-import { pool, withTransaction } from '../config/database.js';
+
+import { db, withDrizzleTransaction } from '../config/database.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyAccessToken } from '../utils/tokenUtils.js';
 import { cookieConfig } from '../config/jwt.js';
-import { toCamelCase } from '../utils/caseMapper.js';
 import { createAuditLog, buildActor } from '../utils/auditLogger.js';
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_ROLE, USER_STATUS } from '@timesheet/shared';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared';
+import type { JwtPayload } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { unauthorized, forbidden, notFound, conflict } from '../utils/AppError.js';
+import { ok, created } from '../utils/responses.js';
+import * as userRepo from '../repositories/userRepo.js';
+import type { DatabaseError } from 'pg';
 
 
 export const register = asyncHandler(async (req, res) => {
-  const { username, password, role, unitId, locationId } = req.body;
+  const { username, password, role, unitId, locationId } = req.body as {
+    username: string;
+    password: string;
+    role: string;
+    unitId?: string;
+    locationId?: string;
+  };
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  let result;
+  let newUser;
   try {
-    result = await withTransaction(async (client) => {
-      // Expiry Date Mantığı: ADMIN rolü süresizdir (NULL). 
-      // Diğer roller için sistem bitiş tarihinden (program_end_date) 20 gün sonrası set edilir.
-      const insertRes = await client.query(
-        `INSERT INTO app.users (username, password_hash, role, status, unit_id, location_id, expiry_date)
-         VALUES (
-           $1, $2, $3, $4, $5, $6,
-           CASE
-             WHEN $3 = $7 THEN NULL
-             ELSE (SELECT program_end_date + INTERVAL '20 days' FROM app.settings LIMIT 1)
-           END
-         )
+    newUser = await withDrizzleTransaction(async (tx) => {
+      const user = await userRepo.createPendingUser(tx, {
+        username,
+        passwordHash,
+        role: role as JwtPayload['role'],
+        unitId: unitId ?? null,
+        locationId: locationId ?? null,
+      });
 
-         RETURNING id, username, role, status, unit_id, location_id`,
-        [username, passwordHash, role, USER_STATUS.PENDING, unitId || null, locationId || null, USER_ROLE.ADMIN]
-      );
-
-      const newUser = insertRes.rows[0];
-
-      await createAuditLog(client, {
+      await createAuditLog(tx, {
         action: AUDIT_ACTION.USER_REGISTER,
         actor: buildActor(req),
         entityType: AUDIT_ENTITY_TYPE.USER,
-        entityId: newUser.id,
-        summary: `${newUser.username} adlı yeni kullanıcı kayıt oldu (onay bekliyor).`,
+        entityId: user.id,
+        summary: `${user.username} adlı yeni kullanıcı kayıt oldu (onay bekliyor).`,
         metadata: {
-          role: newUser.role,
-          status: newUser.status,
-          unitId: newUser.unit_id || null,
-          locationId: newUser.location_id || null,
+          role: user.role,
+          status: user.status,
+          unitId: user.unitId ?? null,
+          locationId: user.locationId ?? null,
         },
       });
 
-      return insertRes;
+      return user;
     });
-  } catch (err) {
-    if (err.code === '23505') throw conflict('Bu kullanıcı adı zaten kullanımda');
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'code' in err && (err as DatabaseError).code === '23505') {
+      throw conflict('Bu kullanıcı adı zaten kullanımda');
+    }
     throw err;
   }
 
-  res.status(201).json({
-    success: true,
-    data: {
-      user: toCamelCase(result.rows[0]),
+  return created(res, {
+    user: {
+      id: newUser.id,
+      username: newUser.username,
+      role: newUser.role,
+      status: newUser.status,
+      unitId: newUser.unitId,
+      locationId: newUser.locationId,
     },
-    message: 'Kullanıcı başarıyla oluşturuldu',
-  });
+  }, 'Kullanıcı başarıyla oluşturuldu');
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body as { username: string; password: string };
 
-  const result = await pool.query(
-    'SELECT * FROM app.users WHERE username = $1',
-    [username]
-  );
-
-  if (result.rows.length === 0) throw unauthorized('Kullanıcı adı veya şifre yanlış');
-
-  const user = result.rows[0];
+  const user = await userRepo.findByUsername(db, username);
+  if (!user) throw unauthorized('Kullanıcı adı veya şifre yanlış');
 
   // Hesap Durum Kontrolleri: EXPIRED veya ACTIVE olmayan kullanıcı giriş yapamaz
-  if (user.status === USER_STATUS.EXPIRED) {
+  if (user.status === 'EXPIRED') {
     throw forbidden('Hesabınızın süresi dolmuştur. Sisteme giriş yapamazsınız.');
   }
 
-  if (user.status !== USER_STATUS.ACTIVE) {
+  if (user.status !== 'ACTIVE') {
     throw forbidden('Hesabınız henüz aktif değil. Admin onayı bekleniyor.');
   }
 
-
-  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+  const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
   if (!isPasswordValid) throw unauthorized('Kullanıcı adı veya şifre yanlış');
 
-  const tokenPayload = {
+  const tokenPayload: JwtPayload = {
     id: user.id,
     username: user.username,
-    role: user.role,
-    unitId: user.unit_id || null,
-    locationId: user.location_id || null,
+    role: user.role as JwtPayload['role'],
+    unitId: user.unitId ?? null,
+    locationId: user.locationId ?? null,
   };
 
   const accessToken = generateAccessToken(tokenPayload);
@@ -120,8 +118,7 @@ export const login = asyncHandler(async (req, res) => {
     maxAge: cookieConfig.maxAge.refresh,
   });
 
-
-  await createAuditLog(pool, {
+  await createAuditLog(db, {
     action: AUDIT_ACTION.USER_LOGIN,
     actor: { username: user.username, role: user.role },
     entityType: AUDIT_ENTITY_TYPE.USER,
@@ -129,29 +126,26 @@ export const login = asyncHandler(async (req, res) => {
     summary: `${user.username} sisteme giriş yaptı.`,
   });
 
-  res.json({
-    success: true,
-    data: {
-      user: toCamelCase({
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        status: user.status,
-        unit_id: user.unit_id,
-        location_id: user.location_id,
-      }),
+  return ok(res, {
+    user: {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      status: user.status,
+      unitId: user.unitId,
+      locationId: user.locationId,
     },
   });
 });
 
 export const refresh = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
+  const refreshTokenStr = req.cookies?.refreshToken as string | undefined;
 
-  if (!refreshToken) throw unauthorized('Refresh token bulunamadı');
+  if (!refreshTokenStr) throw unauthorized('Refresh token bulunamadı');
 
-  let decoded;
+  let decoded: JwtPayload;
   try {
-    decoded = verifyRefreshToken(refreshToken);
+    decoded = verifyRefreshToken(refreshTokenStr);
   } catch {
     throw unauthorized('Token yenilenemedi');
   }
@@ -160,8 +154,8 @@ export const refresh = asyncHandler(async (req, res) => {
     id: decoded.id,
     username: decoded.username,
     role: decoded.role,
-    unitId: decoded.unitId || null,
-    locationId: decoded.locationId || null,
+    unitId: decoded.unitId ?? null,
+    locationId: decoded.locationId ?? null,
   });
 
   res.cookie('accessToken', newAccessToken, {
@@ -171,22 +165,19 @@ export const refresh = asyncHandler(async (req, res) => {
     maxAge: cookieConfig.maxAge.access,
   });
 
-  res.json({
-    success: true,
-    message: 'Token yenilendi',
-  });
+  return ok(res, undefined, 'Token yenilendi');
 });
 
 export const logout = asyncHandler(async (req, res) => {
   // Access token'ı (varsa) decode edip log için kullanıcı bilgisini al — başarısız olursa anonim çıkış logla
-  let actor = { username: 'UNKNOWN', role: null };
-  let entityId = null;
-  const accessToken = req.cookies?.accessToken;
+  let actor: { username: string; role: string | null } = { username: 'UNKNOWN', role: null };
+  let entityId: string | null = null;
+  const accessToken = req.cookies?.accessToken as string | undefined;
   if (accessToken) {
     try {
       const decoded = verifyAccessToken(accessToken);
       actor = { username: decoded.username, role: decoded.role };
-      entityId = decoded.id || null;
+      entityId = decoded.id ?? null;
     } catch {
       // Token geçersiz; sessizce devam
     }
@@ -205,7 +196,7 @@ export const logout = asyncHandler(async (req, res) => {
   });
 
   if (actor.username !== 'UNKNOWN') {
-    await createAuditLog(pool, {
+    await createAuditLog(db, {
       action: AUDIT_ACTION.USER_LOGOUT,
       actor,
       entityType: AUDIT_ENTITY_TYPE.USER,
@@ -214,26 +205,23 @@ export const logout = asyncHandler(async (req, res) => {
     });
   }
 
-  res.json({
-    success: true,
-    message: 'Çıkış yapıldı',
-  });
+  return ok(res, undefined, 'Çıkış yapıldı');
 });
 
 export const getMe = asyncHandler(async (req, res) => {
-  const userId = req.user.id;
+  const userId = req.user!.id;
 
-  const result = await pool.query(
-    'SELECT id, username, role, status, unit_id, location_id FROM app.users WHERE id = $1',
-    [userId]
-  );
+  const user = await userRepo.findPublicById(db, userId);
+  if (!user) throw notFound('Kullanıcı bulunamadı');
 
-  if (result.rows.length === 0) throw notFound('Kullanıcı bulunamadı');
-
-  res.json({
-    success: true,
-    data: {
-      user: toCamelCase(result.rows[0]),
+  return ok(res, {
+    user: {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      status: user.status,
+      unitId: user.unitId,
+      locationId: user.locationId,
     },
   });
 });

@@ -15,10 +15,11 @@ export function created<T>(res: Response, data: T, message?: string): Response {
 
 export function paginated<T>(
   res: Response,
+  key: string,
   items: T[],
   pagination: PaginationMeta,
 ): Response {
-  return res.status(200).json({ success: true, data: { items, pagination } });
+  return res.status(200).json({ success: true, data: { [key]: items, pagination } });
 }
 
 export function fail(res: Response, status: number, message: string, errors?: unknown): Response {

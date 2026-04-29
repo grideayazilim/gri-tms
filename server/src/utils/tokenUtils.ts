@@ -10,15 +10,15 @@ import { unauthorized } from './AppError.js';
 
 // Access Token: Kısa ömürlü, her istekte gönderilen kimlik bilgisi
 export const generateAccessToken = (payload: JwtPayload): string => {
-  return jwt.sign(payload, jwtConfig.access.secret, {
-    expiresIn: jwtConfig.access.expiresIn,
+  return jwt.sign(payload as any, jwtConfig.access.secret, {
+    expiresIn: jwtConfig.access.expiresIn as any,
   });
 };
 
 // Refresh Token: Uzun ömürlü, yeni Access Token almak için kullanılır
 export const generateRefreshToken = (payload: JwtPayload): string => {
-  return jwt.sign(payload, jwtConfig.refresh.secret, {
-    expiresIn: jwtConfig.refresh.expiresIn,
+  return jwt.sign(payload as any, jwtConfig.refresh.secret, {
+    expiresIn: jwtConfig.refresh.expiresIn as any,
   });
 };
 

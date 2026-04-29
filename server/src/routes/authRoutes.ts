@@ -1,4 +1,9 @@
+/* ========================================================================
+   AUTH ROUTES (KİMLİK DOĞRULAMA ROTALARI)
+   Kayıt, giriş, token yenileme ve çıkış endpoint'leri
+   ======================================================================== */
 import express from 'express';
+
 import { register, login, refresh, logout, getMe } from '../controllers/authController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { validate } from '../middlewares/validate.js';

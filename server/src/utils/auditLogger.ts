@@ -281,3 +281,21 @@ export function truncateChanges(items: readonly string[], max = 50): string[] {
   const remaining = items.length - max;
   return [...items.slice(0, max), `... ve ${remaining} kayıt daha`];
 }
+
+// ============================================================
+// Phase 2 geçiş helper'ı: Drizzle camelCase row → snake_case keys
+// FIELD_MAPS hâlâ snake_case key kullanıyor; Drizzle row camelCase döner.
+// Phase 3 sonunda tüm controller'lar geçince FIELD_MAPS camelCase'e çevrilip bu helper silinecek.
+// ============================================================
+
+function camelToSnake(str: string): string {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
+export function toSnakeCaseKeys(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const key of Object.keys(obj)) {
+    result[camelToSnake(key)] = obj[key];
+  }
+  return result;
+}

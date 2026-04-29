@@ -187,9 +187,9 @@ const TimesheetPage = () => {
     if (!apiParams.month) return;
 
     fetchTimesheets({ ...apiParams, page, limit: PAGE_LIMIT }).then((result) => {
-      if (result.success && result.rows) {
-        setOriginalSnapshot(structuredClone(result.rows));
-        const locked = result.rows[0]?.isLocked ?? false;
+      if (result.success && result.data?.rows) {
+        setOriginalSnapshot(structuredClone(result.data.rows));
+        const locked = result.data.rows[0]?.isLocked ?? false;
         setPeriodIsLocked(locked);
       }
     }).catch(() => {

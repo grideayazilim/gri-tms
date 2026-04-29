@@ -11,7 +11,8 @@ import { USER_ROLE_LIST, USER_ROLE } from '../constants/userConstants';
 export const userEditSchema = z.object({
     role: z.enum(USER_ROLE_LIST, {
         message: 'Rol seçimi zorunludur',
-    }),
+    }).optional(),
+    status: z.string().optional(),
     expiryDate: z.string().optional().nullable(),
     locationId: z.string().optional().nullable(),
     unitId: z.string().optional().nullable(),

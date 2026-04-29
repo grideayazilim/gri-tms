@@ -3,7 +3,7 @@
    HTTP durum kodları ile uyumlu hata nesneleri oluşturur.
    ======================================================================== */
 
-type HttpStatus = 400 | 401 | 403 | 404 | 409 | 423 | 500;
+type HttpStatus = 400 | 401 | 403 | 404 | 409 | 423 | 500 | 501;
 
 export class AppError extends Error {
   readonly status: HttpStatus;

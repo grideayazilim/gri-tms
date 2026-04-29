@@ -10,7 +10,7 @@ import "../../styles/inputs.scss";
 import PageShell from "../../components/PageShell/PageShell";
 import * as locationService from "../../api/locationAndUnitService";
 import { getPeriods } from "../../api/timesheetService";
-import { downloadTimesheetExcel, downloadSimpleExcel, downloadBotExcel } from "../../api/exportService";
+import { downloadTimesheetExcel, downloadBotExcel } from "../../api/exportService";
 import { useToast } from "../../components/ToastBar/ToastContext";
 import "./LocationsPage.scss";
 
@@ -279,10 +279,8 @@ function LocationsPage() {
 
       if (exportPanel.type === "timesheet") {
         await downloadTimesheetExcel(params);
-      } else if (exportPanel.type === "bot") {
-        await downloadBotExcel(params);
       } else {
-        await downloadSimpleExcel(params);
+        await downloadBotExcel(params);
       }
 
       setExportPanel(null);

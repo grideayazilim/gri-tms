@@ -4,10 +4,15 @@ import { useAuth } from "../../context/AuthContext";
 import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signUpSchema } from "../../schemas/auth.schema";
+import { signUpSchema } from "@timesheet/shared";
 import { useToast } from "../../components/ToastBar/ToastContext";
+import type { SignUpType } from "@timesheet/shared";
 
-function SignUp({ onToggle }) {
+interface SignUpProps {
+  onToggle: () => void;
+}
+
+function SignUp({ onToggle }: SignUpProps) {
   const [generalError, setGeneralError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -22,7 +27,7 @@ function SignUp({ onToggle }) {
     watch,
     setValue,
     formState: { errors },
-  } = useForm({
+  } = useForm<SignUpType>({
     resolver: zodResolver(signUpSchema),
     defaultValues: {
       username: "",
@@ -33,7 +38,7 @@ function SignUp({ onToggle }) {
     },
   });
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (!isLoading) {
@@ -63,7 +68,7 @@ function SignUp({ onToggle }) {
 
 
 
-  const onSubmitForm = async (data) => {
+  const onSubmitForm = async (data: SignUpType) => {
     setGeneralError("");
     setIsLoading(true);
 

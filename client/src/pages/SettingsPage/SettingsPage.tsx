@@ -5,7 +5,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSettingsSchema, systemSettingsSchema } from "../../schemas/settings.schema";
+import { loginSettingsSchema, systemSettingsSchema } from "@timesheet/shared";
 import { toISODateString } from "../../utils/dateUtils";
 import "../../styles/inputs.scss";
 import PageShell from "../../components/PageShell/PageShell";
@@ -34,7 +34,7 @@ function SettingsPage() {
     defaultValues: { username: user?.username || "", password: "" },
   });
 
-  const onLoginSubmit = async (data) => {
+  const onLoginSubmit = async (data: Record<string, string>) => {
     const payload = {
       username: data.username,
       // Şifre alanı boşsa payload'a eklemiyoruz (Sadece kullanıcı adı güncelleme durumu)
@@ -65,34 +65,31 @@ function SettingsPage() {
     systemSettings,
     fetchSystemSettings,
     updateSystemSettings,
+    pendingUsers,
+    fetchPendingUsers,
+    approveUser,
+    rejectUser
   } = useSettings();
 
-  // Onay bekleyen kullanıcı işlemleri
-  const {
-    users: pendingUsers,
-    fetchUsers: fetchPendingUsers,
-    editProfile,
-    editUser: approveUser,
-    removeUser: rejectUser
-  } = useUsers();
+  const { editProfile } = useUsers();
 
   useEffect(() => {
     if (isAdmin) {
-      fetchPendingUsers({ status: USER_STATUS.PENDING });
+      fetchPendingUsers();
     }
   }, [isAdmin, fetchPendingUsers]);
 
-  const handleApprove = async (userId) => {
-    const result = await approveUser(userId, { status: USER_STATUS.ACTIVE });
+  const handleApprove = async (userId: string) => {
+    const result = await approveUser(userId);
     if (result.success) {
       toast({ type: "success", message: "Kullanıcı başarıyla onaylandı." });
-      fetchPendingUsers({ status: USER_STATUS.PENDING });
+      fetchPendingUsers();
     } else {
       toast({ type: "error", message: result.error || "Kullanıcı onaylanamadı." });
     }
   };
 
-  const handleReject = async (userId) => {
+  const handleReject = async (userId: string) => {
     // Reddetme işlemi geri alınamaz olduğu için kullanıcıdan teyit alıyoruz
     const confirmed = await showConfirm({
       title: 'Kullanıcıyı Reddet',
@@ -106,7 +103,7 @@ function SettingsPage() {
       const result = await rejectUser(userId);
       if (result.success) {
         toast({ type: "success", message: "Kullanıcı reddedildi ve silindi." });
-        fetchPendingUsers({ status: USER_STATUS.PENDING });
+        fetchPendingUsers();
       } else {
         toast({ type: "error", message: result.error || "Kullanıcı reddedilemedi." });
       }
@@ -130,8 +127,8 @@ function SettingsPage() {
     },
   });
 
-  const onSystemSubmit = async (data) => {
-    const norm = (v) => v || null;
+  const onSystemSubmit = async (data: any) => {
+    const norm = (v: any) => v || null;
     const datesChanged =
       norm(systemSettings?.programStart) !== norm(data.programStart) ||
       norm(systemSettings?.programEnd) !== norm(data.programEnd);

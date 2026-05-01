@@ -1,16 +1,23 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { announcementSchema } from '../../schemas/announcement.schema';
+import { announcementSchema } from '@timesheet/shared';
 import '../../styles/inputs.scss';
 import './Announcements.scss';
 
-function AnnouncementForm({ onSubmit, onCancel }) {
+import type { AnnouncementType } from '@timesheet/shared';
+
+interface AnnouncementFormProps {
+  onSubmit: (data: AnnouncementType) => void;
+  onCancel: () => void;
+}
+
+function AnnouncementForm({ onSubmit, onCancel }: AnnouncementFormProps) {
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm({
+  } = useForm<AnnouncementType>({
     resolver: zodResolver(announcementSchema),
     defaultValues: {
       title: '',

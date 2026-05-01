@@ -2,21 +2,27 @@
    TIMESHEET FILTERS (PUANTAJ FİLTRE KONFİGÜRASYONU)
    Puantaj sayfasındaki filtre barının (Dönem, Yerleşke, Birim) yapısını tanımlar.
    ======================================================================== */
-export const getTimesheetFilterConfig = (periods, locations, units, isAdmin) => {
+import type { FilterField } from "../../hooks/data/useFilter";
 
+export const getTimesheetFilterConfig = (
+  periods: { value: string; label: string }[],
+  locations: { value: string | number; label: string }[],
+  units: { value: string | number; label: string }[],
+  isAdmin: boolean
+): FilterField[] => {
   const config = [
     {
       key: "period",
       apiParam: "month",
       label: "Dönem",
-      type: "select",
+      type: "select" as const,
       options: periods,
     },
     {
       key: "location",
       apiParam: "locationId",
       label: "Yerleşke",
-      type: "select",
+      type: "select" as const,
       options: locations,
       defaultOption: "Tüm Yerleşkeler",
     },
@@ -24,7 +30,7 @@ export const getTimesheetFilterConfig = (periods, locations, units, isAdmin) => 
       key: "unit",
       apiParam: "unitId",
       label: "Birim",
-      type: "select",
+      type: "select" as const,
       options: units,
       defaultOption: "Tüm Birimler",
     },
@@ -32,9 +38,9 @@ export const getTimesheetFilterConfig = (periods, locations, units, isAdmin) => 
       key: "search",
       apiParam: "search",
       label: "Çalışan Ara",
-      type: "text",
+      type: "text" as const,
     },
-  ];
+  ] as any;
 
   if (isAdmin) return config;
 
@@ -42,10 +48,10 @@ export const getTimesheetFilterConfig = (periods, locations, units, isAdmin) => 
   // görebileceği için "Tüm Yerleşkeler" seçeneğini kaldırıyoruz.
   return config.map((field) => {
     if (field.key === "location" || field.key === "unit") {
-      const { defaultOption, ...rest } = field;
-      return rest;
+      const { defaultOption, ...rest } = field as any;
+      return rest as FilterField;
     }
-    return field;
+    return field as FilterField;
   });
 };
 

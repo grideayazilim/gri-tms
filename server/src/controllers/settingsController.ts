@@ -21,17 +21,17 @@ export const getPendingUsers = asyncHandler(async (req: Request, res: Response) 
 });
 
 export const approvePendingUser = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   const updatedUser = await withDrizzleTransaction(async (tx) => {
-    const user = await settingsRepo.approveUser(tx, id!);
+    const user = await settingsRepo.approveUser(tx, id);
 
     if (user) {
       await createAuditLog(tx, {
         action: AUDIT_ACTION.USER_APPROVE,
         actor: buildActor(req),
         entityType: AUDIT_ENTITY_TYPE.USER,
-        entityId: id!,
+        entityId: id,
         summary: `${user.username} adlı kullanıcı onaylandı.`,
         metadata: {
           role: user.role,
@@ -49,17 +49,17 @@ export const approvePendingUser = asyncHandler(async (req: Request, res: Respons
 });
 
 export const rejectPendingUser = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   const deletedUser = await withDrizzleTransaction(async (tx) => {
-    const user = await settingsRepo.rejectUser(tx, id!);
+    const user = await settingsRepo.rejectUser(tx, id);
 
     if (user) {
       await createAuditLog(tx, {
         action: AUDIT_ACTION.USER_REJECT,
         actor: buildActor(req),
         entityType: AUDIT_ENTITY_TYPE.USER,
-        entityId: id!,
+        entityId: id,
         summary: `${user.username} adlı bekleyen kullanıcı reddedildi ve silindi.`,
         metadata: {
           role: user.role,

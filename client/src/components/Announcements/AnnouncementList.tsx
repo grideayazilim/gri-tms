@@ -8,7 +8,11 @@ import AnnouncementCard from './AnnouncementCard';
 import AnnouncementForm from './AnnouncementForm';
 import './Announcements.scss';
 
-function AnnouncementList({ onClose }) {
+interface AnnouncementListProps {
+  onClose?: () => void;
+}
+
+function AnnouncementList({ onClose }: AnnouncementListProps) {
   const { 
     announcements, 
     isLoading, 
@@ -54,7 +58,7 @@ function AnnouncementList({ onClose }) {
     });
   };
 
-  const handleDeleteAnnouncement = async (id) => {
+  const handleDeleteAnnouncement = async (id: string) => {
     const confirmed = await showConfirm({
       title: 'Duyuruyu Sil',
       message: 'Bu duyuruyu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',

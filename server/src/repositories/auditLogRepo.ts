@@ -2,17 +2,10 @@ import { eq, and, desc, sql, ilike, inArray, gte, lte } from 'drizzle-orm';
 import { auditLogs } from '../../database/schema.js';
 import type { DbExecutor } from '../types/db.js';
 import { AUDIT_ACTION_META } from '@timesheet/shared';
+import type { AuditLogFilters } from './types.js';
 
-export interface AuditLogFilters {
-  actor?: string;
-  action?: string;
-  category?: string;
-  entityType?: string;
-  startDate?: string;
-  endDate?: string;
-  limit: number;
-  offset: number;
-}
+export type { AuditLogFilters } from './types.js';
+
 
 export const auditLogRepo = {
   /**

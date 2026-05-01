@@ -7,6 +7,7 @@ import { eq, sql, inArray } from 'drizzle-orm';
 import type { DbExecutor } from '../types/db.js';
 import { locations, units, employees } from '../../database/schema.js';
 import type { LocationRow, UnitRow } from '../../database/schema.js';
+import type { UnitWithCount } from './types.js';
 
 // ============================================================
 // Location fonksiyonları
@@ -81,15 +82,6 @@ export async function lookupLocationNames(
 // ============================================================
 // Unit fonksiyonları
 // ============================================================
-
-interface UnitWithCount {
-  readonly id: string;
-  readonly locationId: string;
-  readonly name: string;
-  readonly employeeCount: number;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
-}
 
 export async function findAllUnits(executor: DbExecutor): Promise<UnitWithCount[]> {
   return executor

@@ -9,40 +9,8 @@ import type { DbExecutor } from '../types/db.js';
 import { users, units, locations, settings } from '../../database/schema.js';
 import type { UserRow } from '../../database/schema.js';
 import { USER_ROLE, USER_STATUS } from '@timesheet/shared';
-import type { UserRole, UserStatus } from '@timesheet/shared';
+import type { CreatePendingUserParams, UserListFilters, UserListRow } from './types.js';
 
-// ============================================================
-// Tip tanımları
-// ============================================================
-
-interface CreatePendingUserParams {
-  readonly username: string;
-  readonly passwordHash: string;
-  readonly role: UserRole;
-  readonly unitId: string | null;
-  readonly locationId: string | null;
-}
-
-interface UserListFilters {
-  readonly role?: UserRole;
-  readonly status?: UserStatus;
-  readonly unitId?: string;
-  readonly locationId?: string;
-  readonly search?: string;
-}
-
-interface UserListRow {
-  readonly id: string;
-  readonly username: string;
-  readonly role: string;
-  readonly status: string;
-  readonly expiryDate: string | null;
-  readonly createdAt: Date;
-  readonly unitId: string | null;
-  readonly unitName: string | null;
-  readonly locationId: string | null;
-  readonly locationName: string | null;
-}
 
 // ============================================================
 // Repository fonksiyonları

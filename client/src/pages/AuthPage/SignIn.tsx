@@ -3,9 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signInSchema } from "../../schemas/auth.schema";
+import { signInSchema } from "@timesheet/shared";
+import type { SignInType } from "@timesheet/shared";
 
-function SignIn({ onToggle }) {
+interface SignInProps {
+  onToggle: () => void;
+}
+
+function SignIn({ onToggle }: SignInProps) {
   const [generalError, setGeneralError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
@@ -17,7 +22,7 @@ function SignIn({ onToggle }) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm({
+  } = useForm<SignInType>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
       username: "",
@@ -27,7 +32,7 @@ function SignIn({ onToggle }) {
 
 
   // Enter tuşuna basıldığında formu otomatik gönderen yardımcı fonksiyon
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (!isLoading) {
@@ -37,7 +42,7 @@ function SignIn({ onToggle }) {
   };
 
 
-  const onSubmitForm = async (data) => {
+  const onSubmitForm = async (data: SignInType) => {
     setGeneralError("");
     setIsLoading(true);
 

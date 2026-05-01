@@ -7,7 +7,15 @@ import { USER_ROLE } from '@timesheet/shared';
 import './PendingUserList.scss';
 
 
-const PendingUserList = ({ pendingUsers, onApprove, onReject }) => {
+import type { PendingUserItem } from '@timesheet/shared';
+
+interface PendingUserListProps {
+  pendingUsers: PendingUserItem[];
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+}
+
+const PendingUserList = ({ pendingUsers, onApprove, onReject }: PendingUserListProps) => {
   return (
     <div className="pending-requests-list">
       <h3 className="pending-requests-list__title">

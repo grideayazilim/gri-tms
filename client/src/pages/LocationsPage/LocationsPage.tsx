@@ -17,31 +17,56 @@ import "./LocationsPage.scss";
 import { TURKISH_MONTHS } from "../../utils/dateUtils";
 import { useOnClickOutside } from "../../hooks/ui/useOnClickOutside";
 
+interface UnitData {
+  id: number | string;
+  isNew?: boolean;
+  name: string;
+}
+
+interface LocationData {
+  id: number | string;
+  isNew?: boolean;
+  name: string;
+  programNo: string;
+  units: UnitData[];
+}
+
+interface ExportPanelState {
+  locationId: number | string;
+  locationName: string;
+  type: "timesheet" | "bot";
+}
+
+interface PeriodData {
+  id: number | string;
+  year: number;
+  month: number;
+}
 
 function LocationsPage() {
   // === STATE ===
-  const [locations, setLocations] = useState([]);
+  const [locations, setLocations] = useState<LocationData[]>([]);
   // Değişiklik takibi (Dirty check) için verinin ilk halini tutar
-  const [initialLocations, setInitialLocations] = useState([]);
+  const [initialLocations, setInitialLocations] = useState<LocationData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   // Silinmek üzere işaretlenen ama henüz sunucuya gönderilmeyen ID listeleri
-  const [deletedLocationIds, setDeletedLocationIds] = useState([]);
-  const [deletedUnitIds, setDeletedUnitIds] = useState([]);
-  const [expandedLocations, setExpandedLocations] = useState([]);
-  const [periods, setPeriods] = useState([]);
-  const [focusElementId, setFocusElementId] = useState(null);
+  const [deletedLocationIds, setDeletedLocationIds] = useState<(number|string)[]>([]);
+  const [deletedUnitIds, setDeletedUnitIds] = useState<(number|string)[]>([]);
+  const [expandedLocations, setExpandedLocations] = useState<(number|string)[]>([]);
+  const [periods, setPeriods] = useState<PeriodData[]>([]);
+  const [focusElementId, setFocusElementId] = useState<string | null>(null);
 
 
   // Export panel state: { locationId, locationName, type: 'simple'|'puantaj' } | null
-  const [exportPanel, setExportPanel] = useState(null);
-  const [exportPeriodId, setExportPeriodId] = useState("");
+  const [exportPanel, setExportPanel] = useState<ExportPanelState | null>(null);
+  const [exportPeriodId, setExportPeriodId] = useState<string>("");
   const [isExporting, setIsExporting] = useState(false);
 
-  const [mobileMenuId, setMobileMenuId] = useState(null);
-  const mobileMenuRef = useRef(null);
+  const [mobileMenuId, setMobileMenuId] = useState<number | string | null>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
-  const exportPanelRef = useRef(null);
+  const exportPanelRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
 
   // === FETCH DATA ===
@@ -65,7 +90,7 @@ function LocationsPage() {
   }, [locations, expandedLocations, focusElementId]);
 
   // === TOGGLE EXPAND ===
-  const toggleLocationCollapse = (id) => {
+  const toggleLocationCollapse = (id: number | string) => {
     setExpandedLocations((prev) =>
       prev.includes(id) ? prev.filter((locId) => locId !== id) : [...prev, id]
     );
@@ -113,7 +138,7 @@ function LocationsPage() {
   };
 
   // === HANDLERS ===
-  const handleLocationChange = (id, field, value) => {
+  const handleLocationChange = (id: number|string, field: keyof LocationData, value: string) => {
     setLocations((prev) =>
       prev.map((loc) => (loc.id === id ? { ...loc, [field]: value } : loc)),
     );
@@ -126,7 +151,7 @@ function LocationsPage() {
     setFocusElementId(`loc-name-${newId}`);
   };
 
-  const removeLocation = (loc) => {
+  const removeLocation = (loc: LocationData) => {
     // Eğer yeni eklenmişse (henüz DB'de yoksa) direkt listeden sil
     if (loc.isNew) {
       setLocations((prev) => prev.filter((l) => l.id !== loc.id));
@@ -137,13 +162,13 @@ function LocationsPage() {
     }
   };
 
-  const undoLocation = (id) => {
+  const undoLocation = (id: number|string) => {
     // Silme işaretini kaldır
     setDeletedLocationIds((prev) => prev.filter((delId) => delId !== id));
   };
 
 
-  const handleUnitChange = (locId, unitId, value) => {
+  const handleUnitChange = (locId: number|string, unitId: number|string, value: string) => {
     setLocations((prev) =>
       prev.map((loc) => {
         if (loc.id !== locId) return loc;
@@ -157,7 +182,7 @@ function LocationsPage() {
     );
   };
 
-  const addUnit = (locId) => {
+  const addUnit = (locId: number|string) => {
     const newId = Date.now();
     setLocations((prev) =>
       prev.map((loc) => {
@@ -171,7 +196,7 @@ function LocationsPage() {
     setFocusElementId(`unit-name-${newId}`);
   };
 
-  const removeUnit = (locId, unit) => {
+  const removeUnit = (locId: number|string, unit: UnitData) => {
     if (unit.isNew) {
       setLocations((prev) =>
         prev.map((loc) => {
@@ -184,11 +209,11 @@ function LocationsPage() {
     }
   };
 
-  const undoUnit = (unitId) => {
+  const undoUnit = (unitId: number|string) => {
     setDeletedUnitIds((prev) => prev.filter((delId) => delId !== unitId));
   };
 
-  const locationHasChanges = (loc) => {
+  const locationHasChanges = (loc: LocationData) => {
     if (loc.isNew) return false;
     const initLoc = initialLocations.find(l => l.id === loc.id);
     if (!initLoc) return true;
@@ -249,7 +274,7 @@ function LocationsPage() {
   };
 
 
-  const openExportPanel = (location, type) => {
+  const openExportPanel = (location: LocationData, type: "timesheet" | "bot") => {
     if (location.isNew) {
       toast({ type: "error", message: "Önce değişiklikleri kaydedin" });
       return;
@@ -295,14 +320,14 @@ function LocationsPage() {
 
   const hasUnsavedChanges = deletedLocationIds.length > 0 || deletedUnitIds.length > 0 || JSON.stringify(locations) !== JSON.stringify(initialLocations);
 
-  const isLocationDirty = (loc) => {
+  const isLocationDirty = (loc: LocationData) => {
     if (loc.isNew) return true;
     const initLoc = initialLocations.find(l => l.id === loc.id);
     if (!initLoc) return true;
     return loc.name !== initLoc.name || loc.programNo !== initLoc.programNo;
   };
 
-  const isUnitDirty = (locId, unit) => {
+  const isUnitDirty = (locId: number|string, unit: UnitData) => {
     if (unit.isNew) return true;
     const initLoc = initialLocations.find(l => l.id === locId);
     if (!initLoc) return true;

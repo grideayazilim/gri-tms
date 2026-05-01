@@ -7,41 +7,8 @@ import { eq, and, or, ilike, sql, inArray } from 'drizzle-orm';
 import type { DbExecutor } from '../types/db.js';
 import { employees, units, locations } from '../../database/schema.js';
 import type { EmployeeRow } from '../../database/schema.js';
+import type { EmployeeListFilters, EmployeeListRow, UnitWithLocation } from './types.js';
 
-// ============================================================
-// Tip tanımları
-// ============================================================
-
-interface EmployeeListFilters {
-  readonly unitId?: string;
-  readonly locationId?: string;
-  readonly search?: string;
-  readonly status?: 'active' | 'inactive';
-}
-
-interface EmployeeListRow {
-  readonly id: string;
-  readonly tcNo: string | null;
-  readonly firstName: string;
-  readonly lastName: string;
-  readonly ibanNo: string | null;
-  readonly startDate: string;
-  readonly endDate: string | null;
-  readonly isActive: boolean;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
-  readonly unitId: string;
-  readonly unitName: string;
-  readonly locationId: string;
-  readonly locationName: string;
-}
-
-interface UnitWithLocation {
-  readonly id: string;
-  readonly name: string;
-  readonly locationId: string;
-  readonly locationName: string;
-}
 
 // ============================================================
 // Repository fonksiyonları

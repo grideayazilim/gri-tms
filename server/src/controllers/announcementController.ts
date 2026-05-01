@@ -14,8 +14,8 @@ import { announcementRepo } from '../repositories/announcementRepo.js';
 // ==================== OKUMA (GET) İŞLEMLERİ ====================
 
 export const getAnnouncements = asyncHandler(async (req: Request, res: Response) => {
-  const pageStr = req.query.page as string | undefined;
-  const limitStr = req.query.limit as string | undefined;
+  const pageStr = typeof req.query.page === 'string' ? req.query.page : undefined;
+  const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined;
 
   const page = parseInt(pageStr || '1', 10);
   const limit = parseInt(limitStr || '20', 10);
@@ -51,8 +51,8 @@ export const getUnreadCount = asyncHandler(async (req: Request, res: Response) =
 });
 
 export const markAsRead = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  await announcementRepo.markAsRead(db, req.user!.id, id!);
+  const id = req.params.id as string;
+  await announcementRepo.markAsRead(db, req.user!.id, id);
   res.json({ success: true });
 });
 
@@ -92,14 +92,14 @@ export const createAnnouncement = asyncHandler(async (req: Request, res: Respons
 // ==================== GÜNCELLEME (PUT) İŞLEMLERİ ====================
 
 export const updateAnnouncement = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
   const { title, content } = req.body;
 
   const result = await withDrizzleTransaction(async (tx) => {
-    const oldRow = await announcementRepo.findById(tx, id!);
+    const oldRow = await announcementRepo.findById(tx, id);
     if (!oldRow) throw notFound('Duyuru bulunamadı.');
 
-    const updatedAnnouncement = await announcementRepo.update(tx, id!, { title, content });
+    const updatedAnnouncement = await announcementRepo.update(tx, id, { title, content });
 
     // Değişiklik Analizi: Sadece değişen alanları Audit Log'a kaydeder
     const changes = diffEntity(AUDIT_ENTITY_TYPE.ANNOUNCEMENT, oldRow, updatedAnnouncement);
@@ -108,7 +108,7 @@ export const updateAnnouncement = asyncHandler(async (req: Request, res: Respons
       action: AUDIT_ACTION.ANNOUNCEMENT_UPDATE,
       actor: buildActor(req),
       entityType: AUDIT_ENTITY_TYPE.ANNOUNCEMENT,
-      entityId: id!,
+      entityId: id,
       summary: changes.length > 0
         ? `"${title}" başlıklı duyuru güncellendi (${changes.length} alan değişti).`
         : `"${title}" başlıklı duyuru güncellendi.`,
@@ -135,20 +135,20 @@ export const updateAnnouncement = asyncHandler(async (req: Request, res: Respons
 // ==================== SİLME (DELETE) İŞLEMLERİ ====================
 
 export const deleteAnnouncement = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   await withDrizzleTransaction(async (tx) => {
-    const oldRow = await announcementRepo.findById(tx, id!);
+    const oldRow = await announcementRepo.findById(tx, id);
     if (!oldRow) throw notFound('Duyuru bulunamadı.');
 
-    await announcementRepo.delete(tx, id!);
+    await announcementRepo.delete(tx, id);
 
     const title = oldRow.title;
     await createAuditLog(tx, {
       action: AUDIT_ACTION.ANNOUNCEMENT_DELETE,
       actor: buildActor(req),
       entityType: AUDIT_ENTITY_TYPE.ANNOUNCEMENT,
-      entityId: id!,
+      entityId: id,
       summary: `"${title}" başlıklı duyuru silindi.`,
     });
   });

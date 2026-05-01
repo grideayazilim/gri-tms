@@ -3,9 +3,11 @@
    Middleware zinciri, Route tanımlamaları ve Global hata yönetimi
    ======================================================================== */
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import { AppError } from './utils/AppError.js';
 import authRoutes from './routes/authRoutes.js';
 import locationAndUnitRoutes from './routes/locationAndUnitRoutes.js';
 import timesheetRoutes from './routes/timesheetRoutes.js';
@@ -48,33 +50,54 @@ app.use('/api/export', exportRoutes);
 app.use('/api/import', importRoutes);
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok' });
 });
 
 // 404 handler
-app.use((req, res) => {
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     message: 'Route bulunamadı',
   });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-  // PostgreSQL Unique Violation (Hata Kodu 23505): Çakışan kayıt durumunda 409 döndürür
-  if (err.code === '23505') {
-    return res.status(409).json({ success: false, message: 'Bu kayıt zaten mevcut' });
-  }
-  // Diğer özel hatalar veya standart 500 hataları
-  const status = err.status || 500;
+// ─── PG error narrowing helper ──────────────────────────────────────────────
 
-  if (status === 500) {
-    console.error(`[${req.method} ${req.path}]`, err.message, err.stack);
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code: unknown }).code === '23505'
+  );
+}
+
+// Global error handler
+app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
+  // PostgreSQL Unique Violation (Hata Kodu 23505): Çakışan kayıt durumunda 409 döndürür
+  if (isUniqueViolation(err)) {
+    res.status(409).json({ success: false, message: 'Bu kayıt zaten mevcut' });
+    return;
   }
-  res.status(status).json({
+
+  // AppError — tip narrow
+  if (err instanceof AppError) {
+    res.status(err.status).json({
+      success: false,
+      message: err.message,
+    });
+    return;
+  }
+
+  // Bilinmeyen hata — 500
+  const message = err instanceof Error ? err.message : 'Bilinmeyen hata';
+  const stack = err instanceof Error ? err.stack : undefined;
+
+  console.error(`[${req.method} ${req.path}]`, message, stack);
+  res.status(500).json({
     success: false,
-    message: status === 500 ? 'Sunucu hatası' : err.message,
+    message: 'Sunucu hatası',
   });
 });
 

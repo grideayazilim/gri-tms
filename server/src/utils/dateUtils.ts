@@ -4,12 +4,8 @@
    ======================================================================== */
 import { format, isValid, startOfMonth, endOfMonth, eachMonthOfInterval, eachDayOfInterval, parseISO } from 'date-fns';
 
-// Envanter J: Türkçe ay sabitleri artık shared paketinden import ediliyor, duplikasyon kaldırıldı.
-import { TURKISH_MONTHS, TURKISH_MONTHS_UPPER } from '@timesheet/shared';
 
-// Re-export — mevcut consumer'lar kırılmasın
-export { TURKISH_MONTHS as TURKISH_MONTHS_TC };
-export { TURKISH_MONTHS_UPPER as TURKISH_MONTHS };
+
 
 // ─── Formatlama ───────────────────────────────────────────────────────────────
 

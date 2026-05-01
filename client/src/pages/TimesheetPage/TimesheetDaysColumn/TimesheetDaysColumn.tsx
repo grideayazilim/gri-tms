@@ -11,12 +11,12 @@ import { MARKER_LIST, MARKERS } from "@timesheet/shared";
 import "./TimesheetDaysColumn.scss";
 
 
-const getDayValue = (timesheetDays, dateStr) => {
+const getDayValue = (timesheetDays: Record<string, string>, dateStr: string) => {
   if (!timesheetDays || !dateStr) return "";
   return timesheetDays[dateStr] || "";
 };
 
-const isWeekendDay = (dateStr) => {
+const isWeekendDay = (dateStr: string) => {
   if (!dateStr) return false;
   try {
     const weekday = parseISO(dateStr).getDay();
@@ -39,6 +39,16 @@ const OTHER_MARKERS = MARKER_LIST.filter((m) => m.code !== MARKERS.X.code);
  * @param {function} isDayCellDirty  - (dateStr) => boolean — opsiyonel
  * @param {function} isPublicHoliday - (dateStr) => boolean — opsiyonel
  */
+interface TimesheetDaysColumnProps {
+  period?: string;
+  timesheetDays: Record<string, string>;
+  periodDays: string[];
+  onDayClick: (dateStr: string, markerCode: string) => void;
+  isDayCellDirty?: (dateStr: string) => boolean;
+  isPublicHoliday?: (dateStr: string) => boolean;
+  isLocked?: boolean;
+}
+
 const TimesheetDaysColumn = ({
   period,
   timesheetDays,
@@ -47,21 +57,21 @@ const TimesheetDaysColumn = ({
   isDayCellDirty,
   isPublicHoliday,
   isLocked,
-}) => {
+}: TimesheetDaysColumnProps) => {
   // ── Sağ tık / long press menü state ────────────────────────────────────
-  const [contextMenu, setContextMenu] = useState(null);
+  const [contextMenu, setContextMenu] = useState<{ day: string, centerX: number, y: number, showDate: boolean } | null>(null);
   const [menuClosing, setMenuClosing] = useState(false);
-  const menuRef = useRef(null);
-  const menuLeaveTimer = useRef(null);
-  const longPressTimer = useRef(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuLeaveTimer = useRef<any>(null);
+  const longPressTimer = useRef<any>(null);
   const longPressTriggered = useRef(false);
 
   // ── Hover tooltip state (react-tooltip yerine) ────────────────────────
-  const [hoverDay, setHoverDay] = useState(null);
+  const [hoverDay, setHoverDay] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [hoverClosing, setHoverClosing] = useState(false);
-  const hoverTimer = useRef(null);
-  const hoverCloseTimer = useRef(null);
+  const hoverTimer = useRef<any>(null);
+  const hoverCloseTimer = useRef<any>(null);
 
   // Unmount'ta tüm timer'ları temizle — memory leak önlemi
   useEffect(() => {
@@ -86,7 +96,7 @@ const TimesheetDaysColumn = ({
   // Menü dışına tıklanınca kapat
   useEffect(() => {
     if (!contextMenu) return;
-    const handleClickOutside = (e) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
         closeMenu();
       }
@@ -101,7 +111,7 @@ const TimesheetDaysColumn = ({
 
   // ── Tarih bilgisi formatı ──────────────────────────────────────────────
   const getDateTooltip = useCallback(
-    (dateStr) => {
+    (dateStr: string) => {
       if (!dateStr) return "";
       try {
         const date = parseISO(dateStr);
@@ -116,7 +126,7 @@ const TimesheetDaysColumn = ({
 
 
   // ── Sağ tık — marker menüsü aç (desktop) ──────────────────────────────
-  const handleContextMenu = (e, dateStr) => {
+  const handleContextMenu = (e: React.MouseEvent, dateStr: string) => {
     e.preventDefault();
     // Kilitli dönemlerde veya resmi tatillerde menü açılmaz
     if (isLocked || isPublicHoliday?.(dateStr)) return;
@@ -139,7 +149,7 @@ const TimesheetDaysColumn = ({
 
 
   // ── Mobil Uzun Basma (Long Press) Yönetimi ───────────────────────────
-  const handleTouchStart = (e, dateStr) => {
+  const handleTouchStart = (e: React.TouchEvent, dateStr: string) => {
     longPressTriggered.current = false;
     clearTimeout(hoverCloseTimer.current);
     clearTimeout(hoverTimer.current);
@@ -172,7 +182,7 @@ const TimesheetDaysColumn = ({
   };
 
   // Sol tık — Eğer long press tetiklendiyse tıklamayı (X işaretlemeyi) yoksay
-  const handleClick = (dateStr) => {
+  const handleClick = (dateStr: string) => {
     if (longPressTriggered.current) {
       longPressTriggered.current = false;
       return;
@@ -187,7 +197,7 @@ const TimesheetDaysColumn = ({
 
 
   // ── Hover tooltip işlemleri ──────────────────────────────────────────────
-  const handleMouseEnter = (e, dateStr) => {
+  const handleMouseEnter = (e: React.MouseEvent, dateStr: string) => {
     if (longPressTriggered.current) return;
 
     clearTimeout(hoverCloseTimer.current);
@@ -217,7 +227,7 @@ const TimesheetDaysColumn = ({
   };
 
   // ── Context menüden işaretçi seçimi ─────────────────────────────────────
-  const handleMarkerSelect = (markerCode) => {
+  const handleMarkerSelect = (markerCode: string) => {
     if (contextMenu) {
       onDayClick(contextMenu.day, markerCode);
       setContextMenu(null);
@@ -237,7 +247,7 @@ const TimesheetDaysColumn = ({
   return (
     <div className="day-grid">
       {(periodDays || []).map((dateStr) => {
-        const day = parseInt(dateStr.split("-")[2], 10);
+        const day = dateStr ? parseInt(dateStr.split("-")[2], 10) : 0;
         const value = getDayValue(timesheetDays, dateStr);
         const dirty = isDayCellDirty ? isDayCellDirty(dateStr) : false;
         const isWeekend = isWeekendDay(dateStr);
@@ -277,7 +287,7 @@ const TimesheetDaysColumn = ({
                   initial={{ opacity: 0, top: 18, x: "-50%" }}
                   animate={{ opacity: 1, top: 11, x: "-50%" }}
                   exit={{ opacity: 0, top: 18, x: "-50%" }}
-                  transition={{ duration: 0.25, ease: "ease" }}
+                  transition={{ duration: 0.25, ease: "linear" }}
                 >
                   {value}
                 </motion.span>

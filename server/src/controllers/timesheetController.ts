@@ -20,14 +20,14 @@ export const getTimesheets = asyncHandler(async (req: Request, res: Response) =>
   const user = req.user!;
   const scope = req.scope;
 
-  const month = req.query.month as string | undefined;
-  const year = req.query.year as string | undefined;
-  const status = req.query.status as string | undefined;
-  const search = req.query.search as string | undefined;
-  const unitId = req.query.unitId as string | undefined;
-  const locationId = req.query.locationId as string | undefined;
-  const page = req.query.page as string | undefined;
-  const limit = req.query.limit as string | undefined;
+  const month = typeof req.query.month === 'string' ? req.query.month : undefined;
+  const year = typeof req.query.year === 'string' ? req.query.year : undefined;
+  const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+  const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+  const unitId = typeof req.query.unitId === 'string' ? req.query.unitId : undefined;
+  const locationId = typeof req.query.locationId === 'string' ? req.query.locationId : undefined;
+  const page = typeof req.query.page === 'string' ? req.query.page : undefined;
+  const limit = typeof req.query.limit === 'string' ? req.query.limit : undefined;
 
   // Yetki Kontrolü: RESPONSIBLE sadece kendi birimine/yerleşkesine erişebilir
   if (user.role === USER_ROLE.RESPONSIBLE) {

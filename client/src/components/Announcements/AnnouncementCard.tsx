@@ -2,7 +2,24 @@ import { RiDeleteBinLine } from 'react-icons/ri';
 import './Announcements.scss';
 import { formatDate } from '../../utils/dateUtils';
 
-function AnnouncementCard({ announcement, onDelete, onRead, isAdmin }) {
+interface AnnouncementData {
+  id: string;
+  title: string;
+  content: string;
+  createdAt?: string;
+  created_at?: string;
+  isRead?: boolean;
+  is_read?: boolean;
+}
+
+interface AnnouncementCardProps {
+  announcement: AnnouncementData;
+  onDelete: (id: string) => void;
+  onRead: (id: string) => void;
+  isAdmin: boolean;
+}
+
+function AnnouncementCard({ announcement, onDelete, onRead, isAdmin }: AnnouncementCardProps) {
   const isUnread = announcement.isRead === false || announcement.is_read === false;
 
   const handleMouseEnter = () => {

@@ -84,7 +84,7 @@ const TimesheetPage = () => {
   // ── Dirty state takibi ──────────────────────────────────────────
   // Veritabanından gelen ilk hali burada tutulur; tabloda değişiklik 
   // yapıldığında bu snapshot ile kıyaslanarak "Kaydet" butonu gösterilir.
-  const [originalSnapshot, setOriginalSnapshot] = useState([]);
+  const [originalSnapshot, setOriginalSnapshot] = useState<any[]>([]);
 
 
   // ── Dönem kilit durumu (ADMIN tarafından toggle edilir) ─────────────────
@@ -127,7 +127,7 @@ const TimesheetPage = () => {
 
 
   // ── Resmi tatiller ──────────────────────────────────────────────────────
-  const { isPublicHoliday, getHolidayName } = usePublicHolidays(filters.period);
+  const { isPublicHoliday, getHolidayName } = usePublicHolidays(filters.period || "");
 
   // Birim sorumlusu için yerleşke/birim filtreleri login olduğu bilgilere sabitlenir.
   // Bu sayede sorumlu kişi başka birimin verisine erişemez.
@@ -158,7 +158,7 @@ const TimesheetPage = () => {
       const match = periods.find((p) => p.value === currentPeriod);
       setFilters((prev) => ({
         ...prev,
-        period: match ? match.value : periods[0].value,
+        period: match ? match.value : (periods[0]?.value || ""),
       }));
     }
   }, [periods, setFilters, filters.period]);
@@ -201,7 +201,7 @@ const TimesheetPage = () => {
   // HÜCRE TIKLAMA
   // ─────────────────────────────────────────────────────────────────────────
   const handleDayClick = useCallback(
-    (row, dateStr, markerCode) => {
+    (row: any, dateStr: string, markerCode: string) => {
       if (isPublicHoliday(dateStr)) {
         const holidayName = getHolidayName(dateStr) || "Resmi tatil";
         toast({
@@ -233,7 +233,7 @@ const TimesheetPage = () => {
 
           // Güncel fiili çalışma gün sayısını anlık hesapla (PAID_CODES üzerinden)
           const workDaysCount = Object.values(newDays).filter((v) =>
-            PAID_CODES.has(v),
+            PAID_CODES.has(v as any),
           ).length;
 
           return { ...r, timesheet_days: newDays, workDaysCount };
@@ -248,7 +248,7 @@ const TimesheetPage = () => {
   // DİRTY STATE
   // ─────────────────────────────────────────────────────────────────────────
   const isDayCellDirty = useCallback(
-    (rowId, dateStr) => {
+    (rowId: string, dateStr: string) => {
       const originalRow = originalSnapshot.find((r) => r.id === rowId);
       if (!originalRow) return false;
 
@@ -274,7 +274,7 @@ const TimesheetPage = () => {
     [timesheets, originalSnapshot],
   );
 
-  const handlePageChange = (newPage) => {
+  const handlePageChange = (newPage: number) => {
     // Sayfa değiştirirken kaydedilmemiş veri kaybını önlemek için bloklama yapıyoruz.
     if (hasGlobalChanges) {
       toast({
@@ -329,7 +329,7 @@ const TimesheetPage = () => {
 
     const result = await toggleLockPeriod(periodId);
     if (result.success) {
-      const newState = result.data?.isLocked;
+      const newState = result.data?.period?.isLocked ?? false;
       setPeriodIsLocked(newState);
       setTimesheets((prev) => prev.map((r) => ({ ...r, isLocked: newState })));
       toast({
@@ -353,7 +353,7 @@ const TimesheetPage = () => {
     await showModal({
       title: "Duyurular",
       size: "large",
-      content: (onClose) => <AnnouncementList onClose={onClose} />,
+      content: (onClose) => <AnnouncementList onClose={() => onClose(undefined)} />,
     });
     fetchUnreadCount();
   };
@@ -369,7 +369,7 @@ const TimesheetPage = () => {
     if (!activePeriod || !activePeriod.startDate || !activePeriod.endDate) {
       if (!filters.period) return [];
       const [year, month] = filters.period.split("-");
-      const d = new Date(year, month, 0).getDate();
+      const d = new Date(Number(year), Number(month), 0).getDate();
       return Array.from({ length: d }, (_, i) => `${year}-${month}-${String(i + 1).padStart(2, "0")}`);
     }
     try {
@@ -382,11 +382,11 @@ const TimesheetPage = () => {
   }, [activePeriod, filters.period]);
 
   const columns = useMemo(
-    () => timesheetColumns(periodDays, handleDayClick, isDayCellDirty, filters.period, isPublicHoliday),
+    () => timesheetColumns(periodDays, handleDayClick, isDayCellDirty, filters.period as string, isPublicHoliday),
     [periodDays, handleDayClick, isDayCellDirty, filters.period, isPublicHoliday],
   );
 
-  const userName = user?.name || user?.username || "Kullanıcı";
+  const userName = (user as any)?.name || user?.username || "Kullanıcı";
 
   const headerActions = (
     <AnimatePresence>
@@ -471,7 +471,7 @@ const TimesheetPage = () => {
         columns={columns}
         data={timesheets}
         loading={isLoading}
-        pagination={pagination}
+        pagination={pagination as any}
         onPageChange={handlePageChange}
       />
     </PageShell>

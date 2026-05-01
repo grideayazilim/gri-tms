@@ -4,17 +4,10 @@ import { employees, units, locations, timesheets, timesheetDays } from '../../da
 import type { DbExecutor } from '../types/db.js';
 import type { TimesheetDayInsert, TimesheetInsert, TimesheetRow } from '../../database/schema.js';
 import { USER_ROLE } from '@timesheet/shared';
+import type { TimesheetListFilters } from './types.js';
 
-export interface TimesheetListFilters {
-  periodId: string;
-  search?: string;
-  unitId?: string;
-  locationId?: string;
-  scope?: { unitId?: string | null; locationId?: string | null } | null;
-  role: string;
-  limit: number;
-  offset: number;
-}
+export type { TimesheetListFilters } from './types.js';
+
 
 export const timesheetRepo = {
   /**
@@ -34,13 +27,12 @@ export const timesheetRepo = {
 
     if (filters.search) {
       const s = `%${filters.search}%`;
-      conditions.push(
-        or(
-          ilike(employees.firstName, s),
-          ilike(employees.lastName, s),
-          ilike(employees.tcNo, s)
-        )
+      const searchCondition = or(
+        ilike(employees.firstName, s),
+        ilike(employees.lastName, s),
+        ilike(employees.tcNo, s)
       );
+      if (searchCondition) conditions.push(searchCondition);
     }
 
     const validConditions = conditions.filter(c => c !== undefined) as import('drizzle-orm').SQL<unknown>[];

@@ -1,5 +1,4 @@
 import { eq, and, desc } from 'drizzle-orm';
-import { db } from '../config/database.js';
 import { periods } from '../../database/schema.js';
 import type { DbExecutor } from '../types/db.js';
 import type { PeriodRow } from '../../database/schema.js';

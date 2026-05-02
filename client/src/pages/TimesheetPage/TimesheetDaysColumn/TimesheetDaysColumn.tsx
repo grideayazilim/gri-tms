@@ -50,7 +50,7 @@ interface TimesheetDaysColumnProps {
 }
 
 const TimesheetDaysColumn = ({
-  period,
+  period: _period,
   timesheetDays,
   periodDays,
   onDayClick,
@@ -62,16 +62,16 @@ const TimesheetDaysColumn = ({
   const [contextMenu, setContextMenu] = useState<{ day: string, centerX: number, y: number, showDate: boolean } | null>(null);
   const [menuClosing, setMenuClosing] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const menuLeaveTimer = useRef<any>(null);
-  const longPressTimer = useRef<any>(null);
+  const menuLeaveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const longPressTriggered = useRef(false);
 
   // ── Hover tooltip state (react-tooltip yerine) ────────────────────────
   const [hoverDay, setHoverDay] = useState<string | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [hoverClosing, setHoverClosing] = useState(false);
-  const hoverTimer = useRef<any>(null);
-  const hoverCloseTimer = useRef<any>(null);
+  const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const hoverCloseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   // Unmount'ta tüm timer'ları temizle — memory leak önlemi
   useEffect(() => {
@@ -97,7 +97,7 @@ const TimesheetDaysColumn = ({
   useEffect(() => {
     if (!contextMenu) return;
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
+      if (menuRef.current && e.target instanceof Node && !menuRef.current.contains(e.target)) {
         closeMenu();
       }
     };
@@ -247,7 +247,7 @@ const TimesheetDaysColumn = ({
   return (
     <div className="day-grid">
       {(periodDays || []).map((dateStr) => {
-        const day = dateStr ? parseInt(dateStr.split("-")[2], 10) : 0;
+        const day = dateStr ? parseInt(dateStr.split("-")[2] ?? '', 10) : 0;
         const value = getDayValue(timesheetDays, dateStr);
         const dirty = isDayCellDirty ? isDayCellDirty(dateStr) : false;
         const isWeekend = isWeekendDay(dateStr);

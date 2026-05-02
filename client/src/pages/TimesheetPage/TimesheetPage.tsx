@@ -15,10 +15,11 @@ import FilterBar from "../../components/FilterBar/FilterBar";
 import PageShell from "../../components/PageShell/PageShell";
 import { useFilter } from "../../hooks/data/useFilter";
 import { useTimesheets } from "../../hooks/data/useTimesheets";
+import type { TimesheetUIRow } from "../../hooks/data/useTimesheets";
 import { usePublicHolidays } from "../../hooks/data/usePublicHolidays";
 import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
 import { useAnnouncements } from "../../hooks/data/useAnnouncements";
-import { useToast } from "../../components/ToastBar/ToastContext";
+import { useToast } from "../../components/ToastBar/useToast";
 import { getTimesheetFilterConfig } from "./timesheetFilters";
 import { PAID_CODES } from "@timesheet/shared";
 import "../../styles/inputs.scss";
@@ -48,9 +49,12 @@ const TimesheetPage = () => {
   // Sayfa ilk açıldığında okunmamış duyuru varsa birkaç saniye tooltip göster
   useEffect(() => {
     if (unreadCount > 0) {
-      setShowUnreadTip(true);
-      const t = setTimeout(() => setShowUnreadTip(false), 4000);
-      return () => clearTimeout(t);
+      const showTimer = setTimeout(() => setShowUnreadTip(true), 0);
+      const hideTimer = setTimeout(() => setShowUnreadTip(false), 4000);
+      return () => {
+        clearTimeout(showTimer);
+        clearTimeout(hideTimer);
+      };
     }
   }, [unreadCount]);
 
@@ -84,7 +88,7 @@ const TimesheetPage = () => {
   // ── Dirty state takibi ──────────────────────────────────────────
   // Veritabanından gelen ilk hali burada tutulur; tabloda değişiklik 
   // yapıldığında bu snapshot ile kıyaslanarak "Kaydet" butonu gösterilir.
-  const [originalSnapshot, setOriginalSnapshot] = useState<any[]>([]);
+  const [originalSnapshot, setOriginalSnapshot] = useState<TimesheetUIRow[]>([]);
 
 
   // ── Dönem kilit durumu (ADMIN tarafından toggle edilir) ─────────────────
@@ -156,16 +160,18 @@ const TimesheetPage = () => {
     if (periods.length > 0 && !filters.period) {
       const currentPeriod = format(new Date(), "yyyy-MM");
       const match = periods.find((p) => p.value === currentPeriod);
-      setFilters((prev) => ({
-        ...prev,
-        period: match ? match.value : (periods[0]?.value || ""),
-      }));
+      setTimeout(() => {
+        setFilters((prev) => ({
+          ...prev,
+          period: match ? match.value : (periods[0]?.value || ""),
+        }));
+      }, 0);
     }
   }, [periods, setFilters, filters.period]);
 
   // Filtreler değişince sayfayı başa sar
   useEffect(() => {
-    setPage(1);
+    setTimeout(() => setPage(1), 0);
   }, [apiParams]);
 
   // ── Sayfa açılışında yerleşkeleri yükle ──────────────────────────────────
@@ -201,7 +207,7 @@ const TimesheetPage = () => {
   // HÜCRE TIKLAMA
   // ─────────────────────────────────────────────────────────────────────────
   const handleDayClick = useCallback(
-    (row: any, dateStr: string, markerCode: string) => {
+    (row: TimesheetUIRow, dateStr: string, markerCode: string) => {
       if (isPublicHoliday(dateStr)) {
         const holidayName = getHolidayName(dateStr) || "Resmi tatil";
         toast({
@@ -233,7 +239,7 @@ const TimesheetPage = () => {
 
           // Güncel fiili çalışma gün sayısını anlık hesapla (PAID_CODES üzerinden)
           const workDaysCount = Object.values(newDays).filter((v) =>
-            PAID_CODES.has(v as any),
+            PAID_CODES.has(v),
           ).length;
 
           return { ...r, timesheet_days: newDays, workDaysCount };
@@ -241,7 +247,7 @@ const TimesheetPage = () => {
       );
     },
 
-    [filters.period, setTimesheets, toast, isPublicHoliday, getHolidayName],
+    [setTimesheets, toast, isPublicHoliday, getHolidayName],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -258,7 +264,7 @@ const TimesheetPage = () => {
 
       return originalVal !== currentVal;
     },
-    [originalSnapshot, timesheets, filters.period],
+    [originalSnapshot, timesheets],
   );
 
   const hasGlobalChanges = useMemo(
@@ -386,7 +392,7 @@ const TimesheetPage = () => {
     [periodDays, handleDayClick, isDayCellDirty, filters.period, isPublicHoliday],
   );
 
-  const userName = (user as any)?.name || user?.username || "Kullanıcı";
+  const userName = user?.username || "Kullanıcı";
 
   const headerActions = (
     <AnimatePresence>
@@ -471,7 +477,7 @@ const TimesheetPage = () => {
         columns={columns}
         data={timesheets}
         loading={isLoading}
-        pagination={pagination as any}
+        {...(pagination != null ? { pagination } : {})}
         onPageChange={handlePageChange}
       />
     </PageShell>

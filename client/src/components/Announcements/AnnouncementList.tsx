@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { RiAddLine, RiLoader4Line } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import { useModal } from '../Modal';
-import { useToast } from '../ToastBar/ToastContext';
+import { useToast } from '../ToastBar/useToast';
 import { useAnnouncements } from '../../hooks/data/useAnnouncements';
 import AnnouncementCard from './AnnouncementCard';
 import AnnouncementForm from './AnnouncementForm';
@@ -12,7 +12,7 @@ interface AnnouncementListProps {
   onClose?: () => void;
 }
 
-function AnnouncementList({ onClose }: AnnouncementListProps) {
+function AnnouncementList({ onClose: _onClose }: AnnouncementListProps) {
   const { 
     announcements, 
     isLoading, 
@@ -32,7 +32,7 @@ function AnnouncementList({ onClose }: AnnouncementListProps) {
   }, [fetchAnnouncements]);
 
   const handleAddAnnouncement = async () => {
-    const result = await showModal({
+    await showModal({
       title: 'Yeni Duyuru Ekle',
       size: 'medium',
       content: (closeModal) => (

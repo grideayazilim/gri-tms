@@ -11,9 +11,10 @@
     "server:dev": "npm run dev -w server",
     "shared:build": "npm run build -w shared",
     "shared:dev": "npm run dev -w shared",
-    "typecheck": "tsc -b --noEmit",
-    "lint": "npm run lint -w shared; npm run lint -w server; npm run lint -w client",
-    "build": "npm run build -w shared && npm run build -w server && npm run build -w client"
+    "dev": "npm run dev -w @timesheet/shared & npm run dev -w server & npm run dev -w client",
+    "typecheck": "npm run typecheck -w @timesheet/shared && npm run typecheck -w server && npm run typecheck -w client",
+    "lint": "npm run lint -w server; npm run lint -w client",
+    "build": "npm run build -w @timesheet/shared && npm run build -w server && npm run build -w client"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.0.0",

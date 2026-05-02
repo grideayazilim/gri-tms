@@ -5,7 +5,7 @@
 
 interface TokenConfig {
   readonly secret: string;
-  readonly expiresIn: string;
+  readonly expiresIn: number; // saniye cinsinden
 }
 
 interface JwtConfigShape {
@@ -30,11 +30,11 @@ interface CookieConfigShape {
 export const jwtConfig: JwtConfigShape = {
   access: {
     secret: process.env.ACCESS_TOKEN_SECRET || 'your_access_token_secret_change_in_production',
-    expiresIn: '15m', // 15 dakika
+    expiresIn: 15 * 60, // 900 saniye (15 dakika)
   },
   refresh: {
     secret: process.env.REFRESH_TOKEN_SECRET || 'your_refresh_token_secret_change_in_production',
-    expiresIn: '7d', // 7 gün
+    expiresIn: 7 * 24 * 60 * 60, // 604800 saniye (7 gün)
   },
 };
 

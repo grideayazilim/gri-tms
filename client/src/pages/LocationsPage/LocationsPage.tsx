@@ -3,7 +3,7 @@
    Hiyerarşik bir yapıda (Yerleşke > Birim) veri yönetimini sağlar.
    Staged Deletion (Önce silme işaretle, sonra kaydet) ve Undo desteği sunar.
    ======================================================================== */
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { RiDeleteBinLine, RiArrowRightSLine, RiFileExcel2Line, RiRobot2Line, RiArrowGoBackLine, RiMore2Fill } from "react-icons/ri";
 import "../../styles/inputs.scss";
@@ -11,7 +11,7 @@ import PageShell from "../../components/PageShell/PageShell";
 import * as locationService from "../../api/locationAndUnitService";
 import { getPeriods } from "../../api/timesheetService";
 import { downloadTimesheetExcel, downloadBotExcel } from "../../api/exportService";
-import { useToast } from "../../components/ToastBar/ToastContext";
+import { useToast } from "../../components/ToastBar/useToast";
 import "./LocationsPage.scss";
 
 import { TURKISH_MONTHS } from "../../utils/dateUtils";
@@ -70,9 +70,51 @@ function LocationsPage() {
   const toast = useToast();
 
   // === FETCH DATA ===
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [locRes, unitRes, periodRes] = await Promise.all([
+        locationService.getLocations(),
+        locationService.getUnits(),
+        getPeriods()
+      ]);
+
+      const locs = locRes.success ? locRes.data.locations : [];
+      const allUnits = unitRes.success ? unitRes.data.units : [];
+      const fetchedPeriods = periodRes.success ? periodRes.data.periods : [];
+
+      fetchedPeriods.sort((a: PeriodData, b: PeriodData) => {
+        if (b.year !== a.year) return b.year - a.year;
+        return b.month - a.month;
+      });
+
+      setPeriods(fetchedPeriods);
+      if (fetchedPeriods.length > 0) {
+        const currentM = new Date().getMonth() + 1;
+        const currentY = new Date().getFullYear();
+        const currentPeriod = fetchedPeriods.find((p: PeriodData) => p.month === currentM && p.year === currentY);
+        setExportPeriodId(String(currentPeriod ? currentPeriod.id : (fetchedPeriods[0]?.id ?? '')));
+      }
+
+      const enrichedLocations: LocationData[] = locs.map((loc) => ({
+        ...loc,
+        units: allUnits.filter((u) => u.locationId === loc.id),
+      }));
+
+      setLocations(enrichedLocations);
+      setInitialLocations(JSON.parse(JSON.stringify(enrichedLocations)));
+    } catch (error) {
+      console.error("Error fetching locations:", error);
+      toast({ type: "error", message: "Veriler yüklenirken bir hata oluştu" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
-    fetchData();
-  }, []);
+    const timer = setTimeout(() => { void fetchData(); }, 0);
+    return () => clearTimeout(timer);
+  }, [fetchData]);
 
   // Close export panel / mobile menu on outside click
   useOnClickOutside(exportPanelRef, () => setExportPanel(null), !!exportPanel);
@@ -84,7 +126,7 @@ function LocationsPage() {
       const el = document.getElementById(focusElementId);
       if (el) {
         el.focus();
-        setFocusElementId(null);
+        setTimeout(() => setFocusElementId(null), 0);
       }
     }
   }, [locations, expandedLocations, focusElementId]);
@@ -94,47 +136,6 @@ function LocationsPage() {
     setExpandedLocations((prev) =>
       prev.includes(id) ? prev.filter((locId) => locId !== id) : [...prev, id]
     );
-  };
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [locRes, unitRes, periodRes] = await Promise.all([
-        locationService.getLocations(),
-        locationService.getUnits(),
-        getPeriods()
-      ]);
-
-      const locs = locRes.data?.locations || [];
-      const allUnits = unitRes.data?.units || [];
-      const fetchedPeriods = periodRes.data?.periods || [];
-
-      fetchedPeriods.sort((a, b) => {
-        if (b.year !== a.year) return b.year - a.year;
-        return b.month - a.month;
-      });
-
-      setPeriods(fetchedPeriods);
-      if (fetchedPeriods.length > 0) {
-        const currentM = new Date().getMonth() + 1;
-        const currentY = new Date().getFullYear();
-        const currentPeriod = fetchedPeriods.find(p => p.month === currentM && p.year === currentY);
-        setExportPeriodId(String(currentPeriod ? currentPeriod.id : fetchedPeriods[0].id));
-      }
-
-      const enrichedLocations = locs.map(loc => ({
-        ...loc,
-        units: allUnits.filter(u => u.locationId === loc.id)
-      }));
-
-      setLocations(enrichedLocations);
-      setInitialLocations(JSON.parse(JSON.stringify(enrichedLocations)));
-    } catch (error) {
-      console.error("Error fetching locations:", error);
-      toast({ type: "error", message: "Veriler yüklenirken bir hata oluştu" });
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // === HANDLERS ===
@@ -234,15 +235,16 @@ function LocationsPage() {
 
       await Promise.all([
         // 1. Silinecek yerleşkeleri temizle
-        ...deletedLocationIds.map((id) => locationService.deleteLocation(id)),
+        ...deletedLocationIds.map((id) => locationService.deleteLocation(String(id))),
         // 2. Yeni veya güncellenen yerleşkeleri/birimleri toplu senkronize et
         ...locationsToSync.map(async (loc) => {
           if (loc.isNew) {
             // Yeni yerleşke önce oluşturulur, sonra birimleri sync edilir
             const createRes = await locationService.createLocation({ name: loc.name, programNo: loc.programNo });
+            if (!createRes.success) throw new Error(createRes.message);
             const newLocId = createRes.data.location.id;
             if (loc.units?.length > 0) {
-              await locationService.syncLocationWithUnits(newLocId, {
+              await locationService.syncLocationWithUnits(String(newLocId), {
                 name: loc.name,
                 programNo: loc.programNo,
                 units: loc.units.map(u => ({ name: u.name })),
@@ -250,12 +252,12 @@ function LocationsPage() {
             }
           } else {
             // Mevcut yerleşke ve aktif birimleri tek bir API çağrısı ile senkronize edilir
-            await locationService.syncLocationWithUnits(loc.id, {
+            await locationService.syncLocationWithUnits(String(loc.id), {
               name: loc.name,
               programNo: loc.programNo,
               units: loc.units
                 .filter(u => !deletedUnitIds.includes(u.id))
-                .map(u => ({ id: u.isNew ? undefined : u.id, name: u.name })),
+                .map(u => ({ id: u.isNew ? undefined : String(u.id), name: u.name })),
             });
           }
         }),
@@ -267,7 +269,8 @@ function LocationsPage() {
       fetchData(); // Listeyi son haliyle tekrar tazele
     } catch (error) {
       console.error("Error saving locations:", error);
-      toast({ type: "error", message: error.message || "Kaydedilirken bir hata oluştu" });
+      const msg = error instanceof Error ? error.message : "Kaydedilirken bir hata oluştu";
+      toast({ type: "error", message: msg });
     } finally {
       setIsSaving(false);
     }
@@ -296,7 +299,7 @@ function LocationsPage() {
     setIsExporting(true);
     try {
       const params = {
-        locationId: exportPanel.locationId,
+        locationId: String(exportPanel.locationId),
         year: selectedPeriod.year,
         month: selectedPeriod.month,
         locationName: exportPanel.locationName,
@@ -312,7 +315,8 @@ function LocationsPage() {
       toast({ type: "success", message: "Excel başarıyla indirildi" });
     } catch (error) {
       console.error("Export error:", error);
-      toast({ type: "error", message: error?.message || "Excel oluşturulurken hata oluştu" });
+      const msg = error instanceof Error ? error.message : "Excel oluşturulurken hata oluştu";
+      toast({ type: "error", message: msg });
     } finally {
       setIsExporting(false);
     }

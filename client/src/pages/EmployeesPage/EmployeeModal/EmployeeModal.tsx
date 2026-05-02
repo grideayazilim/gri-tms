@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { employeeSchema } from '@timesheet/shared';
 import type { EmployeeType, EmployeeListItem, Result, BulkImportResult } from '@timesheet/shared';
 import { useLocationsAndUnits } from '../../../hooks/data/useLocationsAndUnits';
@@ -14,7 +15,8 @@ import {
 } from 'react-icons/fi';
 import * as XLSX from 'xlsx';
 import * as importService from '../../../api/importService';
-import { useToast } from '../../../components/ToastBar/ToastContext';
+import type { BulkEmployeeInput } from '../../../api/importService';
+import { useToast } from '../../../components/ToastBar/useToast';
 import { toISODateString } from '../../../utils/dateUtils';
 import './EmployeeModal.scss';
 
@@ -48,10 +50,10 @@ function getFieldKey(header: string): string | null {
 // ── Helper: Excel Tarih Formatı ──────────────────────────────────────────────
 function formatExcelDate(val: unknown): string | null {
   if (!val) return null;
-  if (val instanceof Date) return val.toISOString().split('T')[0];
+  if (val instanceof Date) return val.toISOString().split('T')[0] ?? null;
   if (typeof val === 'number') {
     const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-    return d.toISOString().split('T')[0];
+    return d.toISOString().split('T')[0] ?? null;
   }
   return String(val);
 }
@@ -154,7 +156,7 @@ const EmployeeModal = ({ employee, onClose, onSave }: EmployeeModalProps) => {
     setValue,
     watch,
     formState: { errors, isDirty },
-  } = useForm<any>({
+  } = useForm<z.input<typeof employeeSchema>, unknown, EmployeeType>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
       tcNo: employee?.tcNo || '',
@@ -201,7 +203,7 @@ const EmployeeModal = ({ employee, onClose, onSave }: EmployeeModalProps) => {
         unitId: data.unitId,
         startDate: data.startDate,
         endDate: data.isActive ? null : data.endDate || null,
-        ibanNo: data.ibanNo || null,
+        ibanNo: data.ibanNo,
         isActive: data.isActive,
       };
       const result = await onSave(payload);
@@ -232,12 +234,17 @@ const EmployeeModal = ({ employee, onClose, onSave }: EmployeeModalProps) => {
     try {
       const arrayBuffer = await selectedFile.arrayBuffer();
       const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1 });
+      const firstSheetName = wb.SheetNames[0];
+      if (!firstSheetName) throw new Error('Excel dosyasında sayfa bulunamadı.');
+      const sheet = wb.Sheets[firstSheetName];
+      if (!sheet) throw new Error('Excel sayfası okunamadı.');
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1 });
 
       if (rows.length < 2) throw new Error('Dosya boş veya başlık satırı eksik.');
 
-      const headers = rows[0].map((h) => String(h || ''));
+      const firstRow = rows[0];
+      if (!Array.isArray(firstRow)) throw new Error('Başlık satırı okunamadı.');
+      const headers = firstRow.map((h) => String(h ?? ''));
       const mapping: Record<string, number> = {};
       headers.forEach((h, idx) => {
         const key = getFieldKey(h);
@@ -254,15 +261,7 @@ const EmployeeModal = ({ employee, onClose, onSave }: EmployeeModalProps) => {
         throw new Error('Gerekli sütunlar bulunamadı (TC No, Ad Soyad, Yerleşke, İşe Giriş, IBAN).');
       }
 
-      const employeesData: Array<{
-        tcNo: string;
-        fullName: string;
-        locationName: string;
-        unitName: string | null;
-        ibanNo: string | null;
-        startDate: string | null;
-        endDate: string | null;
-      }> = [];
+      const employeesData: BulkEmployeeInput[] = [];
 
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
@@ -287,7 +286,7 @@ const EmployeeModal = ({ employee, onClose, onSave }: EmployeeModalProps) => {
 
       for (let i = 0; i < employeesData.length; i += CHUNK_SIZE) {
         const chunk = employeesData.slice(i, i + CHUNK_SIZE);
-        const res = await importService.bulkImportEmployees({ employees: chunk as any });
+        const res = await importService.bulkImportEmployees({ employees: chunk });
 
         if (res.success && res.data) {
           finalSuccessCount += res.data.successCount;

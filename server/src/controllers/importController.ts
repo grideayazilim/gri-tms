@@ -93,8 +93,10 @@ export const importEmployee = asyncHandler(async (req: Request, res: Response) =
 
       return { employeeId, action };
     });
-  } catch (err: any) {
-    if (err.code === '23505') throw conflict('Bu TC No başka bir kayıtta zaten mevcut');
+  } catch (err: unknown) {
+    if (typeof err === 'object' && err !== null && 'code' in err && err.code === '23505') {
+      throw conflict('Bu TC No başka bir kayıtta zaten mevcut');
+    }
     throw err;
   }
 
@@ -201,7 +203,7 @@ export const bulkImportEmployees = asyncHandler(async (req: Request, res: Respon
 
   const results = {
     successCount: 0,
-    failures: [] as any[],
+    failures: [] as { row: number; name: string; error: string }[],
   };
 
   await withDrizzleTransaction(async (tx) => {
@@ -227,8 +229,9 @@ export const bulkImportEmployees = asyncHandler(async (req: Request, res: Respon
         const locId = locationMap.get(normalize(locationName));
         if (!locId) throw new Error(`'${locationName}' adında bir yerleşke bulunamadı`);
 
-        const unitId = unitName ? unitMap.get(`${locId}-${normalize(unitName)}`) : null;
+        const unitId = unitName ? unitMap.get(`${locId}-${normalize(unitName)}`) : undefined;
         if (unitName && !unitId) throw new Error(`'${locationName}' yerleşkesinde '${unitName}' adında bir birim bulunamadı`);
+        if (!unitId) throw new Error('Birim adı zorunludur');
 
         const nameParts = fullName.trim().split(/\s+/);
         const lastName = nameParts.length > 1 ? nameParts.pop()! : '';
@@ -250,11 +253,11 @@ export const bulkImportEmployees = asyncHandler(async (req: Request, res: Respon
         }
 
         results.successCount++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         results.failures.push({
           row: rowNumber,
           name: fullName || 'Bilinmiyor',
-          error: err.message,
+          error: err instanceof Error ? err.message : String(err),
         });
       }
     }

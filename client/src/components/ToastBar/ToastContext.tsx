@@ -11,7 +11,6 @@ import type { ReactNode } from 'react';
 
 import {
   createContext,
-  useContext,
   useState,
   useCallback,
   useRef,
@@ -72,8 +71,9 @@ export function ToastProvider({ children }: ToastProviderProps) {
   );
 
   useEffect(() => {
+    const pendingTimeouts = timeouts.current;
     return () => {
-      Object.values(timeouts.current).forEach(clearTimeout);
+      Object.values(pendingTimeouts).forEach(clearTimeout);
     };
   }, []);
 
@@ -85,8 +85,5 @@ export function ToastProvider({ children }: ToastProviderProps) {
   );
 }
 
-export function useToast(): ToastFn {
-  const context = useContext(ToastContext);
-  if (!context) throw new Error('useToast must be used within ToastProvider');
-  return context;
-}
+export { ToastContext };
+export type { ToastFn };

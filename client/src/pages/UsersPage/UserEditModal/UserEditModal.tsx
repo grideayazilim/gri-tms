@@ -26,7 +26,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
   } = useForm<UserEditType>({
     resolver: zodResolver(userEditSchema),
     defaultValues: {
-      role: user?.role || ('' as any),
+      role: user?.role,
       expiryDate: toISODateString(user?.expiryDate) || '',
       locationId: user?.unit?.location?.id?.toString() || '',
       unitId: user?.unit?.id?.toString() || '',
@@ -46,7 +46,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
   useEffect(() => {
     if (user) {
       reset({
-        role: user.role || ('' as any),
+        role: user.role,
         expiryDate: toISODateString(user.expiryDate) || '',
         locationId: user.unit?.location?.id?.toString() || '',
         unitId: user.unit?.id?.toString() || '',

@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node dist/src/server.js",
-    "dev": "tsx watch src/server.js",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc -p . && tsc-alias -p tsconfig.json",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "db:init": "tsx database/init-db.ts",
     "db:introspect": "drizzle-kit introspect",
     "db:generate": "drizzle-kit generate",

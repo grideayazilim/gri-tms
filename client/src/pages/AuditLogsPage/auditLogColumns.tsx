@@ -51,9 +51,7 @@ export const auditLogColumns: Column<AuditLogItem>[] = [
           trigger={summary}
           changes={row.changes || []}
           metadata={row.metadata || {}}
-          // Not: API'den gelen `entityId` var `entityLabel` yok. TypeScript hatasını 
-          // engellemek için tipi opsiyonel string yapıyoruz
-          entityLabel={(row as any).entityLabel}
+          {...(row.entityLabel !== undefined ? { entityLabel: row.entityLabel } : {})}
         />
       );
     },

@@ -8,7 +8,7 @@
 
 import type { ReactNode } from 'react';
 
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useState, useCallback } from 'react';
 
 import Modal from './Modal';
 
@@ -180,16 +180,5 @@ export function ModalProvider({ children }: ModalProviderProps) {
   );
 }
 
-export function useModal(): ModalContextValue {
-  const context = useContext(ModalContext);
-  if (!context) {
-    throw new Error('useModal must be used within ModalProvider');
-  }
-  return context;
-}
-
-// Backward compatibility: useConfirm hook
-export function useConfirm(): (options: ConfirmOptions) => Promise<boolean> {
-  const { showConfirm } = useModal();
-  return showConfirm;
-}
+export { ModalContext };
+export type { ModalContextValue, ConfirmOptions };

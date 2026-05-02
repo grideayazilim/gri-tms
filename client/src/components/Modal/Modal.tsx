@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import './Modal.scss';
@@ -32,17 +32,17 @@ function Modal({
     }
   };
 
-  const handleEscKey = (e: KeyboardEvent) => {
+  const handleEscKey = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       onClose(null);
     }
-  };
+  }, [onClose]);
 
   // ESC key listener
   useEffect(() => {
     window.addEventListener('keydown', handleEscKey);
     return () => window.removeEventListener('keydown', handleEscKey);
-  }, []);
+  }, [handleEscKey]);
 
   return (
     <AnimatePresence>

@@ -1,5 +1,4 @@
-import { eq, and, or, inArray, ilike, desc, sql, asc } from 'drizzle-orm';
-import { db } from '../config/database.js';
+import { eq, and, or, inArray, ilike, sql, asc } from 'drizzle-orm';
 import { employees, units, locations, timesheets, timesheetDays } from '../../database/schema.js';
 import type { DbExecutor } from '../types/db.js';
 import type { TimesheetDayInsert, TimesheetInsert, TimesheetRow } from '../../database/schema.js';

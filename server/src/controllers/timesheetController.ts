@@ -74,18 +74,17 @@ export const getTimesheets = asyncHandler(async (req: Request, res: Response) =>
   const timesheetIds = timesheetData.map((r) => r.timesheetId).filter(Boolean) as string[];
 
   // Günlük Günlerin Alınması
-  const daysMap: Record<string, any[]> = {};
+  const daysMap: Record<string, { id: string; day: string; markerCode: string; note: string | null }[]> = {};
   if (timesheetIds.length > 0) {
     const daysResult = await timesheetRepo.getTimesheetDays(db, timesheetIds);
     for (const d of daysResult) {
       if (!daysMap[d.timesheetId]) daysMap[d.timesheetId] = [];
-      const { timesheetId, ...dayData } = d;
       // Drizzle maps pg date to string (YYYY-MM-DD)
       daysMap[d.timesheetId]!.push({
-        id: dayData.id,
-        day: dayData.day,
-        markerCode: dayData.markerCode,
-        note: dayData.note,
+        id: d.id,
+        day: d.day,
+        markerCode: d.markerCode,
+        note: d.note,
       });
     }
   }
@@ -141,9 +140,15 @@ export const getTimesheets = asyncHandler(async (req: Request, res: Response) =>
 });
 
 // ======================== POST /timesheets ========================
+// Gelen request body'deki puantaj girişi tipi
+interface TimesheetEntry {
+  employeeId: string;
+  days: { markerCode: string; day: string; note?: string }[];
+}
+
 export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: Response) => {
-  const periodId = req.body.periodId as string; const timesheets = req.body.timesheets;
-  const user = req.user!;
+  const periodId = req.body.periodId as string;
+  const timesheets: TimesheetEntry[] = req.body.timesheets;
   const scope = req.scope;
 
   await withDrizzleTransaction(async (tx) => {
@@ -152,13 +157,10 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
     if (period.isLocked) throw locked('Bu dönem kilitlenmiş. Puantaj girişi yapılamaz');
 
     // Çalışan Bilgilerini Çek
-    const employeeIds = timesheets.map((t: any) => t.employeeId);
+    const employeeIds = timesheets.map((t) => t.employeeId);
     const empInfoRows = await timesheetRepo.getEmployeeInfoForBulk(tx, employeeIds);
 
-    const employeeMap = new Map<string, any>();
-    for (const row of empInfoRows) {
-      employeeMap.set(row.id, row);
-    }
+    const employeeMap = new Map(empInfoRows.map((row) => [row.id, row] as const));
 
     const missingIds = employeeIds.filter((id: string) => !employeeMap.has(id));
     if (missingIds.length > 0) {
@@ -226,6 +228,8 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
 
     for (const ts of timesheets) {
       const emp = employeeMap.get(ts.employeeId);
+      // missingIds kontrolü geçildikten sonra emp kesinlikle mevcuttur
+      if (!emp) throw badRequest(`Çalışan bulunamadı: ${ts.employeeId}`);
       let timesheetId = existingTimesheetMap.get(ts.employeeId);
 
       if (timesheetId) {

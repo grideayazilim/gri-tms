@@ -50,8 +50,10 @@ export default defineConfig([
     rules: {
       ...tsPlugin.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' }],
-      'no-unused-vars': 'off', // TS plugin zaten halleder
+      'no-unused-vars': 'off',
+      'react-hooks/exhaustive-deps': 'error',
     },
   },
 ])

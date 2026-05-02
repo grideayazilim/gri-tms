@@ -22,7 +22,7 @@ export const auditLogRepo = {
     }
     if (filters.category) {
       const actionsInCategory = Object.entries(AUDIT_ACTION_META)
-        .filter(([, meta]) => (meta as any).category === filters.category)
+        .filter(([, meta]) => meta.category === filters.category)
         .map(([code]) => code);
       if (actionsInCategory.length > 0) {
         conditions.push(inArray(auditLogs.action, actionsInCategory));

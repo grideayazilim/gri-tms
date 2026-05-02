@@ -27,10 +27,7 @@ export const usePublicHolidays = (period: string | null): UsePublicHolidaysRetur
   }, [period]);
 
   useEffect(() => {
-    if (!year) {
-      setHolidays([]);
-      return;
-    }
+    if (!year) return;
 
     holidayService
       .getPublicHolidays(year)
@@ -47,25 +44,25 @@ export const usePublicHolidays = (period: string | null): UsePublicHolidaysRetur
 
   // Seçili aya ait tatil günlerini Set olarak hesapla
   const holidayDays = useMemo(() => {
-    if (holidays.length === 0) return new Set<string>();
+    if (!year || holidays.length === 0) return new Set<string>();
 
     const days = new Set<string>();
     for (const h of holidays) {
       days.add(h.date);
     }
     return days;
-  }, [holidays]);
+  }, [year, holidays]);
 
   // Tatil günü adları (tooltip'te göstermek için)
   const holidayNames = useMemo(() => {
-    if (holidays.length === 0) return new Map<string, string>();
+    if (!year || holidays.length === 0) return new Map<string, string>();
 
     const names = new Map<string, string>();
     for (const h of holidays) {
       names.set(h.date, h.localName);
     }
     return names;
-  }, [holidays]);
+  }, [year, holidays]);
 
   const isPublicHoliday = useCallback(
     (dateStr: string) => holidayDays.has(dateStr),

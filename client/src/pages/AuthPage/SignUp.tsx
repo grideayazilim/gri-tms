@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signUpSchema } from "@timesheet/shared";
-import { useToast } from "../../components/ToastBar/ToastContext";
+import { useToast } from "../../components/ToastBar/useToast";
 import type { SignUpType } from "@timesheet/shared";
 
 interface SignUpProps {
@@ -17,7 +16,6 @@ function SignUp({ onToggle }: SignUpProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const { register: authRegister } = useAuth();
-  const navigate = useNavigate();
   const toast = useToast();
   const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
 

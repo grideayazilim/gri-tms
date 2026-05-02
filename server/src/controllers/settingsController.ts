@@ -106,7 +106,7 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
   await withDrizzleTransaction(async (tx) => {
     const current = await settingsRepo.getSettings(tx);
 
-    const formatDate = (d: any) => toISODateString(d ?? null);
+    const formatDate = (d: Date | string | null | undefined) => toISODateString(d ?? null);
 
     const newStart = formatDate(programStart);
     const newEnd = formatDate(programEnd);

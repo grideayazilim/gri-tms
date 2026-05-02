@@ -102,6 +102,8 @@ export interface TimesheetListItem {
   };
   unit: { id: string; name: string } | null;
   location: { id: string; name: string } | null;
+  period?: { isLocked: boolean };
+  totalWorkDays?: number;
   timesheet: {
     id: string | null;
     periodId: string;
@@ -135,6 +137,7 @@ export interface AuditLogItem {
   action: AuditAction;
   entityType: AuditEntityType;
   entityId: string | null;
+  entityLabel?: string;
   actorUsername: string;
   actorRole: string | null;
   summary: string | null;

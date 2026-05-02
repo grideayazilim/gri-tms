@@ -13,4 +13,4 @@ export const MARKERS = Object.freeze({
 export type MarkerCode = typeof MARKERS[keyof typeof MARKERS]['code'];
 
 export const MARKER_LIST = Object.values(MARKERS);
-export const PAID_CODES = new Set(MARKER_LIST.filter(m => m.isPaid).map(m => m.code));
+export const PAID_CODES: Set<string> = new Set(MARKER_LIST.filter(m => m.isPaid).map(m => m.code));

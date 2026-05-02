@@ -6,13 +6,14 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSettingsSchema, systemSettingsSchema } from "@timesheet/shared";
+import type { LoginSettingsType, SystemSettingsType } from "@timesheet/shared";
 import { toISODateString } from "../../utils/dateUtils";
 import "../../styles/inputs.scss";
 import PageShell from "../../components/PageShell/PageShell";
 import PendingUserList from "./PendingUserList/PendingUserList";
 import { useAuth } from "../../context/AuthContext";
 import { useModal } from "../../components/Modal";
-import { useToast } from "../../components/ToastBar/ToastContext";
+import { useToast } from "../../components/ToastBar/useToast";
 import { useSettings } from "../../hooks/data/useSettings";
 import { useUsers } from "../../hooks/data/useUsers";
 import { USER_STATUS } from "@timesheet/shared";
@@ -29,12 +30,12 @@ function SettingsPage() {
     formState: { errors: loginErrors, isDirty: isLoginDirty },
     reset: resetLogin,
     setError: setLoginError,
-  } = useForm({
+  } = useForm<LoginSettingsType>({
     resolver: zodResolver(loginSettingsSchema),
     defaultValues: { username: user?.username || "", password: "" },
   });
 
-  const onLoginSubmit = async (data: Record<string, string>) => {
+  const onLoginSubmit = async (data: LoginSettingsType) => {
     const payload = {
       username: data.username,
       // Şifre alanı boşsa payload'a eklemiyoruz (Sadece kullanıcı adı güncelleme durumu)
@@ -45,13 +46,13 @@ function SettingsPage() {
     if (result.success) {
       toast({ type: "success", message: "Giriş bilgileriniz güncellendi." });
       // AuthContext'i güncelle ki Navbar'daki isim anlık değişsin
-      updateProfile({ username: result.data?.username || data.username });
+      updateProfile({ username: result.data.user.username || data.username });
       // Formu temizle ve yeni kullanıcı adını default yap
-      resetLogin({ username: result.data?.username || data.username, password: "" });
+      resetLogin({ username: result.data.user.username || data.username, password: "" });
     } else {
       toast({ type: "error", message: result.error || "Güncelleme başarısız." });
       // Eğer kullanıcı adı başkası tarafından alınmışsa (409 Conflict)
-      if (result.status === 409 || result.error?.includes('kullanımda') || result.error?.includes('already in use')) {
+      if (result.code === '409' || result.error?.includes('kullanımda') || result.error?.includes('already in use')) {
         setLoginError('username', { type: 'manual', message: 'Bu kullanıcı adı zaten kullanımda.' });
       }
     }
@@ -117,7 +118,7 @@ function SettingsPage() {
     handleSubmit: handleSystemSubmit,
     formState: { errors: systemErrors, isDirty: isSystemDirty },
     reset: resetSystem,
-  } = useForm({
+  } = useForm<SystemSettingsType>({
     resolver: zodResolver(systemSettingsSchema),
     defaultValues: {
       dailyAllowance: "",
@@ -127,11 +128,11 @@ function SettingsPage() {
     },
   });
 
-  const onSystemSubmit = async (data: any) => {
-    const norm = (v: any) => v || null;
+  const onSystemSubmit = async (data: SystemSettingsType) => {
+    const norm = (v: string | number | null | undefined) => v || null;
     const datesChanged =
-      norm(systemSettings?.programStart) !== norm(data.programStart) ||
-      norm(systemSettings?.programEnd) !== norm(data.programEnd);
+      norm(systemSettings?.programStartDate) !== norm(data.programStart) ||
+      norm(systemSettings?.programEndDate) !== norm(data.programEnd);
 
     if (datesChanged) {
       const confirmed = await showConfirm({
@@ -165,8 +166,8 @@ function SettingsPage() {
       resetSystem({
         dailyAllowance: systemSettings.dailyAllowance || "",
         weeklyLimit: systemSettings.weeklyLimit || "",
-        programStart: toISODateString(systemSettings.programStart),
-        programEnd: toISODateString(systemSettings.programEnd),
+        programStart: toISODateString(systemSettings.programStartDate),
+        programEnd: toISODateString(systemSettings.programEndDate),
       });
     }
   }, [systemSettings, resetSystem]);

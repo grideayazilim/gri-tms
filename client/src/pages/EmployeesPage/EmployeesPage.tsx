@@ -9,7 +9,7 @@ import { useFilter } from '../../hooks/data/useFilter';
 import { getEmployeeFilterConfig } from './employeeFilters';
 import { useEmployees } from '../../hooks/data/useEmployees';
 import { useLocationUnitFilter } from '../../hooks/data/useLocationUnitFilter';
-import { useToast } from '../../components/ToastBar/ToastContext';
+import { useToast } from '../../components/ToastBar/useToast';
 import '../../styles/inputs.scss';
 import type { EmployeeType } from '@timesheet/shared';
 

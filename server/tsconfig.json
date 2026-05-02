@@ -8,6 +8,7 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,
+    "composite": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,

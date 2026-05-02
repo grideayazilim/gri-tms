@@ -3,7 +3,10 @@
    DataTable bileşenine verilecek olan sütun tanımlamaları.
    ======================================================================== */
 import TimesheetDaysColumn from "./TimesheetDaysColumn/TimesheetDaysColumn";
+import type { Column } from "../../components/DynamicTable/DynamicTable";
+import type { TimesheetUIRow } from "../../hooks/data/useTimesheets";
 
+export type { TimesheetUIRow };
 
 /**
  * @param {string[]} periodDays       - periyottaki günlerin YYYY-MM-DD listesi
@@ -12,14 +15,6 @@ import TimesheetDaysColumn from "./TimesheetDaysColumn/TimesheetDaysColumn";
  * @param {string}   period           - YYYY-MM
  * @param {function} isPublicHoliday  - (dateStr) => boolean — opsiyonel
  */
-export interface TimesheetUIRow {
-  id: string;
-  tc: string;
-  name: string;
-  timesheet_days: Record<string, string>;
-  workDaysCount: number;
-  isLocked?: boolean;
-}
 
 export const timesheetColumns = (
   periodDays: string[],
@@ -27,7 +22,7 @@ export const timesheetColumns = (
   isDayCellDirty: ((rowId: string, dateStr: string) => boolean) | undefined,
   period: string,
   isPublicHoliday: ((dateStr: string) => boolean) | undefined,
-): any[] => [
+): Column<TimesheetUIRow>[] => [
     { header: "TC No", accessor: "tc", width: "120px" },
     { header: "Ad Soyad", accessor: "name", width: "150px" },
     {
@@ -39,11 +34,9 @@ export const timesheetColumns = (
           periodDays={periodDays}
           period={period}
           onDayClick={(dateStr, markerCode) => onDayClick(row, dateStr, markerCode)}
-          isDayCellDirty={
-            isDayCellDirty ? (dateStr) => isDayCellDirty(row.id, dateStr) : undefined
-          }
-          isPublicHoliday={isPublicHoliday}
-          isLocked={row.isLocked}
+          {...(isDayCellDirty ? { isDayCellDirty: (dateStr: string) => isDayCellDirty(row.id, dateStr) } : {})}
+          {...(isPublicHoliday ? { isPublicHoliday } : {})}
+          {...(row.isLocked !== undefined ? { isLocked: row.isLocked } : {})}
         />
       ),
     },

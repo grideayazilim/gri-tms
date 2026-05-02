@@ -144,8 +144,6 @@ const fmtDate = (v: unknown): string => {
   return d.toISOString().slice(0, 10);
 };
 
-const fmtBool = (v: unknown): string => (v == null ? '—' : v ? 'Evet' : 'Hayır');
-
 const fmtActive = (v: unknown): string => (v == null ? '—' : v ? 'Aktif' : 'Pasif');
 
 const fmtMoney = (v: unknown): string => {

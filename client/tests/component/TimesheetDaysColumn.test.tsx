@@ -7,7 +7,7 @@
  *  4. Long press (mobil) → context menü açılır
  */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, fireEvent, act } from '@testing-library/react';
 import TimesheetDaysColumn from '@/pages/TimesheetPage/TimesheetDaysColumn/TimesheetDaysColumn';
 
 // Framer-motion bypass

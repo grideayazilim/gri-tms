@@ -1,5 +1,6 @@
-import { eq, and, sql, ilike, inArray, asc } from 'drizzle-orm';
+import { eq, and, ilike, inArray, asc } from 'drizzle-orm';
 import { units, employees, periods, timesheets, timesheetDays, locations, settings } from '../../database/schema.js';
+import type { EmployeeInsert, TimesheetDayInsert } from '../../database/schema.js';
 import type { DbExecutor } from '../types/db.js';
 
 export const importRepo = {
@@ -25,12 +26,12 @@ export const importRepo = {
     return res[0];
   },
 
-  async insertEmployee(executor: DbExecutor, data: any) {
+  async insertEmployee(executor: DbExecutor, data: EmployeeInsert) {
     const res = await executor.insert(employees).values(data).returning();
     return res[0]!;
   },
 
-  async insertEmployeeOnConflictDoNothing(executor: DbExecutor, data: any) {
+  async insertEmployeeOnConflictDoNothing(executor: DbExecutor, data: EmployeeInsert) {
     const res = await executor.insert(employees).values(data).onConflictDoNothing({ target: employees.tcNo }).returning();
     return res[0];
   },
@@ -77,7 +78,7 @@ export const importRepo = {
     await executor.delete(timesheetDays).where(eq(timesheetDays.timesheetId, timesheetId));
   },
 
-  async insertTimesheetDays(executor: DbExecutor, rows: any[]) {
+  async insertTimesheetDays(executor: DbExecutor, rows: TimesheetDayInsert[]) {
     if (rows.length === 0) return;
     await executor.insert(timesheetDays).values(rows);
   },

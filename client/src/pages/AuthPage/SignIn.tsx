@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signInSchema } from "@timesheet/shared";
-import type { SignInType } from "@timesheet/shared";
+import { z } from "zod";
+import { signInSchema, type SignInType } from "@timesheet/shared";
 
 interface SignInProps {
   onToggle: () => void;
@@ -13,16 +13,19 @@ interface SignInProps {
 function SignIn({ onToggle }: SignInProps) {
   const [generalError, setGeneralError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
   // React Hook Form Kurulumu: Zod şeması ile validasyon yapılır.
+  // hookform/resolvers v5: zodResolver returns Resolver<z.input, any, z.output>.
+  // TFieldValues = z.input (matches resolver's first param exactly under EOP).
+  // TTransformedValues = SignInType (z.output) — what the submit handler receives.
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<SignInType>({
+  } = useForm<z.input<typeof signInSchema>, unknown, SignInType>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
       username: "",

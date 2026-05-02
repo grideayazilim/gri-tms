@@ -14,7 +14,9 @@
   },
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --treeshake --clean",
-    "dev": "tsup src/index.ts --format cjs,esm --watch --dts"
+    "dev": "tsup src/index.ts --format cjs,esm --watch --dts",
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'shared: no lint config (TS-only, checked via typecheck)'"
   },
   "dependencies": {
     "zod": "^3.22.4"

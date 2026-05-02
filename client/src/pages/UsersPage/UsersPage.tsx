@@ -9,7 +9,7 @@ import { useFilter } from '../../hooks/data/useFilter';
 import { userFilterConfig } from './userFilters';
 import { useUsers } from '../../hooks/data/useUsers';
 import { useLocationUnitFilter } from '../../hooks/data/useLocationUnitFilter';
-import { useToast } from '../../components/ToastBar/ToastContext';
+import { useToast } from '../../components/ToastBar/useToast';
 import '../../styles/inputs.scss';
 import type { UserEditType } from '@timesheet/shared';
 

@@ -3,8 +3,20 @@
    Export işlemlerini customExcelHandler'a yönlendirir.
    ======================================================================== */
 
+export interface ExcelEmployee {
+  id: string;
+  tcNo: string | null;
+  firstName: string;
+  lastName: string;
+  ibanNo: string | null;
+  unitId: string;
+  unitName: string;
+  startDate: string;
+  endDate: string | null;
+}
+
 export interface TimesheetExcelOptions {
-  employees: any[];
+  employees: ExcelEmployee[];
   daysMap: Record<string, Record<string, string>>;
   dailyWage: number;
   year: number;
@@ -16,7 +28,7 @@ export interface TimesheetExcelOptions {
 }
 
 export interface BotExcelOptions {
-  employees: any[];
+  employees: ExcelEmployee[];
   daysMap: Record<string, Record<string, string>>;
   year: number;
   month: number;
@@ -28,13 +40,16 @@ export interface ExcelHandlerModule {
   generateBotExcel(options: BotExcelOptions): Promise<Buffer>;
 }
 
+function isModuleNotFound(err: unknown): boolean {
+  return err instanceof Error && 'code' in err && err.code === 'ERR_MODULE_NOT_FOUND';
+}
+
 export async function generateTimesheetExcel(options: TimesheetExcelOptions): Promise<Buffer> {
   try {
-    // @ts-expect-error: customExcelHandler is a gitignored file that may not exist
     const mod = (await import('./customExcelHandler.js')) as ExcelHandlerModule;
     return mod.generateTimesheetExcel(options);
-  } catch (err: any) {
-    if (err.code === 'ERR_MODULE_NOT_FOUND') {
+  } catch (err: unknown) {
+    if (isModuleNotFound(err)) {
       throw Object.assign(new Error('Excel export is not implemented'), { status: 501 });
     }
     throw err;
@@ -43,14 +58,12 @@ export async function generateTimesheetExcel(options: TimesheetExcelOptions): Pr
 
 export async function generateBotExcel(options: BotExcelOptions): Promise<Buffer> {
   try {
-    // @ts-expect-error: customExcelHandler is a gitignored file that may not exist
     const mod = (await import('./customExcelHandler.js')) as ExcelHandlerModule;
     return mod.generateBotExcel(options);
-  } catch (err: any) {
-    if (err.code === 'ERR_MODULE_NOT_FOUND') {
+  } catch (err: unknown) {
+    if (isModuleNotFound(err)) {
       throw Object.assign(new Error('Excel export is not implemented'), { status: 501 });
     }
     throw err;
   }
 }
-

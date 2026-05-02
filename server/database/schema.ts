@@ -158,7 +158,7 @@ export const settings = appSchema.table('settings', {
   programEndDate: date('program_end_date').notNull(),
   createdAt: timestamp('created_at', { withTimezone: false }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).defaultNow(),
-}, (table) => ({
+}, (_table) => ({
   idCheck: sql`CHECK (id = 1)`,
   wageCheck: sql`CHECK (daily_wage > (0)::numeric)`,
   weeklyCheck: sql`CHECK (max_weekly_days > 0)`,

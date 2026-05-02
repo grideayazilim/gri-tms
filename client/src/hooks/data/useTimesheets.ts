@@ -60,8 +60,8 @@ const mapPeriod = (p: PeriodItem): UIPeriod => ({
   label: `${p.year} ${TURKISH_MONTHS[p.month - 1] ?? ''}`,
   // Not: API'deki period objesinde startDate ve endDate olmayabilir (şu anki tipe göre).
   // TS hatasını önlemek için güvenli erişim:
-  startDate: (p as any).startDate || (p as any).start_date || '',
-  endDate: (p as any).endDate || (p as any).end_date || '',
+  startDate: `${p.year}-${String(p.month).padStart(2, '0')}-01`,
+  endDate: new Date(p.year, p.month, 0).toISOString().split('T')[0] ?? '',
   isLocked: p.isLocked,
 });
 
@@ -89,10 +89,10 @@ const mapTimesheetToUI = (ts: TimesheetListItem): TimesheetUIRow => {
     locationId: ts.location?.id ?? null,
     periodId: ts.timesheet.periodId,
     // API tarafındaki Period join'e bağlı isLocked alanının güvenli erişimi
-    isLocked: (ts as any).period?.isLocked || false,
+    isLocked: ts.period?.isLocked ?? false,
     timesheet_days,
     // totalWorkDays varsa ekle
-    workDaysCount: (ts as any).totalWorkDays,
+    ...(ts.totalWorkDays !== undefined ? { workDaysCount: ts.totalWorkDays } : {}),
   };
 };
 

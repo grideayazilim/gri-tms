@@ -2,7 +2,7 @@
    TIMESHEET FILTERS (PUANTAJ FİLTRE KONFİGÜRASYONU)
    Puantaj sayfasındaki filtre barının (Dönem, Yerleşke, Birim) yapısını tanımlar.
    ======================================================================== */
-import type { FilterField } from "../../hooks/data/useFilter";
+import type { FilterField, SelectField } from "../../hooks/data/useFilter";
 
 export const getTimesheetFilterConfig = (
   periods: { value: string; label: string }[],
@@ -10,7 +10,7 @@ export const getTimesheetFilterConfig = (
   units: { value: string | number; label: string }[],
   isAdmin: boolean
 ): FilterField[] => {
-  const config = [
+  const config: FilterField[] = [
     {
       key: "period",
       apiParam: "month",
@@ -23,7 +23,7 @@ export const getTimesheetFilterConfig = (
       apiParam: "locationId",
       label: "Yerleşke",
       type: "select" as const,
-      options: locations,
+      options: locations.map(l => ({ value: String(l.value), label: l.label })),
       defaultOption: "Tüm Yerleşkeler",
     },
     {
@@ -31,7 +31,7 @@ export const getTimesheetFilterConfig = (
       apiParam: "unitId",
       label: "Birim",
       type: "select" as const,
-      options: units,
+      options: units.map(u => ({ value: String(u.value), label: u.label })),
       defaultOption: "Tüm Birimler",
     },
     {
@@ -40,18 +40,17 @@ export const getTimesheetFilterConfig = (
       label: "Çalışan Ara",
       type: "text" as const,
     },
-  ] as any;
+  ];
 
   if (isAdmin) return config;
 
-  // Sorumlu (RESPONSIBLE) kullanıcılar sadece kendi yerleşke ve birimlerini 
+  // Sorumlu (RESPONSIBLE) kullanıcılar sadece kendi yerleşke ve birimlerini
   // görebileceği için "Tüm Yerleşkeler" seçeneğini kaldırıyoruz.
-  return config.map((field) => {
-    if (field.key === "location" || field.key === "unit") {
-      const { defaultOption, ...rest } = field as any;
-      return rest as FilterField;
+  return config.map((field): FilterField => {
+    if ((field.key === "location" || field.key === "unit") && field.type === "select") {
+      const { defaultOption: _defaultOption, ...rest } = field as SelectField;
+      return rest;
     }
-    return field as FilterField;
+    return field;
   });
 };
-

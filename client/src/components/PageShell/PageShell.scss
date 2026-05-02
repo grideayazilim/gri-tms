@@ -45,6 +45,16 @@
 }
 
 /* ==========================================
+   Page Title Group (Başlık + Bilgi Butonu)
+   ========================================== */
+
+.page-title-group {
+  display: flex;
+  align-items: center;
+  column-gap: var(--space-sm);
+}
+
+/* ==========================================
    Page Actions
    ========================================== */
 

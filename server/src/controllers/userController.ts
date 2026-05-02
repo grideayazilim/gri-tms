@@ -56,12 +56,13 @@ export const getUsers = asyncHandler(async (req, res) => {
 
 export const updateUser = asyncHandler(async (req, res) => {
   const { userId } = req.params as { userId: string };
-  const { role, status, unitId, locationId, expiryDate } = req.body as {
+  const { role, status, unitId, locationId, expiryDate, forceNewPassword } = req.body as {
     role?: string;
     status?: string;
     unitId?: string;
     locationId?: string;
     expiryDate?: string | null;
+    forceNewPassword?: string;
   };
 
   const result = await withDrizzleTransaction(async (tx) => {
@@ -85,12 +86,22 @@ export const updateUser = asyncHandler(async (req, res) => {
       newStatus = USER_STATUS.ACTIVE;
     }
 
+    // Admin şifre sıfırlama: forceNewPassword varsa sadece ADMIN yapabilir
+    let passwordHash: string | undefined;
+    if (forceNewPassword) {
+      if (req.user!.role !== USER_ROLE.ADMIN) {
+        throw Object.assign(new Error('Başka bir kullanıcının şifresini değiştirmek için admin yetkisi gereklidir.'), { status: 403 });
+      }
+      passwordHash = await bcrypt.hash(forceNewPassword, 10);
+    }
+
     const updatedUser = await userRepo.updateUser(tx, userId, {
       role: newRole,
       status: newStatus,
       unitId: newUnitId ?? null,
       locationId: newLocationId ?? null,
       expiryDate: newExpiryDate ?? null,
+      ...(passwordHash ? { passwordHash } : {}),
     });
 
     if (!updatedUser) return null;
@@ -113,16 +124,30 @@ export const updateUser = asyncHandler(async (req, res) => {
       idLookup,
     );
 
-    await createAuditLog(tx, {
-      action: AUDIT_ACTION.USER_UPDATE,
-      actor: buildActor(req),
-      entityType: AUDIT_ENTITY_TYPE.USER,
-      entityId: userId,
-      summary: changes.length > 0
-        ? `${existingUser.username} adlı kullanıcı güncellendi (${changes.length} alan değişti).`
-        : `${existingUser.username} adlı kullanıcı güncellendi.`,
-      changes,
-    });
+    if (!forceNewPassword) {
+      await createAuditLog(tx, {
+        action: AUDIT_ACTION.USER_UPDATE,
+        actor: buildActor(req),
+        entityType: AUDIT_ENTITY_TYPE.USER,
+        entityId: userId,
+        summary: changes.length > 0
+          ? `${existingUser.username} adlı kullanıcı güncellendi (${changes.length} alan değişti).`
+          : `${existingUser.username} adlı kullanıcı güncellendi.`,
+        changes,
+      });
+    }
+
+    // Admin şifre sıfırlama audit logu
+    if (forceNewPassword) {
+      await createAuditLog(tx, {
+        action: AUDIT_ACTION.USER_PASSWORD_CHANGE,
+        actor: buildActor(req),
+        entityType: AUDIT_ENTITY_TYPE.USER,
+        entityId: userId,
+        summary: `Admin ${req.user!.username}, ${existingUser.username} kullanıcısının şifresini sıfırladı.`,
+        changes: ['Şifre güncellendi'],
+      });
+    }
 
     return updatedUser;
   });

@@ -34,11 +34,19 @@ const runSeed = async () => {
     await db.execute(sql`
       INSERT INTO app.users (username, password_hash, role, status)
       VALUES ('admin', ${passwordHash}, 'ADMIN', 'ACTIVE')
-      ON CONFLICT (username) DO UPDATE 
+      ON CONFLICT (username) DO UPDATE
       SET password_hash = ${passwordHash}, role = 'ADMIN', status = 'ACTIVE';
     `);
 
-    console.log('✅ Seed işlemi başarıyla tamamlandı. Admin kullanıcısı oluşturuldu/güncellendi.');
+    // Sistem ayarlarını ekle veya varsa günlük ücret ve haftalık gün sınırını güncelle
+    await db.execute(sql`
+      INSERT INTO app.settings (id, daily_wage, max_weekly_days, program_start_date, program_end_date)
+      VALUES (1, 1080.50, 3, CURRENT_DATE, CURRENT_DATE + INTERVAL '1 day')
+      ON CONFLICT (id) DO UPDATE
+      SET daily_wage = 1080.50, max_weekly_days = 3;
+    `);
+
+    console.log('✅ Seed işlemi başarıyla tamamlandı. Admin kullanıcısı ve sistem ayarları oluşturuldu/güncellendi.');
   } catch (error) {
     console.error('❌ Seed hatası:', error);
     process.exit(1);

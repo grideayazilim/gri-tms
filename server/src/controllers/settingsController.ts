@@ -6,7 +6,8 @@ import type { Request, Response } from 'express';
 import { db, withDrizzleTransaction } from '../config/database.js';
 import { createAuditLog, buildActor, diffEntity } from '../utils/auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_ROLE } from '@timesheet/shared';
-import { toISODateString, parseLocalDate, startOfMonth, endOfMonth, eachMonthOfInterval } from '../utils/dateUtils.js';
+import { toISODateString } from '../utils/dateUtils.js';
+import { regeneratePeriodsForRange } from '../utils/periodGenerator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { notFound } from '../utils/AppError.js';
 import { settingsRepo } from '../repositories/settingsRepo.js';
@@ -124,39 +125,8 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
 
     if (dateChanged) {
       if (newStart && newEnd) {
-        const parsedStart = parseLocalDate(newStart);
-        const parsedEnd = parseLocalDate(newEnd);
-
-        // 1. Yeni sınırların dışındaki tüm dönemleri sil (is_deleted = true)
-        await settingsRepo.deletePeriodsOutside(tx, newStart, newEnd);
-
-        // 2. Yeni tarih aralığındaki tüm ayları hesapla
-        if (parsedStart && parsedEnd) {
-          const months = eachMonthOfInterval({ start: parsedStart, end: parsedEnd });
-
-          for (const monthDate of months) {
-            const y = monthDate.getFullYear();
-            const m = monthDate.getMonth() + 1;
-
-            // Ayın başlangıcı
-            const periodStart = (y === parsedStart.getFullYear() && m === parsedStart.getMonth() + 1)
-              ? parsedStart
-              : startOfMonth(monthDate);
-
-            // Ayın bitişi
-            const periodEnd = (y === parsedEnd.getFullYear() && m === parsedEnd.getMonth() + 1)
-              ? parsedEnd
-              : endOfMonth(monthDate);
-
-            // Dönemi oluştur veya varsa tarihlerini güncelle
-            await settingsRepo.upsertPeriod(tx, {
-              year: y,
-              month: m,
-              startDate: toISODateString(periodStart)!,
-              endDate: toISODateString(periodEnd)!,
-            });
-          }
-        }
+        // Dönemleri yeni tarih aralığına göre yeniden oluştur
+        await regeneratePeriodsForRange(tx, newStart, newEnd);
       } else {
         await settingsRepo.markAllPeriodsDeleted(tx);
       }

@@ -15,7 +15,7 @@ import { notFound } from '../utils/AppError.js';
 import { importRepo } from '../repositories/importRepo.js';
 import type { DbExecutor } from '../types/db.js';
 
-async function fetchExportData(tx: DbExecutor, locationId: string, year: number, month: number) {
+export async function fetchExportData(tx: DbExecutor, locationId: string, year: number, month: number) {
   const location = await importRepo.getLocation(tx, locationId);
   if (!location) return null;
 

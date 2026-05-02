@@ -147,7 +147,7 @@ export async function list(
 export async function updateUser(
   executor: DbExecutor,
   id: string,
-  data: Partial<Pick<UserRow, 'role' | 'status' | 'unitId' | 'locationId' | 'expiryDate'>>,
+  data: Partial<Pick<UserRow, 'role' | 'status' | 'unitId' | 'locationId' | 'expiryDate' | 'passwordHash'>>,
 ): Promise<UserRow | undefined> {
   const rows = await executor
     .update(users)

@@ -44,6 +44,7 @@ export const AUDIT_ACTION = Object.freeze({
   UNIT_DELETE: 'UNIT_DELETE',
   // Settings
   SETTINGS_UPDATE: 'SETTINGS_UPDATE',
+  SYSTEM_RESET: 'SYSTEM_RESET',
   // Excel
   EXCEL_IMPORT: 'EXCEL_IMPORT',
   EXCEL_EXPORT: 'EXCEL_EXPORT',
@@ -123,6 +124,7 @@ export const AUDIT_ACTION_META: Record<string, { category: AuditCategory; label:
   UNIT_DELETE: { category: 'LOCATION_UNIT', label: 'Birim Silme' },
 
   SETTINGS_UPDATE: { category: 'SETTINGS', label: 'Ayarlar Güncelleme' },
+  SYSTEM_RESET: { category: 'SETTINGS', label: 'Sistem Sıfırlama' },
 
   EXCEL_IMPORT: { category: 'EXCEL_IMPORT', label: 'Excel İçe Aktarma' },
   BULK_EMPLOYEE_IMPORT: { category: 'EXCEL_IMPORT', label: 'Toplu Çalışan Aktarma' },

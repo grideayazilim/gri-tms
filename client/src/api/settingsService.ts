@@ -2,9 +2,10 @@
    SETTINGS SERVICE (AYARLAR SERVİSİ)
    Sistem ayarları ve onay bekleyen kullanıcı işlemleri.
    ======================================================================== */
-import type { ApiResponse, PendingUserItem, SystemSettings, SystemSettingsType } from '@timesheet/shared';
+import type { ApiResponse, PendingUserItem, SystemSettings, SystemSettingsType, SystemResetType } from '@timesheet/shared';
 
 import { api } from './httpClient';
+import httpClient from './httpClient';
 
 // ─── PENDING USERS ────────────────────────────────────────────────────────────
 
@@ -24,3 +25,13 @@ export const getSystemSettings = () =>
 
 export const updateSystemSettings = (data: SystemSettingsType & { force?: boolean }) =>
   api.put<ApiResponse<{ settings: SystemSettings }>>('/settings/system', data);
+
+// ─── SYSTEM RESET ──────────────────────────────────────────────────────────────
+
+// Yedekli modda yanıt Blob (zip), yedeksiz modda JSON başarı yanıtı döner
+export const resetSystem = (data: SystemResetType): Promise<Blob | ApiResponse<Record<string, never>>> => {
+  if (data.backup) {
+    return httpClient.post<unknown, Blob>('/settings/reset', data, { responseType: 'blob' });
+  }
+  return api.post<ApiResponse<Record<string, never>>>('/settings/reset', data);
+};

@@ -2,7 +2,7 @@
    SETTINGS PAGE (AYARLAR SAYFASI)
    Hem kişisel profil (şifre/username) hem de global sistem ayarlarını yönetir.
    ======================================================================== */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSettingsSchema, systemSettingsSchema } from "@timesheet/shared";
@@ -17,11 +17,12 @@ import { useToast } from "../../components/ToastBar/useToast";
 import { useSettings } from "../../hooks/data/useSettings";
 import { useUsers } from "../../hooks/data/useUsers";
 import { USER_STATUS } from "@timesheet/shared";
+import { resetSystem as callResetSystem } from "../../api/settingsService";
 import "./SettingsPage.scss";
 
 
 function SettingsPage() {
-  const { isAdmin, user, updateProfile } = useAuth();
+  const { isAdmin, user, updateProfile, logout } = useAuth();
 
   // GİRİŞ BİLGİLERİ FORM
   const {
@@ -73,6 +74,15 @@ function SettingsPage() {
   } = useSettings();
 
   const { editProfile } = useUsers();
+
+  // ─── Sistem Sıfırlama State ───────────────────────────────────────────────
+  const [resetBackup, setResetBackup] = useState<'with' | 'without'>('with');
+  const [resetDeleteLocations, setResetDeleteLocations] = useState(false);
+  const [resetDailyWage, setResetDailyWage] = useState('');
+  const [resetWeeklyDays, setResetWeeklyDays] = useState('');
+  const [resetStartDate, setResetStartDate] = useState('');
+  const [resetEndDate, setResetEndDate] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
 
   useEffect(() => {
     if (isAdmin) {
@@ -160,6 +170,75 @@ function SettingsPage() {
       fetchSystemSettings();
     }
   }, [isAdmin, fetchSystemSettings]);
+
+  const handleSystemReset = async () => {
+    const dailyWageNum = parseFloat(resetDailyWage);
+    const weeklyDaysNum = parseInt(resetWeeklyDays, 10);
+
+    if (!resetDailyWage || isNaN(dailyWageNum) || dailyWageNum <= 0) {
+      toast({ type: "error", message: "Geçerli bir günlük ücret giriniz." });
+      return;
+    }
+    if (!resetWeeklyDays || isNaN(weeklyDaysNum) || weeklyDaysNum <= 0) {
+      toast({ type: "error", message: "Geçerli bir haftalık gün sınırı giriniz." });
+      return;
+    }
+    if (!resetStartDate || !resetEndDate) {
+      toast({ type: "error", message: "Lütfen program başlangıç ve bitiş tarihlerini giriniz." });
+      return;
+    }
+    if (resetEndDate <= resetStartDate) {
+      toast({ type: "error", message: "Bitiş tarihi başlangıç tarihinden sonra olmalıdır." });
+      return;
+    }
+
+    const confirmed = await showConfirm({
+      title: 'Sistemi Sıfırla',
+      message: 'Bu işlem geri alınamaz. Devam etmek istediğinizden emin misiniz?',
+      type: 'danger',
+      confirmText: 'Onayla',
+      cancelText: 'İptal',
+    });
+    if (!confirmed) return;
+
+    setIsResetting(true);
+    try {
+      const payload = {
+        backup: resetBackup === 'with',
+        deleteLocationsAndUnits: resetDeleteLocations,
+        newSettings: {
+          dailyWage: dailyWageNum,
+          maxWeeklyDays: weeklyDaysNum,
+          programStartDate: resetStartDate,
+          programEndDate: resetEndDate,
+        },
+      };
+
+      const response = await callResetSystem(payload);
+
+      // Yedekli modda yanıt blob olarak gelir → indir
+      if (payload.backup && response instanceof Blob) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        const url = URL.createObjectURL(response);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sistem-yedegi-${timestamp}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      toast({ type: "success", message: "Sistem başarıyla sıfırlandı." });
+      // Admin olmayan tüm session'lar geçersiz oldu; tutarlı başlangıç için logout yap
+      setTimeout(() => { void logout(); }, 2000);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Sistem sıfırlanamadı.';
+      toast({ type: "error", message });
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   useEffect(() => {
     if (systemSettings) {
@@ -308,6 +387,135 @@ function SettingsPage() {
           Sistem Ayarlarını Güncelle
         </button>
       </form>
+      )}
+      {/* --- SİSTEM SIFIRLAMA (DANGER ZONE) --- */}
+      {isAdmin && (
+        <div className="settings-card settings-card--danger">
+          <h2 className="settings-card__title settings-card__title--danger">Sistem Sıfırlama</h2>
+          <p className="settings-card__description">
+            Bu işlem geri alınamaz. Sistem yeni bir programa geçiş için sıfırlanır.
+            Adminler korunur; tüm çalışanlar, kullanıcılar ve log kayıtları silinir.
+          </p>
+
+          {/* Yedekleme Seçeneği */}
+          <div className="reset-section">
+            <p className="reset-section__label">Yedekleme Seçeneği</p>
+            <label className="checkbox-label">
+              <input
+                type="radio"
+                name="resetBackup"
+                value="with"
+                checked={resetBackup === 'with'}
+                onChange={() => setResetBackup('with')}
+              />
+              <span>Yedekli (önerilen)</span>
+            </label>
+            <p className="reset-section__hint">
+              Silmeden önce tüm aktif dönemler için yerleşke bazında maaş Excel çıktısı alınır ve zip olarak indirilir.
+            </p>
+            <label className="checkbox-label" style={{ marginTop: '6px' }}>
+              <input
+                type="radio"
+                name="resetBackup"
+                value="without"
+                checked={resetBackup === 'without'}
+                onChange={() => setResetBackup('without')}
+              />
+              <span>Yedeksiz</span>
+            </label>
+            <p className="reset-section__hint">
+              Yedekleme yapılmaz, veriler direkt silinir.
+            </p>
+          </div>
+
+          {/* Sıfırlama Sonrası Ayarlar */}
+          <div className="reset-section">
+            <p className="reset-section__label">Sıfırlama Sonrası Ayarlar</p>
+
+            <label className="checkbox-label" style={{ marginBottom: '12px' }}>
+              <input
+                type="checkbox"
+                checked={resetDeleteLocations}
+                onChange={(e) => setResetDeleteLocations(e.target.checked)}
+              />
+              <span>Yerleşke ve birimleri de sil</span>
+            </label>
+            <p className="reset-section__hint" style={{ marginTop: '-8px', marginBottom: '12px' }}>
+              İşaretlenirse tüm lokasyon ve birim verileri de temizlenir.
+            </p>
+
+            <div className="settings-row">
+              <div className="floating-group">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  id="resetDailyWage"
+                  className="input"
+                  placeholder=" "
+                  value={resetDailyWage}
+                  onChange={(e) => setResetDailyWage(e.target.value)}
+                />
+                <label htmlFor="resetDailyWage" className="floating-group__label">
+                  Günlük Ödenek (₺)
+                </label>
+              </div>
+
+              <div className="floating-group">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  id="resetWeeklyDays"
+                  className="input"
+                  placeholder=" "
+                  value={resetWeeklyDays}
+                  onChange={(e) => setResetWeeklyDays(e.target.value)}
+                />
+                <label htmlFor="resetWeeklyDays" className="floating-group__label">
+                  Haftalık Çalışma Sınırı (Gün)
+                </label>
+              </div>
+            </div>
+
+            <div className="settings-row">
+              <div className="floating-group">
+                <input
+                  type="date"
+                  id="resetStartDate"
+                  className="input"
+                  placeholder=" "
+                  value={resetStartDate}
+                  onChange={(e) => setResetStartDate(e.target.value)}
+                />
+                <label htmlFor="resetStartDate" className="floating-group__label">
+                  Yeni Program Başlangıcı
+                </label>
+              </div>
+
+              <div className="floating-group">
+                <input
+                  type="date"
+                  id="resetEndDate"
+                  className="input"
+                  placeholder=" "
+                  value={resetEndDate}
+                  onChange={(e) => setResetEndDate(e.target.value)}
+                />
+                <label htmlFor="resetEndDate" className="floating-group__label">
+                  Yeni Program Bitişi
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn--danger settings-card__submit"
+            onClick={handleSystemReset}
+            disabled={isResetting}
+          >
+            {isResetting ? 'Sıfırlanıyor...' : 'Sistemi Sıfırla'}
+          </button>
+        </div>
       )}
     </PageShell>
   );

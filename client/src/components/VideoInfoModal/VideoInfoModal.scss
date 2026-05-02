@@ -1,0 +1,123 @@
+@use "../../styles/variables.scss" as *;
+
+/* ==========================================
+   Video Info Overlay
+   ========================================== */
+
+.video-info-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-md);
+  z-index: 3000;
+}
+
+/* ==========================================
+   Video Info Container
+   ========================================== */
+
+.video-info-container {
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  max-width: 720px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  @media (max-width: $bp-sm) {
+    max-width: 100%;
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ==========================================
+   Video Info Header
+   ========================================== */
+
+.video-info-header {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-md);
+  flex-shrink: 0;
+
+  @media (max-width: $bp-sm) {
+    padding: var(--space-md);
+  }
+}
+
+/* ==========================================
+   Video Info Video Area
+   ========================================== */
+
+.video-info-video {
+  padding: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  line-height: 0;
+  background: #000;
+
+  video {
+    display: block;
+    width: 100%;
+    margin: 0;
+    aspect-ratio: 16 / 9;
+    object-fit: contain;
+  }
+}
+
+/* ==========================================
+   Video Info Navigation
+   ========================================== */
+
+.video-info-nav {
+  padding: var(--space-md) var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+
+  @media (max-width: $bp-sm) {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  &__counter {
+    color: var(--text-muted);
+    font-size: var(--font-size-small);
+  }
+}
+
+/* ==========================================
+   Info Trigger Button (Bilgi İkonu)
+   ========================================== */
+
+.info-trigger-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background-color: var(--surface-hover-color);
+    color: var(--text-primary);
+  }
+}
+

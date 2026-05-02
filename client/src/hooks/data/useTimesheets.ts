@@ -137,7 +137,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
         return { success: true, data: { rows: [] } };
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Puantaj verileri alınırken hata oluştu';
+      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Puantaj verileri alınırken hata oluştu';
       setError(message);
       setTimesheets([]);
       return { success: false, error: message };
@@ -173,7 +173,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
          return { success: false, error: response.message || 'Puantaj kaydedilemedi' };
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Puantaj kaydedilemedi';
+      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Puantaj kaydedilemedi';
       return { success: false, error: message };
     } finally {
       setIsSaving(false);
@@ -190,7 +190,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
          return { success: false, error: response.message || 'Kilit durumu değiştirilemedi' };
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Kilit durumu değiştirilemedi';
+      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Kilit durumu değiştirilemedi';
       return { success: false, error: message };
     } finally {
       setIsLocking(false);

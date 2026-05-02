@@ -53,6 +53,49 @@
 }
 
 /* ==========================================
+   Danger Zone (Sistem Sıfırlama)
+   ========================================== */
+
+.settings-card--danger {
+  background-color: #fff5f5;
+  border-color: #fca5a5;
+}
+
+.settings-card__title--danger {
+  color: var(--error-color, #ef4444);
+  border-bottom-color: #fca5a5;
+}
+
+.settings-card__description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.reset-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: var(--space-sm) 0;
+  border-top: 1px solid #fca5a5;
+
+  &__label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+  }
+
+  &__hint {
+    font-size: 0.75rem;
+    color: var(--text-muted, var(--text-secondary));
+    margin: 0;
+    line-height: 1.4;
+  }
+}
+
+/* ==========================================
    Checkbox Label
    ========================================== */
 

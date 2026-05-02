@@ -222,11 +222,11 @@ $line-color: var(--border-color);
   }
 }
 
-// L Şekli: Birim Ekle
+// L Şekli: Birim Ekle — yalnızca üstünde en az bir birim varsa çizgi göster
 .add-unit-btn {
   margin-left: 4px;
 
-  &::before {
+  &.has-units::before {
     content: "";
     position: absolute;
     left: calc(($tree-indent / 2 + 4px) * -1);
@@ -240,10 +240,10 @@ $line-color: var(--border-color);
   }
 }
 
-// L Şekli: Yerleşke Ekle
+// L Şekli: Yerleşke Ekle — yalnızca üstünde en az bir yerleşke varsa çizgi göster
 .add-location-btn {
 
-  &::before {
+  .has-locations &::before {
     content: "";
     position: absolute;
     left: -#{$tree-indent};

@@ -373,7 +373,7 @@ function LocationsPage() {
       <div className="locations-warning">
         <strong>Uyarı:</strong> Bir yerleşke veya birimi sildiğinizde, ilgili oluşuma ait tüm çalışanlar, puantaj verileri ve sistem sorumluları da <strong>kalıcı olarak silinir</strong>.
       </div>
-      <div className="locations-tree">
+      <div className={`locations-tree${locations.length > 0 ? ' has-locations' : ''}`}>
         <div className="tree-root-line" />
 
         {locations.map((location) => {
@@ -570,7 +570,7 @@ function LocationsPage() {
 
                     <button
                       type="button"
-                      className="add-btn add-unit-btn"
+                      className={`add-btn add-unit-btn${location.units.length > 0 ? ' has-units' : ''}`}
                       onClick={() => addUnit(location.id)}
                     >
                       + Yeni Birim Ekle

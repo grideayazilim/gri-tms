@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { userEditSchema } from '@timesheet/shared';
@@ -16,6 +16,12 @@ interface UserEditModalProps {
 
 const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
   const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
+
+  // Şifre sıfırlama bölümü için yerel state
+  const [changePassword, setChangePassword] = useState(false);
+  const [newPasswordValue, setNewPasswordValue] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -51,6 +57,10 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
         locationId: user.unit?.location?.id?.toString() || '',
         unitId: user.unit?.id?.toString() || '',
       });
+      // Kullanıcı değiştiğinde şifre alanını sıfırla
+      setChangePassword(false);
+      setNewPasswordValue('');
+      setPasswordError(null);
     }
   }, [user, reset]);
 
@@ -58,6 +68,15 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
   const selectedUnitId = watch('unitId');
 
   const onSubmit = (data: UserEditType) => {
+    // Şifre sıfırlama validasyonu
+    if (changePassword) {
+      if (!newPasswordValue || newPasswordValue.length < 6) {
+        setPasswordError('Şifre en az 6 karakter olmalıdır');
+        return;
+      }
+    }
+    setPasswordError(null);
+
     onSave({
       role: data.role,
       // Tarih seçilmemişse veritabanına null gönderiyoruz (Süresiz kullanıcı)
@@ -65,6 +84,8 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
       // Rol ADMIN ise yerleşke/birim null gönderilir
       locationId: data.locationId || null,
       unitId: data.unitId || null,
+      // Checkbox işaretli ve dolu ise şifreyi payload'a ekle
+      ...(changePassword && newPasswordValue ? { forceNewPassword: newPasswordValue } : {}),
     });
   };
 
@@ -155,6 +176,47 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
         </div>
       </div>
 
+      {/* ─── ŞİFRE SIFIRLAMA ─────────────────────────────────────────── */}
+      <hr className="modal-form__divider" />
+      <div className="modal-form__password-reset">
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={changePassword}
+            onChange={(e) => {
+              setChangePassword(e.target.checked);
+              if (!e.target.checked) {
+                setNewPasswordValue('');
+                setPasswordError(null);
+              }
+            }}
+          />
+          <span>Şifreyi değiştir</span>
+        </label>
+
+        {changePassword && (
+          <div className="floating-group" style={{ marginTop: '8px' }}>
+            <input
+              type="password"
+              id="forceNewPassword"
+              className={`input ${passwordError ? 'input--error' : ''}`}
+              placeholder=" "
+              value={newPasswordValue}
+              onChange={(e) => {
+                setNewPasswordValue(e.target.value);
+                if (passwordError) setPasswordError(null);
+              }}
+            />
+            <label htmlFor="forceNewPassword" className="floating-group__label">
+              Yeni şifre (en az 6 karakter)
+            </label>
+            {passwordError && (
+              <span className="input-error-message">{passwordError}</span>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="modal-form__actions">
         <button type="button" className="btn btn--secondary" onClick={() => onClose(null)}>
           Vazgeç
@@ -162,7 +224,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
         <button
           type="submit"
           className="btn"
-          disabled={!isDirty}
+          disabled={!isDirty && !changePassword}
         >
           Güncelle
         </button>

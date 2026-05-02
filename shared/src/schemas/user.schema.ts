@@ -16,6 +16,8 @@ export const userEditSchema = z.object({
     expiryDate: z.string().optional().nullable(),
     locationId: z.string().optional().nullable(),
     unitId: z.string().optional().nullable(),
+    // Admin tarafından kullanıcının şifresini sıfırlamak için opsiyonel alan
+    forceNewPassword: z.string().min(6, 'Şifre en az 6 karakter olmalıdır').optional(),
 }).superRefine((val, ctx) => {
     // Birim Sorumlusu (RESPONSIBLE) için ek kısıtlamalar:
     // Hesap süresi (expiryDate), Yerleşke ve Birim tanımlı olmalıdır.

@@ -26,4 +26,5 @@ export * from './schemas/settings.schema';
 export * from './schemas/holiday.schema';
 export * from './schemas/export.schema';
 export * from './schemas/import.schema';
+export * from './schemas/reset.schema';
 

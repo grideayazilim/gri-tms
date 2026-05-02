@@ -140,7 +140,3 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# Custom Excel Export configurations
-src/utils/customExcelHandler.ts
-src/templates/*_template.xlsm
-!src/templates/timesheet_template.xlsm

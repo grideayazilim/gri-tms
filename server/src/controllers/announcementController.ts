@@ -47,7 +47,7 @@ export const getAnnouncements = asyncHandler(async (req: Request, res: Response)
 
 export const getUnreadCount = asyncHandler(async (req: Request, res: Response) => {
   const count = await announcementRepo.getUnreadCount(db, req.user!.id);
-  res.json({ success: true, data: { count } });
+  res.json({ success: true, data: { unreadCount: count } });
 });
 
 export const markAsRead = asyncHandler(async (req: Request, res: Response) => {

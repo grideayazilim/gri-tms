@@ -335,7 +335,8 @@ const TimesheetPage = () => {
 
     const result = await toggleLockPeriod(periodId);
     if (result.success) {
-      const newState = result.data?.period?.isLocked ?? false;
+      // Sunucu { isLocked: boolean } döndürür, period wrapper'ı yoktur
+      const newState = (result.data as { isLocked?: boolean })?.isLocked ?? !periodIsLocked;
       setPeriodIsLocked(newState);
       setTimesheets((prev) => prev.map((r) => ({ ...r, isLocked: newState })));
       toast({
@@ -417,6 +418,18 @@ const TimesheetPage = () => {
       title={"Puantaj İşaretleme"}
       headerActions={headerActions}
       isLoading={isLoading}
+      infoVideos={{
+        modalTitle: 'Puantaj Nasıl Kullanılır?',
+        byRole: {
+          ADMIN: [
+            { src: 'https://www.w3schools.com/html/mov_bbb.mp4', title: 'Puantaj - Admin 1' },
+            { src: 'https://www.w3schools.com/html/movie.mp4', title: 'Puantaj - Admin 2' },
+          ],
+          RESPONSIBLE: [
+            { src: 'https://www.w3schools.com/html/mov_bbb.mp4', title: 'Puantaj - Sorumlu' },
+          ],
+        },
+      }}
     >
       <div className="ts-user-badge">
         <button

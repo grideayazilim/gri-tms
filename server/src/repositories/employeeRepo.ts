@@ -153,17 +153,5 @@ export async function findUnitWithLocation(
   return rows[0];
 }
 
-/** Audit diff için birim isim lookup */
-export async function lookupUnitNames(
-  executor: DbExecutor,
-  ids: string[],
-): Promise<Record<string, string>> {
-  if (ids.length === 0) return {};
-  const rows = await executor
-    .select({ id: units.id, name: units.name })
-    .from(units)
-    .where(inArray(units.id, ids));
-  const map: Record<string, string> = {};
-  for (const r of rows) map[r.id] = r.name;
-  return map;
-}
+// Audit diff için birim isim lookup — locationRepo'dan re-export edilir
+export { lookupUnitNames } from './locationRepo.js';

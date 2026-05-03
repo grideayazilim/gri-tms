@@ -8,6 +8,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { sql, relations } from 'drizzle-orm';
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
+import { USER_ROLE_LIST, USER_STATUS_LIST } from '@timesheet/shared';
 
 // Tüm tablolar 'app' şeması altında yer alır
 export const appSchema = pgSchema('app');
@@ -44,8 +45,8 @@ export const users = appSchema.table('users', {
   id: uuid('id').default(sql`public.uuid_generate_v4()`).primaryKey(),
   username: text('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
-  role: text('role').notNull(), // ADMIN, RESPONSIBLE
-  status: text('status').notNull(), // PENDING, ACTIVE, EXPIRED
+  role: text('role', { enum: USER_ROLE_LIST }).notNull(), // ADMIN, RESPONSIBLE
+  status: text('status', { enum: USER_STATUS_LIST }).notNull(), // PENDING, ACTIVE, EXPIRED
   locationId: uuid('location_id').references(() => locations.id, { onDelete: 'cascade' }),
   unitId: uuid('unit_id').references(() => units.id, { onDelete: 'cascade' }),
   expiryDate: date('expiry_date'), // Hesap geçerlilik son tarihi

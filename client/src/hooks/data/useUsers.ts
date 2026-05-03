@@ -4,21 +4,20 @@
    ======================================================================== */
 import { useState, useCallback } from 'react';
 
-import type { PaginationMeta, UserListItem, UserEditType, ProfileUpdateType, Result } from '@timesheet/shared';
+import type {
+  PaginationMeta,
+  UserListItem,
+  UserEditType,
+  ProfileUpdateType,
+  Result,
+  UserListQuery,
+} from '@timesheet/shared';
 
 import { userService } from '../../api';
+import { DEFAULT_PAGINATION } from '../../constants/pagination';
+import { getErrorMessage } from '../../utils/getErrorMessage';
 
 // ─── Tipler ───────────────────────────────────────────────────────────────────
-
-interface UserListQuery {
-  role?: string;
-  status?: string;
-  unitId?: string;
-  locationId?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-}
 
 interface UseUsersReturn {
   users: UserListItem[];
@@ -33,13 +32,6 @@ interface UseUsersReturn {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
-const DEFAULT_PAGINATION: PaginationMeta = {
-  totalRecords: 0,
-  currentPage: 1,
-  limit: 10,
-  totalPages: 0,
-};
-
 export const useUsers = (): UseUsersReturn => {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
@@ -52,12 +44,17 @@ export const useUsers = (): UseUsersReturn => {
 
     try {
       const response = await userService.getUsers(params);
-      const data = (response as { data?: { users?: UserListItem[]; pagination?: PaginationMeta } }).data;
-      setUsers(data?.users ?? []);
-      setPagination(data?.pagination ?? DEFAULT_PAGINATION);
-      return { success: true as const, data: { users: data?.users ?? [], pagination: data?.pagination ?? DEFAULT_PAGINATION } };
+      if (!response.success) {
+        const message = response.message ?? 'Kullanıcılar getirilirken bir hata oluştu';
+        setError(message);
+        return { success: false as const, error: message };
+      }
+      const data = response.data;
+      setUsers(data.users ?? []);
+      setPagination(data.pagination ?? DEFAULT_PAGINATION);
+      return { success: true as const, data: { users: data.users ?? [], pagination: data.pagination ?? DEFAULT_PAGINATION } };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'Kullanıcılar getirilirken bir hata oluştu';
+      const message = getErrorMessage(err, 'Kullanıcılar getirilirken bir hata oluştu');
       setError(message);
       return { success: false as const, error: message };
     } finally {
@@ -71,10 +68,14 @@ export const useUsers = (): UseUsersReturn => {
 
     try {
       const response = await userService.updateUser(userId, data);
-      const respData = response as { data?: UserListItem };
-      return { success: true as const, data: { user: respData.data as UserListItem } };
+      if (!response.success) {
+        const message = response.message ?? 'Kullanıcı güncellenirken bir hata oluştu';
+        setError(message);
+        return { success: false as const, error: message };
+      }
+      return { success: true as const, data: { user: response.data } };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'Kullanıcı güncellenirken bir hata oluştu';
+      const message = getErrorMessage(err, 'Kullanıcı güncellenirken bir hata oluştu');
       setError(message);
       return { success: false as const, error: message };
     } finally {
@@ -88,9 +89,9 @@ export const useUsers = (): UseUsersReturn => {
 
     try {
       const response = await userService.deleteUser(userId);
-      return { success: true as const, data: undefined as void, message: (response as { message?: string }).message };
+      return { success: true as const, data: undefined as void, message: response.success ? response.message : undefined };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'Kullanıcı silinirken bir hata oluştu';
+      const message = getErrorMessage(err, 'Kullanıcı silinirken bir hata oluştu');
       setError(message);
       return { success: false as const, error: message };
     } finally {
@@ -104,10 +105,14 @@ export const useUsers = (): UseUsersReturn => {
 
     try {
       const response = await userService.updateProfile(data);
-      const respData = response as { data?: UserListItem; message?: string };
-      return { success: true as const, data: { user: respData.data as UserListItem, message: respData.message ?? '' } };
+      if (!response.success) {
+        const message = response.message ?? 'Profil güncellenirken bir hata oluştu';
+        setError(message);
+        return { success: false as const, error: message };
+      }
+      return { success: true as const, data: { user: response.data, message: response.message ?? '' } };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'Profil güncellenirken bir hata oluştu';
+      const message = getErrorMessage(err, 'Profil güncellenirken bir hata oluştu');
       setError(message);
       return { success: false as const, error: message };
     } finally {

@@ -5,13 +5,13 @@
 import { z } from 'zod';
 
 import { db, withDrizzleTransaction } from '../config/database.js';
-import { createAuditLog, buildActor, diffEntity, diffEntityWithLookups, toSnakeCaseKeys } from '../utils/auditLogger.js';
+import { createAuditLog, buildActor, diffEntity, diffEntityWithLookups } from '../utils/auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared';
+import type { LocationType, UnitType, SyncLocationType } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { notFound, badRequest } from '../utils/AppError.js';
+import { notFound, badRequest, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
 import { ok, created } from '../utils/responses.js';
 import * as locationRepo from '../repositories/locationRepo.js';
-import type { DatabaseError } from 'pg';
 
 
 // ==================== OKUMA (GET) İŞLEMLERİ ====================
@@ -65,7 +65,7 @@ export const getUnitsByLocation = asyncHandler(async (req, res) => {
 // ==================== YAZMA (POST) İŞLEMLERİ ====================
 
 export const createLocation = asyncHandler(async (req, res) => {
-  const { name, programNo } = req.body as { name: string; programNo: string };
+  const { name, programNo } = req.body as LocationType;
 
   let newLocation;
   try {
@@ -84,10 +84,7 @@ export const createLocation = asyncHandler(async (req, res) => {
       return loc;
     });
   } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as DatabaseError).code === '23505') {
-      throw badRequest('Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.');
-    }
-    throw err;
+    rethrowIfNotUniqueViolation(err, 'Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.');
   }
 
   return created(res, {
@@ -102,7 +99,7 @@ export const createLocation = asyncHandler(async (req, res) => {
 });
 
 export const createUnit = asyncHandler(async (req, res) => {
-  const { locationId, name } = req.body as { locationId: string; name: string };
+  const { locationId, name } = req.body as UnitType;
 
   const newUnit = await withDrizzleTransaction(async (tx) => {
     const locExists = await locationRepo.locationExists(tx, locationId);
@@ -140,7 +137,7 @@ export const createUnit = asyncHandler(async (req, res) => {
 
 export const updateLocation = asyncHandler(async (req, res) => {
   const { locationId } = req.params as { locationId: string };
-  const { name, programNo } = req.body as { name: string; programNo: string };
+  const { name, programNo } = req.body as LocationType;
 
   let updatedLocation;
   try {
@@ -153,8 +150,8 @@ export const updateLocation = asyncHandler(async (req, res) => {
 
       const changes = diffEntity(
         AUDIT_ENTITY_TYPE.LOCATION,
-        toSnakeCaseKeys(oldLoc as unknown as Record<string, unknown>),
-        toSnakeCaseKeys(loc as unknown as Record<string, unknown>),
+        oldLoc as unknown as Record<string, unknown>,
+        loc as unknown as Record<string, unknown>,
       );
 
       await createAuditLog(tx, {
@@ -171,10 +168,7 @@ export const updateLocation = asyncHandler(async (req, res) => {
       return loc;
     });
   } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as DatabaseError).code === '23505') {
-      throw badRequest('Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.');
-    }
-    throw err;
+    rethrowIfNotUniqueViolation(err, 'Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.');
   }
 
   return ok(res, {
@@ -190,7 +184,7 @@ export const updateLocation = asyncHandler(async (req, res) => {
 
 export const updateUnit = asyncHandler(async (req, res) => {
   const { unitId } = req.params as { unitId: string };
-  const { locationId, name } = req.body as { locationId: string; name: string };
+  const { locationId, name } = req.body as UnitType;
 
   const updatedUnit = await withDrizzleTransaction(async (tx) => {
     const oldUnit = await locationRepo.findUnitById(tx, unitId);
@@ -210,9 +204,9 @@ export const updateUnit = asyncHandler(async (req, res) => {
     }
     const changes = diffEntityWithLookups(
       AUDIT_ENTITY_TYPE.UNIT,
-      toSnakeCaseKeys(oldUnit as unknown as Record<string, unknown>),
-      toSnakeCaseKeys(unit as unknown as Record<string, unknown>),
-      { location_id: locationLookup },
+      oldUnit as unknown as Record<string, unknown>,
+      unit as unknown as Record<string, unknown>,
+      { locationId: locationLookup },
     );
 
     await createAuditLog(tx, {
@@ -242,11 +236,7 @@ export const updateUnit = asyncHandler(async (req, res) => {
 
 export const syncLocationWithUnits = asyncHandler(async (req, res) => {
   const { locationId } = req.params as { locationId: string };
-  const { name, programNo, units } = req.body as {
-    name: string;
-    programNo: string;
-    units: Array<{ id?: string; name: string }>;
-  };
+  const { name, programNo, units } = req.body as SyncLocationType;
 
   let result;
   try {
@@ -306,8 +296,8 @@ export const syncLocationWithUnits = asyncHandler(async (req, res) => {
       // Build detailed changes array
       const locFieldChanges = diffEntity(
         AUDIT_ENTITY_TYPE.LOCATION,
-        toSnakeCaseKeys(oldLoc as unknown as Record<string, unknown>),
-        toSnakeCaseKeys({ name, programNo } as unknown as Record<string, unknown>),
+        oldLoc as unknown as Record<string, unknown>,
+        { name, programNo } as unknown as Record<string, unknown>,
       );
       const unitChanges = [
         ...addedUnits.map((n) => `Birim eklendi: "${n}"`),
@@ -338,10 +328,7 @@ export const syncLocationWithUnits = asyncHandler(async (req, res) => {
       return { locationId, updatedUnits: processedUnitIds.length };
     });
   } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as DatabaseError).code === '23505') {
-      throw badRequest('Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.');
-    }
-    throw err;
+    rethrowIfNotUniqueViolation(err, 'Program no (veya yerleşke adı) sistemde zaten kayıtlı. Lütfen eşsiz bir değer giriniz.');
   }
 
   return ok(res, result, 'Yerleşke ve birimler başarıyla senkronize edildi.');

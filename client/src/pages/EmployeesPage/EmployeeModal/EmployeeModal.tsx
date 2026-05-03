@@ -156,7 +156,7 @@ const EmployeeModal = ({ employee, onClose, onSave }: EmployeeModalProps) => {
     setValue,
     watch,
     formState: { errors, isDirty },
-  } = useForm<z.input<typeof employeeSchema>, unknown, EmployeeType>({
+  } = useForm<z.input<typeof employeeSchema>, undefined, EmployeeType>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
       tcNo: employee?.tcNo || '',

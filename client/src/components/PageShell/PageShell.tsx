@@ -18,10 +18,10 @@ interface PageShellProps {
 
 const PageShell = ({ title, headerActions, children, infoVideos }: PageShellProps) => {
   const { user } = useAuth();
-  const userRole = user?.role as 'ADMIN' | 'RESPONSIBLE' | undefined;
+  const userRole = user?.role;
 
   const resolvedVideos = infoVideos
-    ? (infoVideos.byRole?.[userRole!] ?? infoVideos.videos ?? [])
+    ? ((userRole ? infoVideos.byRole?.[userRole] : undefined) ?? infoVideos.videos ?? [])
     : [];
   const showInfoButton = resolvedVideos.length > 0;
 

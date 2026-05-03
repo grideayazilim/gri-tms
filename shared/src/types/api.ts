@@ -24,11 +24,6 @@ export interface PaginationMeta {
   limit: number;
 }
 
-export interface Paginated<T> {
-  items: T[];
-  pagination: PaginationMeta;
-}
-
 export type Result<T, E = string> =
   | { success: true; data: T }
   | { success: false; error: E; code?: string };

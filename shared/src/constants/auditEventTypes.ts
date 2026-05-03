@@ -88,7 +88,7 @@ export const AUDIT_CATEGORY_LIST = Object.values(AUDIT_CATEGORIES);
 
 // Action Metadataları: Action -> Kategori eşleşmesi ve okunabilir Türkçe isimler
 
-export const AUDIT_ACTION_META: Record<string, { category: AuditCategory; label: string }> = {
+export const AUDIT_ACTION_META: Record<AuditAction, { category: AuditCategory; label: string }> = {
   USER_LOGIN: { category: 'AUTH', label: 'Giriş Yapma' },
   USER_LOGOUT: { category: 'AUTH', label: 'Çıkış Yapma' },
   USER_REGISTER: { category: 'AUTH', label: 'Kayıt Olma' },
@@ -136,13 +136,10 @@ export const AUDIT_ACTION_LIST = Object.entries(AUDIT_ACTION_META).map(([code, m
   ...meta,
 }));
 
-export const getAuditActionMeta = (action: string) =>
-  AUDIT_ACTION_META[action] ?? { category: 'USER' as AuditCategory, label: action ?? '-' };
+export const getAuditActionMeta = (action: AuditAction) => AUDIT_ACTION_META[action];
 
-export const getAuditCategoryConfig = (category: string) =>
-  AUDIT_CATEGORIES[category as AuditCategory] ??
-  { code: category, label: category ?? '-', bg: 'rgba(107,114,128,0.12)', color: '#4b5563' };
+export const getAuditCategoryConfig = (category: AuditCategory) => AUDIT_CATEGORIES[category];
 
 /** Action'dan doğrudan kategori display config'i — pill için */
-export const getAuditActionCategoryConfig = (action: string) =>
+export const getAuditActionCategoryConfig = (action: AuditAction) =>
   getAuditCategoryConfig(getAuditActionMeta(action).category);

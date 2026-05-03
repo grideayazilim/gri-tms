@@ -185,31 +185,5 @@ export async function updateProfile(
   return rows[0];
 }
 
-/** Lookup helper: UUID listesinden birim/yerleşke isimlerini çeker */
-export async function lookupUnitNames(
-  executor: DbExecutor,
-  ids: string[],
-): Promise<Record<string, string>> {
-  if (ids.length === 0) return {};
-  const rows = await executor
-    .select({ id: units.id, name: units.name })
-    .from(units)
-    .where(inArray(units.id, ids));
-  const map: Record<string, string> = {};
-  for (const r of rows) map[r.id] = r.name;
-  return map;
-}
-
-export async function lookupLocationNames(
-  executor: DbExecutor,
-  ids: string[],
-): Promise<Record<string, string>> {
-  if (ids.length === 0) return {};
-  const rows = await executor
-    .select({ id: locations.id, name: locations.name })
-    .from(locations)
-    .where(inArray(locations.id, ids));
-  const map: Record<string, string> = {};
-  for (const r of rows) map[r.id] = r.name;
-  return map;
-}
+// Lookup helper'lar locationRepo'ya taşındı; userRepo'dan re-export edilir
+export { lookupUnitNames, lookupLocationNames } from './locationRepo.js';

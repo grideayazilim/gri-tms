@@ -13,13 +13,7 @@ export interface JwtPayload {
   unitId: string | null;
 }
 
-export interface AuthUser {
-  id: string;
-  username: string;
-  role: UserRole;
-  locationId: string | null;
-  unitId: string | null;
-}
+export type AuthUser = JwtPayload;
 
 export interface Scope {
   locationId: string | null;

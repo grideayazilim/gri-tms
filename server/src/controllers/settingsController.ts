@@ -15,10 +15,27 @@ import { settingsRepo } from '../repositories/settingsRepo.js';
 // --- PENDING USERS ---
 
 export const getPendingUsers = asyncHandler(async (req: Request, res: Response) => {
-  const users = await settingsRepo.getPendingUsers(db);
+  const rows = await settingsRepo.getPendingUsers(db);
 
-  // Return mapped with camelCase keys by default since Drizzle maps columns
-  res.json({ success: true, data: { users } });
+  // Düz DB satırlarını PendingUserItem nested yapısına dönüştür
+  const pendingUsers = rows.map((row) => ({
+    id: row.id,
+    username: row.username,
+    role: row.role,
+    status: row.status,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    unit: (row.unitId || row.locationId)
+      ? {
+          id: row.unitId ?? null,
+          name: row.unitName ?? null,
+          location: row.locationId
+            ? { id: row.locationId, name: row.locationName ?? '' }
+            : null,
+        }
+      : null,
+  }));
+
+  res.json({ success: true, data: { pendingUsers } });
 });
 
 export const approvePendingUser = asyncHandler(async (req: Request, res: Response) => {
@@ -91,34 +108,34 @@ export const getSystemSettings = asyncHandler(async (req: Request, res: Response
     success: true,
     data: {
       settings: {
-        dailyAllowance: settingsRow.dailyWage,
-        weeklyLimit: settingsRow.maxWeeklyDays,
-        programStart: toISODateString(settingsRow.programStartDate),
-        programEnd: toISODateString(settingsRow.programEndDate),
+        dailyWage: settingsRow.dailyWage,
+        maxWeeklyDays: settingsRow.maxWeeklyDays,
+        programStartDate: toISODateString(settingsRow.programStartDate),
+        programEndDate: toISODateString(settingsRow.programEndDate),
       },
     },
   });
 });
 
 export const updateSystemSettings = asyncHandler(async (req: Request, res: Response) => {
-  const { dailyAllowance, weeklyLimit, programStart, programEnd } = req.body;
-  const dailyAllowanceFloat = dailyAllowance !== undefined && dailyAllowance !== '' ? dailyAllowance : undefined;
+  const { dailyWage, maxWeeklyDays, programStartDate, programEndDate } = req.body;
+  const dailyWageFloat = dailyWage !== undefined && dailyWage !== '' ? dailyWage : undefined;
 
-  await withDrizzleTransaction(async (tx) => {
+  const updatedSettings = await withDrizzleTransaction(async (tx) => {
     const current = await settingsRepo.getSettings(tx);
 
     const formatDate = (d: Date | string | null | undefined) => toISODateString(d ?? null);
 
-    const newStart = formatDate(programStart);
-    const newEnd = formatDate(programEnd);
+    const newStart = formatDate(programStartDate);
+    const newEnd = formatDate(programEndDate);
     const oldStart = formatDate(current?.programStartDate);
     const oldEnd = formatDate(current?.programEndDate);
 
     const dateChanged = (newStart !== oldStart) || (newEnd !== oldEnd);
 
-    const updatedSettings = await settingsRepo.upsertSettings(tx, {
-      dailyWage: dailyAllowanceFloat,
-      maxWeeklyDays: weeklyLimit,
+    const saved = await settingsRepo.upsertSettings(tx, {
+      dailyWage: dailyWageFloat,
+      maxWeeklyDays: maxWeeklyDays,
       programStartDate: newStart!,
       programEndDate: newEnd!,
     });
@@ -132,13 +149,13 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
       }
 
       if (newEnd && newEnd !== oldEnd) {
-        // Otomatik Süre Uzatma: Program bitiş tarihi değiştiyse, tüm sorumluların (non-admin) 
+        // Otomatik Süre Uzatma: Program bitiş tarihi değiştiyse, tüm sorumluların (non-admin)
         // expiry_date bilgilerini "Bitiş + 20 gün" kuralına göre toplu olarak günceller.
         await settingsRepo.extendUsersExpiry(tx, newEnd);
       }
     }
 
-    const changes = diffEntity(AUDIT_ENTITY_TYPE.SETTINGS, current || {}, updatedSettings);
+    const changes = diffEntity(AUDIT_ENTITY_TYPE.SETTINGS, current || {}, saved);
 
     await createAuditLog(tx, {
       action: AUDIT_ACTION.SETTINGS_UPDATE,
@@ -151,7 +168,20 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
       changes,
       metadata: dateChanged ? { periodsRegenerated: true } : {},
     });
+
+    return saved;
   });
 
-  res.json({ success: true, message: 'Sistem ayarları güncellendi' });
+  res.json({
+    success: true,
+    message: 'Sistem ayarları güncellendi',
+    data: {
+      settings: {
+        dailyWage: updatedSettings.dailyWage,
+        maxWeeklyDays: updatedSettings.maxWeeklyDays,
+        programStartDate: toISODateString(updatedSettings.programStartDate),
+        programEndDate: toISODateString(updatedSettings.programEndDate),
+      },
+    },
+  });
 });

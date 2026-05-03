@@ -9,22 +9,15 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken, verifyAc
 import { cookieConfig } from '../config/jwt.js';
 import { createAuditLog, buildActor } from '../utils/auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared';
-import type { JwtPayload } from '@timesheet/shared';
+import type { JwtPayload, SignUpType, SignInType } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { unauthorized, forbidden, notFound, conflict } from '../utils/AppError.js';
+import { unauthorized, forbidden, notFound, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
 import { ok, created } from '../utils/responses.js';
 import * as userRepo from '../repositories/userRepo.js';
-import type { DatabaseError } from 'pg';
 
 
 export const register = asyncHandler(async (req, res) => {
-  const { username, password, role, unitId, locationId } = req.body as {
-    username: string;
-    password: string;
-    role: string;
-    unitId?: string;
-    locationId?: string;
-  };
+  const { username, password, role, unitId, locationId } = req.body as SignUpType;
 
   const passwordHash = await bcrypt.hash(password, 10);
 
@@ -56,10 +49,7 @@ export const register = asyncHandler(async (req, res) => {
       return user;
     });
   } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as DatabaseError).code === '23505') {
-      throw conflict('Bu kullanıcı adı zaten kullanımda');
-    }
-    throw err;
+    rethrowIfNotUniqueViolation(err, 'Bu kullanıcı adı zaten kullanımda');
   }
 
   return created(res, {
@@ -75,7 +65,7 @@ export const register = asyncHandler(async (req, res) => {
 });
 
 export const login = asyncHandler(async (req, res) => {
-  const { username, password } = req.body as { username: string; password: string };
+  const { username, password } = req.body as SignInType;
 
   const user = await userRepo.findByUsername(db, username);
   if (!user) throw unauthorized('Kullanıcı adı veya şifre yanlış');

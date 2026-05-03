@@ -9,6 +9,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { PAID_CODES } from '@timesheet/shared';
 import { AppError } from './AppError.js';
+import { parseLocalDate } from './dateUtils.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = path.join(__dirname, '../templates');
@@ -53,18 +54,6 @@ export interface BotExcelOptions {
 function formatDateTR(dateStr: string): string {
   const parts = dateStr.split('-');
   return `${parts[2]}.${parts[1]}.${parts[0]}`;
-}
-
-function parseLocalDate(dateInput: string | Date | null | undefined): Date | null {
-  if (!dateInput) return null;
-  if (typeof dateInput === 'string') {
-    const parts = dateInput.split('-').map(Number);
-    return new Date(parts[0]!, parts[1]! - 1, parts[2]!);
-  }
-  if (dateInput instanceof Date) {
-    return new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate());
-  }
-  return null;
 }
 
 function sortAlphabetically(employees: ExcelEmployee[]): ExcelEmployee[] {

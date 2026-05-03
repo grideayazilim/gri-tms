@@ -10,7 +10,8 @@ import { api } from './httpClient';
 
 export const getAnnouncements = (page = 1, limit = 20) =>
   api.get<ApiResponse<{ announcements: AnnouncementItem[]; pagination: PaginationMeta }>>(
-    `/announcements?page=${page}&limit=${limit}`,
+    '/announcements',
+    { params: { page, limit } },
   );
 
 export const createAnnouncement = (title: string, content: string) =>

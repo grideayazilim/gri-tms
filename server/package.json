@@ -34,7 +34,6 @@
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
     "pg": "^8.18.0",
-    "xlsx": "^0.18.5",
     "jszip": "^3.10.1",
     "xlsx-populate": "^1.21.0",
     "zod": "^3.22.4"
@@ -48,7 +47,6 @@
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.14",
     "drizzle-kit": "^0.31.10",
-    "nodemon": "^3.1.11",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3"

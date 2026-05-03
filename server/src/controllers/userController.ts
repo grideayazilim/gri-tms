@@ -5,31 +5,24 @@
 import bcrypt from 'bcrypt';
 
 import { db, withDrizzleTransaction } from '../config/database.js';
-import { createAuditLog, buildActor, diffEntityWithLookups, toSnakeCaseKeys } from '../utils/auditLogger.js';
+import { createAuditLog, buildActor, diffEntityWithLookups } from '../utils/auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_STATUS, USER_ROLE } from '@timesheet/shared';
-import type { UserRole, UserStatus } from '@timesheet/shared';
+import type { UserRole, UserStatus, ProfileUpdateType, UserListQuery } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { notFound, conflict } from '../utils/AppError.js';
+import { notFound, badRequest, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
 import { buildPagination, paginationParams } from '../utils/pagination.js';
 import { ok, paginated } from '../utils/responses.js';
 import * as userRepo from '../repositories/userRepo.js';
-import type { DatabaseError } from 'pg';
 
 
 export const getUsers = asyncHandler(async (req, res) => {
-  const { role, status, unitId, locationId, search } = req.query as {
-    role?: string;
-    status?: string;
-    unitId?: string;
-    locationId?: string;
-    search?: string;
-  };
+  const { role, status, unitId, locationId, search } = req.query as UserListQuery;
 
   const { page, limit, offset } = paginationParams(req.query as Record<string, unknown>);
 
   const filters = {
-    ...(role !== undefined ? { role: role as UserRole } : {}),
-    ...(status !== undefined ? { status: status as UserStatus } : {}),
+    ...(role !== undefined ? { role } : {}),
+    ...(status !== undefined ? { status } : {}),
     ...(unitId !== undefined ? { unitId } : {}),
     ...(locationId !== undefined ? { locationId } : {}),
     ...(search !== undefined ? { search } : {}),
@@ -57,8 +50,8 @@ export const getUsers = asyncHandler(async (req, res) => {
 export const updateUser = asyncHandler(async (req, res) => {
   const { userId } = req.params as { userId: string };
   const { role, status, unitId, locationId, expiryDate, forceNewPassword } = req.body as {
-    role?: string;
-    status?: string;
+    role?: UserRole;
+    status?: UserStatus;
     unitId?: string;
     locationId?: string;
     expiryDate?: string | null;
@@ -107,20 +100,20 @@ export const updateUser = asyncHandler(async (req, res) => {
     if (!updatedUser) return null;
 
     // Audit Log Lookup: UUID olan Birim/Yerleşke ID'lerini isimlere çevirerek logda okunabilir kılar.
-    const idLookup: Record<string, Record<string, string>> = { unit_id: {}, location_id: {} };
+    const idLookup: Record<string, Record<string, string>> = { unitId: {}, locationId: {} };
     if (existingUser.unitId !== updatedUser.unitId) {
       const ids = [existingUser.unitId, updatedUser.unitId].filter((v): v is string => v != null);
-      idLookup.unit_id = await userRepo.lookupUnitNames(tx, ids);
+      idLookup.unitId = await userRepo.lookupUnitNames(tx, ids);
     }
     if (existingUser.locationId !== updatedUser.locationId) {
       const ids = [existingUser.locationId, updatedUser.locationId].filter((v): v is string => v != null);
-      idLookup.location_id = await userRepo.lookupLocationNames(tx, ids);
+      idLookup.locationId = await userRepo.lookupLocationNames(tx, ids);
     }
 
     const changes = diffEntityWithLookups(
       AUDIT_ENTITY_TYPE.USER,
-      toSnakeCaseKeys(existingUser as unknown as Record<string, unknown>),
-      toSnakeCaseKeys(updatedUser as unknown as Record<string, unknown>),
+      existingUser as unknown as Record<string, unknown>,
+      updatedUser as unknown as Record<string, unknown>,
       idLookup,
     );
 
@@ -200,13 +193,20 @@ export const deleteUser = asyncHandler(async (req, res) => {
 
 export const updateProfile = asyncHandler(async (req, res) => {
   const userId = req.user!.id;
-  const { username, newPassword } = req.body as { username?: string; newPassword?: string };
+  const { username, newPassword, oldPassword } = req.body as ProfileUpdateType;
 
   let updatedUser;
   try {
     updatedUser = await withDrizzleTransaction(async (tx) => {
       const currUser = await userRepo.findById(tx, userId);
       if (!currUser) throw notFound('Kullanıcı bulunamadı.');
+
+      // Şifre değiştirme isteğinde eski şifreyi doğrula
+      if (newPassword) {
+        if (!oldPassword) throw badRequest('Mevcut şifrenizi giriniz.');
+        const isMatch = await bcrypt.compare(oldPassword, currUser.passwordHash);
+        if (!isMatch) throw badRequest('Mevcut şifre yanlış.');
+      }
 
       const oldUsername = currUser.username;
       const newPasswordHash = newPassword
@@ -248,10 +248,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
       return newUser;
     });
   } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as DatabaseError).code === '23505') {
-      throw conflict('Bu kullanıcı adı zaten kullanımda.');
-    }
-    throw err;
+    rethrowIfNotUniqueViolation(err, 'Bu kullanıcı adı zaten kullanımda.');
   }
 
   return ok(res, {

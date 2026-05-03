@@ -3,20 +3,12 @@
    Sistemdeki kritik aksiyonları veritabanına loglar.
    Kullanım: createAuditLog(executor, { action, actor, entityType, ... })
    ======================================================================== */
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared';
-import type { AuditAction, AuditEntityType, AuthUser } from '@timesheet/shared';
+import { AUDIT_ENTITY_TYPE } from '@timesheet/shared';
+import type { AuditAction, AuditEntityType } from '@timesheet/shared';
 import type { Request } from 'express';
 
 import { auditLogs } from '../../database/schema.js';
 import type { DbExecutor } from '../types/db.js';
-
-// Legacy PoolClient uyumluluk tipi — Phase 2'de kaldırılacak
-interface LegacyPoolClient {
-  query: (sql: string, params?: unknown[]) => Promise<unknown>;
-}
-
-// Phase 1 geçiş: executor hem Drizzle (DbExecutor) hem legacy PoolClient olabilir
-type AuditExecutor = DbExecutor | LegacyPoolClient;
 
 // ============================================================
 // Audit logger tipleri
@@ -44,24 +36,11 @@ interface CreateAuditLogParams {
   readonly metadata?: Record<string, unknown>;
 }
 
-// Legacy raw SQL — Phase 2'de silinecek
-const SQL_INSERT = `
-  INSERT INTO app.audit_logs
-    (action, actor_username, actor_role, entity_type, entity_id, summary, changes, metadata)
-  VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb)
-`;
-
-// Runtime check: executor Drizzle instance mı yoksa legacy PoolClient mı?
-function isDrizzleExecutor(executor: AuditExecutor): executor is DbExecutor {
-  return 'insert' in executor && typeof executor.insert === 'function';
-}
-
 // ============================================================
-// Core audit log writer — Envanter A + S: raw SQL → Drizzle insert, DbExecutor kabul eder
-// Legacy PoolClient backward compat korunuyor — Phase 2'de kaldırılacak
+// Core audit log writer — Drizzle insert
 // ============================================================
 
-export async function createAuditLog(executor: AuditExecutor, {
+export async function createAuditLog(executor: DbExecutor, {
   action,
   actor,
   entityType = null,
@@ -87,31 +66,16 @@ export async function createAuditLog(executor: AuditExecutor, {
   const metadataObj = metadata && typeof metadata === 'object' ? { ...metadata } : {};
 
   try {
-    if (isDrizzleExecutor(executor)) {
-      // Drizzle path — Phase 1+ callers (cronJobs.ts vb.)
-      await executor.insert(auditLogs).values({
-        action,
-        actorUsername: actor.username,
-        actorRole: actor.role ?? null,
-        entityType: entityType ?? null,
-        entityId: entityId ?? null,
-        summary,
-        changes: changesArr,
-        metadata: metadataObj,
-      });
-    } else {
-      // Legacy PoolClient path — Phase 2'de silinecek
-      await executor.query(SQL_INSERT, [
-        action,
-        actor.username,
-        actor.role ?? null,
-        entityType,
-        entityId,
-        summary,
-        JSON.stringify(changesArr),
-        JSON.stringify(metadataObj),
-      ]);
-    }
+    await executor.insert(auditLogs).values({
+      action,
+      actorUsername: actor.username,
+      actorRole: actor.role ?? null,
+      entityType: entityType ?? null,
+      entityId: entityId ?? null,
+      summary,
+      changes: changesArr,
+      metadata: metadataObj,
+    });
   } catch (err: unknown) {
     // Audit log hatası ana işlemi durdurmamalı
     console.error('[AUDIT] log kaydedilemedi:', err);
@@ -167,27 +131,26 @@ function valuesEqual(a: unknown, b: unknown): boolean {
 }
 
 // FIELD_MAPS: Entity tipine göre hangi alanların loglanacağını belirleyen Whitelist.
-// Not: Key'ler hâlâ snake_case — mevcut controller'lar raw SQL row'ları gönderiyor.
-// Phase 2'de controller'lar Drizzle'a geçtiğinde key'ler camelCase'e çevrilecek.
+// Key'ler camelCase — Drizzle row'ları doğrudan camelCase döndürdüğü için.
 export const FIELD_MAPS: Record<string, Record<string, FieldConfig>> = {
 
   [AUDIT_ENTITY_TYPE.EMPLOYEE]: {
-    tc_no:      { label: 'TC No',                 format: fmtStr },
-    first_name: { label: 'Ad',                    format: fmtStr },
-    last_name:  { label: 'Soyad',                 format: fmtStr },
-    iban_no:    { label: 'IBAN',                  format: fmtStr },
-    unit_id:    { label: 'Birim',                 format: fmtStr },
-    start_date: { label: 'İşe Başlama Tarihi',    format: fmtDate },
-    end_date:   { label: 'İşten Çıkış Tarihi',    format: fmtDate },
-    is_active:  { label: 'Çalışma Durumu',        format: fmtActive },
+    tcNo:       { label: 'TC No',                 format: fmtStr },
+    firstName:  { label: 'Ad',                    format: fmtStr },
+    lastName:   { label: 'Soyad',                 format: fmtStr },
+    ibanNo:     { label: 'IBAN',                  format: fmtStr },
+    unitId:     { label: 'Birim',                 format: fmtStr },
+    startDate:  { label: 'İşe Başlama Tarihi',    format: fmtDate },
+    endDate:    { label: 'İşten Çıkış Tarihi',    format: fmtDate },
+    isActive:   { label: 'Çalışma Durumu',        format: fmtActive },
   },
   [AUDIT_ENTITY_TYPE.USER]: {
     username:    { label: 'Kullanıcı Adı',        format: fmtStr },
     role:        { label: 'Rol',                  format: fmtStr },
     status:      { label: 'Durum',                format: fmtStr },
-    unit_id:     { label: 'Birim',                format: fmtStr },
-    location_id: { label: 'Yerleşke',             format: fmtStr },
-    expiry_date: { label: 'Son Kullanma Tarihi',  format: fmtDate },
+    unitId:      { label: 'Birim',                format: fmtStr },
+    locationId:  { label: 'Yerleşke',             format: fmtStr },
+    expiryDate:  { label: 'Son Kullanma Tarihi',  format: fmtDate },
   },
   [AUDIT_ENTITY_TYPE.ANNOUNCEMENT]: {
     title:   { label: 'Başlık', format: fmtStr },
@@ -195,17 +158,17 @@ export const FIELD_MAPS: Record<string, Record<string, FieldConfig>> = {
   },
   [AUDIT_ENTITY_TYPE.LOCATION]: {
     name:       { label: 'Yerleşke Adı', format: fmtStr },
-    program_no: { label: 'Program No',   format: fmtStr },
+    programNo:  { label: 'Program No',   format: fmtStr },
   },
   [AUDIT_ENTITY_TYPE.UNIT]: {
-    name:        { label: 'Birim Adı', format: fmtStr },
-    location_id: { label: 'Yerleşke',  format: fmtStr },
+    name:       { label: 'Birim Adı', format: fmtStr },
+    locationId: { label: 'Yerleşke',  format: fmtStr },
   },
   [AUDIT_ENTITY_TYPE.SETTINGS]: {
-    daily_wage:         { label: 'Günlük Ücret',                  format: fmtMoney },
-    max_weekly_days:    { label: 'Haftalık Maksimum Çalışma Günü', format: fmtStr },
-    program_start_date: { label: 'Program Başlangıç Tarihi',      format: fmtDate },
-    program_end_date:   { label: 'Program Bitiş Tarihi',          format: fmtDate },
+    dailyWage:        { label: 'Günlük Ücret',                  format: fmtMoney },
+    maxWeeklyDays:    { label: 'Haftalık Maksimum Çalışma Günü', format: fmtStr },
+    programStartDate: { label: 'Program Başlangıç Tarihi',      format: fmtDate },
+    programEndDate:   { label: 'Program Bitiş Tarihi',          format: fmtDate },
   },
 };
 
@@ -246,7 +209,7 @@ export function diffEntity(
 }
 
 // diffEntityWithLookups: ID alanlarını (Birim ID vb.) isimle göstermek için lookup haritası kullanır.
-// lookups: { unit_id: { 'uuid': 'Birim Adı' } } şeklinde bir Payload bekler.
+// lookups: { unitId: { 'uuid': 'Birim Adı' } } şeklinde bir Payload bekler.
 export function diffEntityWithLookups(
   entityType: string,
   oldRow: Record<string, unknown>,
@@ -278,22 +241,4 @@ export function truncateChanges(items: readonly string[], max = 50): string[] {
   if (items.length <= max) return [...items];
   const remaining = items.length - max;
   return [...items.slice(0, max), `... ve ${remaining} kayıt daha`];
-}
-
-// ============================================================
-// Phase 2 geçiş helper'ı: Drizzle camelCase row → snake_case keys
-// FIELD_MAPS hâlâ snake_case key kullanıyor; Drizzle row camelCase döner.
-// Phase 3 sonunda tüm controller'lar geçince FIELD_MAPS camelCase'e çevrilip bu helper silinecek.
-// ============================================================
-
-function camelToSnake(str: string): string {
-  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-}
-
-export function toSnakeCaseKeys(obj: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const key of Object.keys(obj)) {
-    result[camelToSnake(key)] = obj[key];
-  }
-  return result;
 }

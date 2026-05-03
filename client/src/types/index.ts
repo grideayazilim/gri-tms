@@ -9,7 +9,6 @@ export type {
   ApiSuccess,
   ApiFailure,
   PaginationMeta,
-  Paginated,
   Result,
   AuthUser,
   Scope,

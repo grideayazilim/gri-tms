@@ -29,17 +29,25 @@ export const useLocationsAndUnits = (): UseLocationsAndUnitsReturn => {
 
   const fetchLocations = useCallback(() => run(async () => {
     const response = await locationAndUnitService.getLocations();
-    const data = (response as { data?: { locations?: LocationItem[] } }).data;
-    setLocations(data?.locations ?? []);
-    return data?.locations ?? [];
+    if (!response.success) {
+      setLocations([]);
+      return [];
+    }
+    const list = response.data.locations ?? [];
+    setLocations(list);
+    return list;
   }), [run]);
 
   const fetchUnitsByLocation = useCallback((locationId: string) => run(
     async () => {
       const response = await locationAndUnitService.getUnitsByLocation(locationId);
-      const data = (response as { data?: { units?: UnitItem[] } }).data;
-      setUnits(data?.units ?? []);
-      return data?.units ?? [];
+      if (!response.success) {
+        setUnits([]);
+        return [];
+      }
+      const list = response.data.units ?? [];
+      setUnits(list);
+      return list;
     },
     { onError: () => setUnits([]) },
   ), [run]);

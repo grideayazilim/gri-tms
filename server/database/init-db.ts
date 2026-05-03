@@ -11,11 +11,12 @@ dotenv.config();
 const { Client } = pg;
 
 // .env dosyasından gelen yapılandırma
+const superPassword = process.env.DB_SUPER_PASSWORD;
 const config = {
   host: process.env.DB_HOST,
   port: parseInt(process.env.DB_PORT || '5432', 10),
   user: process.env.DB_SUPER_USER, // Superuser (postgres veya sistem kullanıcısı)
-  password: process.env.DB_SUPER_PASSWORD,
+  ...(superPassword ? { password: superPassword } : {}),
   database: 'postgres', // İlk bağlantı için varsayılan sistem veritabanı
 };
 

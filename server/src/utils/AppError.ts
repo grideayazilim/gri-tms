@@ -21,3 +21,22 @@ export const forbidden    = (msg = 'Erişim reddedildi'): AppError        => new
 export const notFound     = (msg = 'Kayıt bulunamadı'): AppError         => new AppError(msg, 404);
 export const conflict     = (msg = 'Bu kayıt zaten mevcut'): AppError    => new AppError(msg, 409);
 export const locked       = (msg = 'Kayıt kilitli'): AppError            => new AppError(msg, 423);
+
+// PostgreSQL hata kodları (https://www.postgresql.org/docs/current/errcodes-appendix.html)
+const PG_UNIQUE_VIOLATION = '23505';
+
+/**
+ * Verilen hatayı kontrol eder; eğer Postgres unique violation ise belirtilen
+ * mesajla `conflict` (409) hatası fırlatır, değilse hatayı yeniden fırlatır.
+ */
+export function rethrowIfNotUniqueViolation(err: unknown, message: string): never {
+  if (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code: unknown }).code === PG_UNIQUE_VIOLATION
+  ) {
+    throw conflict(message);
+  }
+  throw err;
+}

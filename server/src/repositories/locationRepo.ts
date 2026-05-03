@@ -79,6 +79,21 @@ export async function lookupLocationNames(
   return map;
 }
 
+/** Audit diff için birim isim lookup — UUID listesinden birim isimlerini çeker */
+export async function lookupUnitNames(
+  executor: DbExecutor,
+  ids: string[],
+): Promise<Record<string, string>> {
+  if (ids.length === 0) return {};
+  const rows = await executor
+    .select({ id: units.id, name: units.name })
+    .from(units)
+    .where(inArray(units.id, ids));
+  const map: Record<string, string> = {};
+  for (const r of rows) map[r.id] = r.name;
+  return map;
+}
+
 // ============================================================
 // Unit fonksiyonları
 // ============================================================

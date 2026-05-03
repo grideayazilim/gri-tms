@@ -15,8 +15,6 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
     "rootDir": ".",
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
     "types": ["node"]
   },
   "include": ["src/**/*", "database/**/*", "drizzle.config.ts", "src/types/**/*.d.ts"]

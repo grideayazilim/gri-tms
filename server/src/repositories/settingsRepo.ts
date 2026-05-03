@@ -14,9 +14,10 @@ export const settingsRepo = {
       role: users.role,
       status: users.status,
       createdAt: users.createdAt,
-      lastLoginAt: users.lastLoginAt,
-      locationName: locations.name,
+      unitId: units.id,
       unitName: units.name,
+      locationId: locations.id,
+      locationName: locations.name,
     })
     .from(users)
     .leftJoin(locations, eq(users.locationId, locations.id))
@@ -67,12 +68,16 @@ export const settingsRepo = {
         .set({ ...data, updatedAt: new Date() })
         .where(eq(settings.id, current.id))
         .returning();
-      return res[0]!;
+      const row = res[0];
+      if (!row) throw new Error('Settings update returned no rows');
+      return row;
     } else {
       const res = await executor.insert(settings)
         .values({ id: 1, ...data })
         .returning();
-      return res[0]!;
+      const row = res[0];
+      if (!row) throw new Error('Settings insert returned no rows');
+      return row;
     }
   },
 

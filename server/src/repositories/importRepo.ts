@@ -1,6 +1,6 @@
 import { eq, and, ilike, inArray, asc } from 'drizzle-orm';
 import { units, employees, periods, timesheets, timesheetDays, locations, settings } from '../../database/schema.js';
-import type { EmployeeInsert, TimesheetDayInsert } from '../../database/schema.js';
+import type { EmployeeInsert, EmployeeRow, TimesheetDayInsert } from '../../database/schema.js';
 import type { DbExecutor } from '../types/db.js';
 
 export const importRepo = {
@@ -31,7 +31,10 @@ export const importRepo = {
     return res[0]!;
   },
 
-  async insertEmployeeOnConflictDoNothing(executor: DbExecutor, data: EmployeeInsert) {
+  async insertEmployeeOnConflictDoNothing(
+    executor: DbExecutor,
+    data: EmployeeInsert,
+  ): Promise<EmployeeRow | undefined> {
     const res = await executor.insert(employees).values(data).onConflictDoNothing({ target: employees.tcNo }).returning();
     return res[0];
   },

@@ -13,7 +13,7 @@ export interface Column<T> {
   render?: (row: T) => ReactNode;
 }
 
-interface DynamicTableProps<T extends { id?: string | number }> {
+interface DynamicTableProps<T extends { id: string | number }> {
   columns: Column<T>[];
   data: T[];
   loading?: boolean;
@@ -23,7 +23,7 @@ interface DynamicTableProps<T extends { id?: string | number }> {
 
 // ─── Bileşen ──────────────────────────────────────────────────────────────────
 
-function DynamicTable<T extends { id?: string | number }>({
+function DynamicTable<T extends { id: string | number }>({
   columns,
   data,
   loading,

@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import type { PendingUserItem, Result, SystemSettings, SystemSettingsType } from '@timesheet/shared';
 
 import { settingsService } from '../../api';
+import { getErrorMessage } from '../../utils/getErrorMessage';
 
 export interface UseSettingsReturn {
   pendingUsers: PendingUserItem[];
@@ -46,7 +47,7 @@ export const useSettings = (): UseSettingsReturn => {
       }
       return { success: false, error: response.success ? 'Geçersiz veri' : response.message };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Onay bekleyen kullanıcılar alınırken hata oluştu';
+      const message = getErrorMessage(err, 'Onay bekleyen kullanıcılar alınırken hata oluştu');
       setError(message);
       return { success: false, error: message };
     } finally {
@@ -65,7 +66,7 @@ export const useSettings = (): UseSettingsReturn => {
       }
       return { success: false, error: response.success ? 'Geçersiz veri' : response.message };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Sistem ayarları alınırken hata oluştu';
+      const message = getErrorMessage(err, 'Sistem ayarları alınırken hata oluştu');
       setError(message);
       return { success: false, error: message };
     } finally {
@@ -85,7 +86,7 @@ export const useSettings = (): UseSettingsReturn => {
       }
       return { success: false, error: response.message || 'Kullanıcı onaylanamadı' };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Kullanıcı onaylanamadı';
+      const message = getErrorMessage(err, 'Kullanıcı onaylanamadı');
       return { success: false, error: message };
     }
   };
@@ -100,7 +101,7 @@ export const useSettings = (): UseSettingsReturn => {
       }
       return { success: false, error: response.message || 'Kullanıcı reddedilemedi' };
     } catch (err: unknown) {
-       const message = err instanceof Error ? err.message : 'Kullanıcı reddedilemedi';
+       const message = getErrorMessage(err, 'Kullanıcı reddedilemedi');
       return { success: false, error: message };
     }
   };
@@ -108,13 +109,18 @@ export const useSettings = (): UseSettingsReturn => {
   const updateSystemSettings = async (data: SystemSettingsType & { force?: boolean }): Promise<Result<{ settings: SystemSettings }>> => {
     try {
       const response = await settingsService.updateSystemSettings(data);
-      if (response.success && response.data) {
+      if (response.success) {
+        if (response.data?.settings) {
+          setSystemSettings(response.data.settings);
+          return { success: true, data: response.data };
+        }
+        // Sunucu data dönmemişse yeniden çek; state async güncelleneceği için fallback döner
         await fetchSystemSettings();
-        return { success: true, data: response.data };
+        return { success: true, data: { settings: systemSettings ?? ({} as SystemSettings) } };
       }
-      return { success: false, error: response.success ? 'Bilinmeyen hata' : response.message };
+      return { success: false, error: response.message ?? 'Bilinmeyen hata' };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Sistem ayarları güncellenemedi';
+      const message = getErrorMessage(err, 'Sistem ayarları güncellenemedi');
       return { success: false, error: message };
     }
   };

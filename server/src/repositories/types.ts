@@ -26,8 +26,8 @@ export interface UserListFilters {
 export interface UserListRow {
   readonly id: string;
   readonly username: string;
-  readonly role: string;
-  readonly status: string;
+  readonly role: UserRole;
+  readonly status: UserStatus;
   readonly expiryDate: string | null;
   readonly createdAt: Date;
   readonly unitId: string | null;

@@ -33,6 +33,12 @@ export interface UnitWithLocation {
 
 // ─── User ─────────────────────────────────────────────────────────────────────
 
+export interface UserUnitInfo {
+  id: string | null;
+  name: string | null;
+  location: { id: string; name: string } | null;
+}
+
 export interface UserListItem {
   id: string;
   username: string;
@@ -40,36 +46,21 @@ export interface UserListItem {
   status: UserStatus;
   expiryDate: string | null;
   createdAt: string;
-  unit: {
-    id: string | null;
-    name: string | null;
-    location: { id: string; name: string } | null;
-  } | null;
+  unit: UserUnitInfo | null;
 }
 
-export interface PendingUserItem {
-  id: string;
-  username: string;
-  role: UserRole;
-  status: UserStatus;
-  createdAt: string;
-  unit: {
-    id: string | null;
-    name: string | null;
-    location: { id: string; name: string } | null;
-  } | null;
-}
+export type PendingUserItem = Omit<UserListItem, 'expiryDate'>;
 
 // ─── Employee ─────────────────────────────────────────────────────────────────
 
 export interface EmployeeListItem {
   id: string;
-  tcNo: string;
+  tcNo: string | null;
   firstName: string;
   lastName: string;
   startDate: string | null;
   endDate: string | null;
-  ibanNo: string;
+  ibanNo: string | null;
   isActive: boolean;
   createdAt: string;
   unit: UnitWithLocation | null;
@@ -92,10 +83,10 @@ export interface TimesheetEntry {
 export interface TimesheetListItem {
   employee: {
     id: string;
-    tcNo: string;
+    tcNo: string | null;
     firstName: string;
     lastName: string;
-    ibanNo: string;
+    ibanNo: string | null;
     isActive: boolean;
     startDate: string | null;
     endDate: string | null;
@@ -150,8 +141,8 @@ export interface AuditLogItem {
 
 export interface SystemSettings {
   id: string;
-  dailyAllowance: number | null;
-  weeklyLimit: number | null;
+  dailyWage: number | null;
+  maxWeeklyDays: number | null;
   programStartDate: string | null;
   programEndDate: string | null;
 }

@@ -7,10 +7,10 @@ import { useState, useCallback } from 'react';
 import type { PaginationMeta, AuditLogItem, Result } from '@timesheet/shared';
 
 import { auditLogService } from '../../api';
+import { DEFAULT_PAGINATION } from '../../constants/pagination';
+import { getErrorMessage } from '../../utils/getErrorMessage';
 
 // ─── Tipler ───────────────────────────────────────────────────────────────────
-
-const DEFAULT_LIMIT = 10;
 
 interface UseAuditLogsReturn {
   auditLogs: AuditLogItem[];
@@ -19,15 +19,6 @@ interface UseAuditLogsReturn {
   error: string | null;
   fetchAuditLogs: (apiParams?: Record<string, unknown>, page?: number) => Promise<Result<{ auditLogs: AuditLogItem[]; pagination: PaginationMeta }>>;
 }
-
-// ─── Hook ─────────────────────────────────────────────────────────────────────
-
-const DEFAULT_PAGINATION: PaginationMeta = {
-  currentPage: 1,
-  totalPages: 1,
-  totalRecords: 0,
-  limit: DEFAULT_LIMIT,
-};
 
 export const useAuditLogs = (): UseAuditLogsReturn => {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
@@ -43,17 +34,22 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
         startDate: '2020-01-01',
         ...apiParams,
         page: String(page),
-        limit: String(DEFAULT_LIMIT),
+        limit: String(DEFAULT_PAGINATION.limit),
       };
       const response = await auditLogService.getAuditLogs(finalParams as Record<string, string>);
-      const data = (response as { data?: { auditLogs?: AuditLogItem[]; pagination?: PaginationMeta } }).data;
-      setAuditLogs(data?.auditLogs ?? []);
-      if (data?.pagination) {
+      if (!response.success) {
+        const message = response.message ?? 'İşlem kayıtları alınamadı';
+        setError(message);
+        return { success: false as const, error: message };
+      }
+      const data = response.data;
+      setAuditLogs(data.auditLogs ?? []);
+      if (data.pagination) {
         setPagination(data.pagination);
       }
-      return { success: true as const, data: { auditLogs: data?.auditLogs ?? [], pagination: data?.pagination ?? DEFAULT_PAGINATION } };
+      return { success: true as const, data: { auditLogs: data.auditLogs ?? [], pagination: data.pagination ?? DEFAULT_PAGINATION } };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message ?? 'İşlem kayıtları alınamadı';
+      const message = getErrorMessage(err, 'İşlem kayıtları alınamadı');
       setError(message);
       return { success: false as const, error: message };
     } finally {

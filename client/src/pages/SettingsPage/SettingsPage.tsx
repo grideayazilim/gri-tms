@@ -33,14 +33,14 @@ function SettingsPage() {
     setError: setLoginError,
   } = useForm<LoginSettingsType>({
     resolver: zodResolver(loginSettingsSchema),
-    defaultValues: { username: user?.username || "", password: "" },
+    defaultValues: { username: user?.username || "", currentPassword: "", password: "" },
   });
 
   const onLoginSubmit = async (data: LoginSettingsType) => {
     const payload = {
       username: data.username,
-      // Şifre alanı boşsa payload'a eklemiyoruz (Sadece kullanıcı adı güncelleme durumu)
-      ...(data.password ? { newPassword: data.password } : {})
+      // Şifre alanları doluysa payload'a ekle
+      ...(data.password ? { oldPassword: data.currentPassword, newPassword: data.password } : {})
     };
 
     const result = await editProfile(payload);
@@ -49,7 +49,7 @@ function SettingsPage() {
       // AuthContext'i güncelle ki Navbar'daki isim anlık değişsin
       updateProfile({ username: result.data.user.username || data.username });
       // Formu temizle ve yeni kullanıcı adını default yap
-      resetLogin({ username: result.data.user.username || data.username, password: "" });
+      resetLogin({ username: result.data.user.username || data.username, currentPassword: "", password: "" });
     } else {
       toast({ type: "error", message: result.error || "Güncelleme başarısız." });
       // Eğer kullanıcı adı başkası tarafından alınmışsa (409 Conflict)
@@ -131,18 +131,18 @@ function SettingsPage() {
   } = useForm<SystemSettingsType>({
     resolver: zodResolver(systemSettingsSchema),
     defaultValues: {
-      dailyAllowance: "",
-      weeklyLimit: "",
-      programStart: "",
-      programEnd: "",
+      dailyWage: "",
+      maxWeeklyDays: "",
+      programStartDate: "",
+      programEndDate: "",
     },
   });
 
   const onSystemSubmit = async (data: SystemSettingsType) => {
     const norm = (v: string | number | null | undefined) => v || null;
     const datesChanged =
-      norm(systemSettings?.programStartDate) !== norm(data.programStart) ||
-      norm(systemSettings?.programEndDate) !== norm(data.programEnd);
+      norm(systemSettings?.programStartDate) !== norm(data.programStartDate) ||
+      norm(systemSettings?.programEndDate) !== norm(data.programEndDate);
 
     if (datesChanged) {
       const confirmed = await showConfirm({
@@ -243,10 +243,10 @@ function SettingsPage() {
   useEffect(() => {
     if (systemSettings) {
       resetSystem({
-        dailyAllowance: systemSettings.dailyAllowance || "",
-        weeklyLimit: systemSettings.weeklyLimit || "",
-        programStart: toISODateString(systemSettings.programStartDate),
-        programEnd: toISODateString(systemSettings.programEndDate),
+        dailyWage: systemSettings.dailyWage || "",
+        maxWeeklyDays: systemSettings.maxWeeklyDays || "",
+        programStartDate: toISODateString(systemSettings.programStartDate),
+        programEndDate: toISODateString(systemSettings.programEndDate),
       });
     }
   }, [systemSettings, resetSystem]);
@@ -284,13 +284,29 @@ function SettingsPage() {
         <div className="floating-group">
           <input
             type="password"
+            id="currentPassword"
+            className={`input ${loginErrors.currentPassword ? 'input--error' : ''}`}
+            placeholder=" "
+            {...loginRegister('currentPassword')}
+          />
+          <label htmlFor="currentPassword" className="floating-group__label">
+            Mevcut Şifre
+          </label>
+          {loginErrors.currentPassword && (
+            <span className="input-error-message">{loginErrors.currentPassword.message}</span>
+          )}
+        </div>
+
+        <div className="floating-group">
+          <input
+            type="password"
             id="password"
             className={`input ${loginErrors.password ? 'input--error' : ''}`}
             placeholder=" "
             {...loginRegister('password')}
           />
           <label htmlFor="password" className="floating-group__label">
-            Şifre
+            Yeni Şifre
           </label>
           {loginErrors.password && (
             <span className="input-error-message">{loginErrors.password.message}</span>
@@ -315,16 +331,16 @@ function SettingsPage() {
           <input
             type="text"
             inputMode="decimal"
-            id="dailyAllowance"
-            className={`input ${systemErrors.dailyAllowance ? 'input--error' : ''}`}
+            id="dailyWage"
+            className={`input ${systemErrors.dailyWage ? 'input--error' : ''}`}
             placeholder=" "
-            {...systemRegister('dailyAllowance')}
+            {...systemRegister('dailyWage')}
           />
-          <label htmlFor="dailyAllowance" className="floating-group__label">
+          <label htmlFor="dailyWage" className="floating-group__label">
             Günlük Ödenek (₺)
           </label>
-          {systemErrors.dailyAllowance && (
-            <span className="input-error-message">{systemErrors.dailyAllowance.message}</span>
+          {systemErrors.dailyWage && (
+            <span className="input-error-message">{systemErrors.dailyWage.message}</span>
           )}
         </div>
 
@@ -332,16 +348,16 @@ function SettingsPage() {
           <input
             type="text"
             inputMode="numeric"
-            id="weeklyLimit"
-            className={`input ${systemErrors.weeklyLimit ? 'input--error' : ''}`}
+            id="maxWeeklyDays"
+            className={`input ${systemErrors.maxWeeklyDays ? 'input--error' : ''}`}
             placeholder=" "
-            {...systemRegister('weeklyLimit')}
+            {...systemRegister('maxWeeklyDays')}
           />
-          <label htmlFor="weeklyLimit" className="floating-group__label">
+          <label htmlFor="maxWeeklyDays" className="floating-group__label">
             Haftalık Çalışma Sınırı (Gün)
           </label>
-          {systemErrors.weeklyLimit && (
-            <span className="input-error-message">{systemErrors.weeklyLimit.message}</span>
+          {systemErrors.maxWeeklyDays && (
+            <span className="input-error-message">{systemErrors.maxWeeklyDays.message}</span>
           )}
         </div>
 
@@ -349,32 +365,32 @@ function SettingsPage() {
           <div className="floating-group">
             <input
               type="date"
-              id="programStart"
-              className={`input ${systemErrors.programStart ? 'input--error' : ''}`}
+              id="programStartDate"
+              className={`input ${systemErrors.programStartDate ? 'input--error' : ''}`}
               placeholder=" "
-              {...systemRegister('programStart')}
+              {...systemRegister('programStartDate')}
             />
-            <label htmlFor="programStart" className="floating-group__label">
+            <label htmlFor="programStartDate" className="floating-group__label">
               Program Başlangıç
             </label>
-            {systemErrors.programStart && (
-              <span className="input-error-message">{systemErrors.programStart.message}</span>
+            {systemErrors.programStartDate && (
+              <span className="input-error-message">{systemErrors.programStartDate.message}</span>
             )}
           </div>
 
           <div className="floating-group">
             <input
               type="date"
-              id="programEnd"
-              className={`input ${systemErrors.programEnd ? 'input--error' : ''}`}
+              id="programEndDate"
+              className={`input ${systemErrors.programEndDate ? 'input--error' : ''}`}
               placeholder=" "
-              {...systemRegister('programEnd')}
+              {...systemRegister('programEndDate')}
             />
-            <label htmlFor="programEnd" className="floating-group__label">
+            <label htmlFor="programEndDate" className="floating-group__label">
               Program Bitiş
             </label>
-            {systemErrors.programEnd && (
-              <span className="input-error-message">{systemErrors.programEnd.message}</span>
+            {systemErrors.programEndDate && (
+              <span className="input-error-message">{systemErrors.programEndDate.message}</span>
             )}
           </div>
         </div>

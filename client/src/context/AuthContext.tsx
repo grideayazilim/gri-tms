@@ -43,8 +43,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       // Sayfa yenilendiğinde Cookie üzerinden mevcut oturumu geri yükle
       const response = await authService.getMe();
-      setUser((response as { data?: { user?: AuthUser } }).data?.user ?? null);
-      setIsAuthenticated(true);
+      setUser(response.success ? response.data.user : null);
+      setIsAuthenticated(response.success);
     } catch {
       // Oturum yoksa veya süresi dolmuşsa state'leri sıfırla
       setUser(null);
@@ -66,9 +66,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   ): Promise<Result<Record<string, never>>> => {
     try {
       const response = await authService.login(username, password);
-      const loggedInUser = (response as { data?: { user?: AuthUser } }).data?.user;
-      if (!loggedInUser) throw new Error('Invalid response structure');
-      setUser(loggedInUser);
+      if (!response.success) {
+        return { success: false, error: response.message ?? 'Giriş başarısız' };
+      }
+      setUser(response.data.user);
       setIsAuthenticated(true);
       return { success: true, data: {} };
     } catch (error: unknown) {
@@ -80,8 +81,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const register = async (payload: SignUpType): Promise<Result<Record<string, never>>> => {
     try {
       const response = await authService.register(payload);
-      const registered = (response as { data?: { user?: AuthUser } }).data?.user;
-      if (!registered) throw new Error('Invalid response structure');
+      if (!response.success) {
+        return { success: false, error: response.message ?? 'Kayıt başarısız' };
+      }
       return { success: true, data: {} };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Kayıt başarısız';

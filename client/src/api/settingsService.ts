@@ -4,8 +4,7 @@
    ======================================================================== */
 import type { ApiResponse, PendingUserItem, SystemSettings, SystemSettingsType, SystemResetType } from '@timesheet/shared';
 
-import { api } from './httpClient';
-import httpClient from './httpClient';
+import httpClient, { api } from './httpClient';
 
 // ─── PENDING USERS ────────────────────────────────────────────────────────────
 
@@ -28,10 +27,14 @@ export const updateSystemSettings = (data: SystemSettingsType & { force?: boolea
 
 // ─── SYSTEM RESET ──────────────────────────────────────────────────────────────
 
-// Yedekli modda yanıt Blob (zip), yedeksiz modda JSON başarı yanıtı döner
-export const resetSystem = (data: SystemResetType): Promise<Blob | ApiResponse<Record<string, never>>> => {
-  if (data.backup) {
-    return httpClient.post<unknown, Blob>('/settings/reset', data, { responseType: 'blob' });
-  }
-  return api.post<ApiResponse<Record<string, never>>>('/settings/reset', data);
-};
+// Yedekli modda yanıt Blob (zip) döner — backend zip dosyasını stream eder
+export const resetSystemWithBackup = (data: SystemResetType): Promise<Blob> =>
+  httpClient.post<unknown, Blob>('/settings/reset', data, { responseType: 'blob' });
+
+// Yedeksiz modda standart JSON başarı yanıtı döner
+export const resetSystemWithoutBackup = (data: SystemResetType) =>
+  api.post<ApiResponse<Record<string, never>>>('/settings/reset', data);
+
+// Backward-compat: backup flag'ine göre uygun fonksiyona delege eder
+export const resetSystem = (data: SystemResetType): Promise<Blob | ApiResponse<Record<string, never>>> =>
+  data.backup ? resetSystemWithBackup(data) : resetSystemWithoutBackup(data);

@@ -7,7 +7,7 @@ import { db, withDrizzleTransaction } from '../config/database.js';
 import { createAuditLog, buildActor, truncateChanges } from '../utils/auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, TURKISH_MONTHS as TURKISH_MONTHS_TC } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { conflict } from '../utils/AppError.js';
+import { conflict, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
 import { importRepo } from '../repositories/importRepo.js';
 import { settingsRepo } from '../repositories/settingsRepo.js';
 
@@ -94,10 +94,7 @@ export const importEmployee = asyncHandler(async (req: Request, res: Response) =
       return { employeeId, action };
     });
   } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && err.code === '23505') {
-      throw conflict('Bu TC No başka bir kayıtta zaten mevcut');
-    }
-    throw err;
+    rethrowIfNotUniqueViolation(err, 'Bu TC No başka bir kayıtta zaten mevcut');
   }
 
   res.json({ success: true, data: result });

@@ -70,7 +70,9 @@ export const announcementRepo = {
     const res = await executor.insert(announcements)
       .values(data)
       .returning();
-    return res[0]!;
+    const row = res[0];
+    if (!row) throw new Error('Insert returned no rows');
+    return row;
   },
 
   /**
@@ -81,7 +83,9 @@ export const announcementRepo = {
       .set(data)
       .where(eq(announcements.id, id))
       .returning();
-    return res[0]!;
+    const row = res[0];
+    if (!row) throw new Error('Update returned no rows');
+    return row;
   },
 
   /**

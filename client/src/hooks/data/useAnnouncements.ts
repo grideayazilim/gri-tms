@@ -4,6 +4,7 @@ import type { AnnouncementItem, PaginationMeta, Result } from '@timesheet/shared
 
 import { announcementService } from '../../api';
 import { useAsync } from '../useAsync';
+import { getErrorMessage } from '../../utils/getErrorMessage';
 
 export interface UseAnnouncementsReturn {
   announcements: AnnouncementItem[];
@@ -58,7 +59,7 @@ export const useAnnouncements = (): UseAnnouncementsReturn => {
       }
       return { success: false, error: response.message || 'Okundu olarak işaretlenemedi' };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Okundu olarak işaretlenemedi';
+      const message = getErrorMessage(err, 'Okundu olarak işaretlenemedi');
       return { success: false, error: message };
     }
   };
@@ -72,7 +73,7 @@ export const useAnnouncements = (): UseAnnouncementsReturn => {
       }
       return { success: false, error: response.success ? 'Geçersiz veri' : response.message };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Duyuru oluşturulamadı';
+      const message = getErrorMessage(err, 'Duyuru oluşturulamadı');
       return { success: false, error: message };
     }
   };
@@ -86,7 +87,7 @@ export const useAnnouncements = (): UseAnnouncementsReturn => {
       }
       return { success: false, error: response.success ? 'Geçersiz veri' : response.message };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Duyuru güncellenemedi';
+      const message = getErrorMessage(err, 'Duyuru güncellenemedi');
       return { success: false, error: message };
     }
   };
@@ -100,7 +101,7 @@ export const useAnnouncements = (): UseAnnouncementsReturn => {
       }
       return { success: false, error: response.message || 'Duyuru silinemedi' };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Duyuru silinemedi';
+      const message = getErrorMessage(err, 'Duyuru silinemedi');
       return { success: false, error: message };
     }
   };

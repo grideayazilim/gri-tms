@@ -27,13 +27,21 @@ interface CookieConfigShape {
 
 // JWT Yapılandırması: Access ve Refresh Token sırları ve süreleri
 
+function requireEnv(name: 'ACCESS_TOKEN_SECRET' | 'REFRESH_TOKEN_SECRET'): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} is required`);
+  }
+  return value;
+}
+
 export const jwtConfig: JwtConfigShape = {
   access: {
-    secret: process.env.ACCESS_TOKEN_SECRET || 'your_access_token_secret_change_in_production',
+    secret: requireEnv('ACCESS_TOKEN_SECRET'),
     expiresIn: 15 * 60, // 900 saniye (15 dakika)
   },
   refresh: {
-    secret: process.env.REFRESH_TOKEN_SECRET || 'your_refresh_token_secret_change_in_production',
+    secret: requireEnv('REFRESH_TOKEN_SECRET'),
     expiresIn: 7 * 24 * 60 * 60, // 604800 saniye (7 gün)
   },
 };

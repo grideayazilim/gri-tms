@@ -107,7 +107,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
             Rol
           </label>
           {errors.role && (
-            <span className="input-error-message">{errors.role.message as string}</span>
+            <span className="input-error-message">{errors.role.message}</span>
           )}
         </div>
 
@@ -123,7 +123,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
             Geçerlilik Tarihi
           </label>
           {errors.expiryDate && (
-            <span className="input-error-message">{errors.expiryDate.message as string}</span>
+            <span className="input-error-message">{errors.expiryDate.message}</span>
           )}
         </div>
       </div>
@@ -151,7 +151,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
             Yerleşke
           </label>
           {errors.locationId && (
-            <span className="input-error-message">{errors.locationId.message as string}</span>
+            <span className="input-error-message">{errors.locationId.message}</span>
           )}
         </div>
 
@@ -171,7 +171,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
             Birim
           </label>
           {errors.unitId && (
-            <span className="input-error-message">{errors.unitId.message as string}</span>
+            <span className="input-error-message">{errors.unitId.message}</span>
           )}
         </div>
       </div>

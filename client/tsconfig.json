@@ -16,8 +16,6 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noFallthroughCasesInSwitch": true,
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
     "types": ["vite/client", "node"]
   },
   "include": ["src", "vite-env.d.ts"]

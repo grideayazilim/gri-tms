@@ -25,25 +25,33 @@ async function fetchBlob(url: string, params: Record<string, unknown>): Promise<
   return blob;
 }
 
+// ─── Tipler ───────────────────────────────────────────────────────────────────
+
+type ExportType = 'timesheet' | 'simple' | 'bot';
+
+const EXPORT_CONFIG: Record<ExportType, { endpoint: string; suffix: string }> = {
+  timesheet: { endpoint: '/export/timesheet', suffix: 'MAAŞLAR.xlsm' },
+  simple:    { endpoint: '/export/simple',    suffix: 'LİSTE.xlsm' },
+  bot:       { endpoint: '/export/bot',       suffix: 'BOT GİRDİSİ.xlsx' },
+};
+
 // ─── Servis ───────────────────────────────────────────────────────────────────
 
-export async function downloadTimesheetExcel({ locationId, year, month, locationName }: ExportParams): Promise<void> {
-  const blob = await fetchBlob('/export/timesheet', { locationId, year, month });
-  const period = formatPeriodUpper(year, month);
-  const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} MAAŞLAR.xlsm`;
+/** Genel export fonksiyonu — type'a göre endpoint ve dosya adı seçer. */
+export async function downloadExcel(type: ExportType, params: ExportParams): Promise<void> {
+  const config = EXPORT_CONFIG[type];
+  const blob = await fetchBlob(config.endpoint, {
+    locationId: params.locationId,
+    year: params.year,
+    month: params.month,
+  });
+  const period = formatPeriodUpper(params.year, params.month);
+  const filename = `${params.locationName.toLocaleUpperCase('tr-TR')} - ${period} ${config.suffix}`;
   downloadBlob(blob, filename);
 }
 
-export async function downloadSimpleExcel({ locationId, year, month, locationName }: ExportParams): Promise<void> {
-  const blob = await fetchBlob('/export/simple', { locationId, year, month });
-  const period = formatPeriodUpper(year, month);
-  const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} LİSTE.xlsm`;
-  downloadBlob(blob, filename);
-}
+// ─── Backward-compat wrapper'lar ──────────────────────────────────────────────
 
-export async function downloadBotExcel({ locationId, year, month, locationName }: ExportParams): Promise<void> {
-  const blob = await fetchBlob('/export/bot', { locationId, year, month });
-  const period = formatPeriodUpper(year, month);
-  const filename = `${locationName.toLocaleUpperCase('tr-TR')} - ${period} BOT GİRDİSİ.xlsx`;
-  downloadBlob(blob, filename);
-}
+export const downloadTimesheetExcel = (params: ExportParams) => downloadExcel('timesheet', params);
+export const downloadSimpleExcel    = (params: ExportParams) => downloadExcel('simple',    params);
+export const downloadBotExcel       = (params: ExportParams) => downloadExcel('bot',       params);

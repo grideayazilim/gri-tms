@@ -12,10 +12,6 @@ interface AuthResponse {
   user: AuthUser;
 }
 
-interface MeResponse {
-  user: AuthUser;
-}
-
 // ─── Servis ───────────────────────────────────────────────────────────────────
 
 export const register = (payload: SignUpType) =>
@@ -25,7 +21,7 @@ export const login = (username: string, password: string) =>
   api.post<ApiResponse<AuthResponse>>('/auth/login', { username, password });
 
 export const getMe = () =>
-  api.get<ApiResponse<MeResponse>>('/auth/me');
+  api.get<ApiResponse<AuthResponse>>('/auth/me');
 
 export const logout = () =>
   api.post<ApiResponse<Record<string, never>>>('/auth/logout');

@@ -3,14 +3,14 @@
    Çalışan listeleme, ekleme, güncelleme ve silme işlemlerini yönetir.
    ======================================================================== */
 import { db, withDrizzleTransaction } from '../config/database.js';
-import { createAuditLog, buildActor, diffEntityWithLookups, toSnakeCaseKeys } from '../utils/auditLogger.js';
+import { createAuditLog, buildActor, diffEntityWithLookups } from '../utils/auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared';
+import type { EmployeeType, EmployeeListQuery } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { notFound, conflict } from '../utils/AppError.js';
+import { notFound, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
 import { buildPagination, paginationParams } from '../utils/pagination.js';
 import { ok, created, paginated } from '../utils/responses.js';
 import * as employeeRepo from '../repositories/employeeRepo.js';
-import type { DatabaseError } from 'pg';
 
 
 function buildEmployeeResponse(
@@ -37,12 +37,7 @@ function buildEmployeeResponse(
 }
 
 export const getEmployees = asyncHandler(async (req, res) => {
-  const { unitId, locationId, search, status } = req.query as {
-    unitId?: string;
-    locationId?: string;
-    search?: string;
-    status?: string;
-  };
+  const { unitId, locationId, search, status } = req.query as EmployeeListQuery;
 
   const { page, limit, offset } = paginationParams({ ...req.query, limit: req.query.limit ?? 50 } as Record<string, unknown>);
 
@@ -50,7 +45,7 @@ export const getEmployees = asyncHandler(async (req, res) => {
     ...(unitId !== undefined ? { unitId } : {}),
     ...(locationId !== undefined ? { locationId } : {}),
     ...(search !== undefined ? { search } : {}),
-    ...(status !== undefined ? { status: status as 'active' | 'inactive' } : {}),
+    ...(status !== undefined ? { status } : {}),
   };
 
   const result = await employeeRepo.list(db, filters, limit, offset);
@@ -77,15 +72,8 @@ export const getEmployees = asyncHandler(async (req, res) => {
 });
 
 export const createEmployee = asyncHandler(async (req, res) => {
-  const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate } = req.body as {
-    tcNo: string;
-    firstName: string;
-    lastName: string;
-    ibanNo?: string;
-    unitId: string;
-    startDate: string;
-    endDate?: string;
-  };
+  const body = req.body as EmployeeType;
+  const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate, isActive } = body;
 
   let result: { employee: ReturnType<typeof buildEmployeeResponse> };
   try {
@@ -98,9 +86,7 @@ export const createEmployee = asyncHandler(async (req, res) => {
         unitId,
         startDate,
         endDate: endDate ?? null,
-        isActive: (req.body as { isActive?: boolean }).isActive !== undefined
-          ? (req.body as { isActive?: boolean }).isActive!
-          : true,
+        isActive: isActive ?? true,
       });
 
       const unit = await employeeRepo.findUnitWithLocation(tx, unitId);
@@ -125,10 +111,7 @@ export const createEmployee = asyncHandler(async (req, res) => {
       };
     });
   } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as DatabaseError).code === '23505') {
-      throw conflict('Bu TC No zaten kayıtlı');
-    }
-    throw err;
+    rethrowIfNotUniqueViolation(err, 'Bu TC No zaten kayıtlı');
   }
 
   return created(res, { employee: result.employee });
@@ -136,15 +119,8 @@ export const createEmployee = asyncHandler(async (req, res) => {
 
 export const updateEmployee = asyncHandler(async (req, res) => {
   const { id } = req.params as { id: string };
-  const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate } = req.body as {
-    tcNo?: string;
-    firstName?: string;
-    lastName?: string;
-    ibanNo?: string;
-    unitId?: string;
-    startDate?: string;
-    endDate?: string | null;
-  };
+  const body = req.body as Partial<EmployeeType>;
+  const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate } = body;
 
   let result: { employee: ReturnType<typeof buildEmployeeResponse> };
   try {
@@ -159,9 +135,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
         ...(unitId != null ? { unitId } : {}),
         ...(startDate != null ? { startDate } : {}),
         ...(endDate !== undefined ? { endDate: endDate ?? null } : {}),
-        ...((req.body as { isActive?: boolean }).isActive !== undefined
-          ? { isActive: (req.body as { isActive?: boolean }).isActive! }
-          : {}),
+        ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
       });
 
       if (!updatedEmployee) throw notFound('Çalışan bulunamadı');
@@ -177,9 +151,9 @@ export const updateEmployee = asyncHandler(async (req, res) => {
 
       const changes = diffEntityWithLookups(
         AUDIT_ENTITY_TYPE.EMPLOYEE,
-        oldRow ? toSnakeCaseKeys(oldRow as unknown as Record<string, unknown>) : {},
-        toSnakeCaseKeys(updatedEmployee as unknown as Record<string, unknown>),
-        { unit_id: unitLookup },
+        oldRow ? oldRow as unknown as Record<string, unknown> : {},
+        updatedEmployee as unknown as Record<string, unknown>,
+        { unitId: unitLookup },
       );
 
       const fullName = `${updatedEmployee.firstName} ${updatedEmployee.lastName}`;
@@ -206,10 +180,7 @@ export const updateEmployee = asyncHandler(async (req, res) => {
       };
     });
   } catch (err: unknown) {
-    if (typeof err === 'object' && err !== null && 'code' in err && (err as DatabaseError).code === '23505') {
-      throw conflict('Bu TC No zaten kayıtlı');
-    }
-    throw err;
+    rethrowIfNotUniqueViolation(err, 'Bu TC No zaten kayıtlı');
   }
 
   return ok(res, { employee: result.employee });

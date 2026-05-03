@@ -4,6 +4,7 @@ import type { PaginationMeta, PeriodItem, Result, TimesheetListItem } from '@tim
 
 import { timesheetService } from '../../api';
 import { TURKISH_MONTHS } from '../../utils/dateUtils';
+import { getErrorMessage } from '../../utils/getErrorMessage';
 
 // ─────────────────────────────────────────────────────────────────
 // TİPLER (TYPES)
@@ -22,7 +23,7 @@ export interface TimesheetUIRow {
   id: string;
   timesheetId: string | null;
   employeeId: string;
-  tc: string;
+  tc: string | null;
   name: string;
   unit: string | null;
   unitId: string | null;
@@ -137,7 +138,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
         return { success: true, data: { rows: [] } };
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Puantaj verileri alınırken hata oluştu';
+      const message = getErrorMessage(err, 'Puantaj verileri alınırken hata oluştu');
       setError(message);
       setTimesheets([]);
       return { success: false, error: message };
@@ -173,7 +174,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
          return { success: false, error: response.message || 'Puantaj kaydedilemedi' };
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Puantaj kaydedilemedi';
+      const message = getErrorMessage(err, 'Puantaj kaydedilemedi');
       return { success: false, error: message };
     } finally {
       setIsSaving(false);
@@ -190,7 +191,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
          return { success: false, error: response.message || 'Kilit durumu değiştirilemedi' };
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Kilit durumu değiştirilemedi';
+      const message = getErrorMessage(err, 'Kilit durumu değiştirilemedi');
       return { success: false, error: message };
     } finally {
       setIsLocking(false);

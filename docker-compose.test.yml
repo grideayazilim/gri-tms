@@ -1,0 +1,72 @@
+# ============================================================================
+# docker-compose.test.yml — TEST ORTAMI (tam stack)
+#
+# Kullanım:
+#   cp server/.env.test.example server/.env.test   # ilk kez
+#   # server/.env.test içindeki değerleri düzenle
+#   docker compose -f docker-compose.test.yml up -d --build
+#   docker compose -f docker-compose.test.yml logs -f       # logları izle
+#   docker compose -f docker-compose.test.yml down -v       # sıfırla
+# ============================================================================
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: timesheet_postgres_test
+    restart: unless-stopped
+    env_file:
+      - ./server/.env.test
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./docker/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    networks:
+      - timesheet_test_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: timesheet_server_test
+    restart: unless-stopped
+    env_file:
+      - ./server/.env.test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - timesheet_test_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: timesheet_client_test
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - timesheet_test_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+volumes:
+  postgres_test_data:
+
+networks:
+  timesheet_test_net:
+    driver: bridge

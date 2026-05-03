@@ -1,7 +1,22 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+client/dist/
+shared/dist/
+server/dist/
+
+# Environment files
 .env
 .env.*
 !.env.example
-.DS_Store
+
+# Docker / Server specific secrets
+server/.env
+server/.env.test
+server/.env.prod
+
+# Logs and OS files
 *.log
+.DS_Store

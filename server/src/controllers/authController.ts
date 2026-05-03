@@ -1,6 +1,11 @@
 /* ========================================================================
    AUTH CONTROLLER (KİMLİK DOĞRULAMA KONTROLCÜSÜ)
    Kayıt olma, giriş yapma, token yenileme ve çıkış işlemlerini yönetir.
+
+   Loglama stratejisi:
+     - Giriş/çıkış olayları → Winston (Docker logs) — sistemsel izleme
+     - Kayıt (register) → hem DB audit_logs (admin onayı için) hem Winston
+     - Başarısız girişler → Winston warn (güvenlik izleme)
    ======================================================================== */
 import bcrypt from 'bcrypt';
 
@@ -14,6 +19,8 @@ import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { unauthorized, forbidden, notFound, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
 import { ok, created } from '../utils/responses.js';
 import * as userRepo from '../repositories/userRepo.js';
+import logger from '../utils/logger.js';
+import type { DatabaseError } from 'pg';
 
 
 export const register = asyncHandler(async (req, res) => {
@@ -32,6 +39,7 @@ export const register = asyncHandler(async (req, res) => {
         locationId: locationId ?? null,
       });
 
+      // Register admin-anlamlı olay — DB audit_logs'a yaz (admin onay akışı için)
       await createAuditLog(tx, {
         action: AUDIT_ACTION.USER_REGISTER,
         actor: buildActor(req),
@@ -52,6 +60,8 @@ export const register = asyncHandler(async (req, res) => {
     rethrowIfNotUniqueViolation(err, 'Bu kullanıcı adı zaten kullanımda');
   }
 
+  logger.info('Yeni kullanıcı kaydı', { username: newUser.username, role: newUser.role, ip: req.ip });
+
   return created(res, {
     user: {
       id: newUser.id,
@@ -68,19 +78,26 @@ export const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body as SignInType;
 
   const user = await userRepo.findByUsername(db, username);
-  if (!user) throw unauthorized('Kullanıcı adı veya şifre yanlış');
+  if (!user) {
+    logger.warn('Başarısız giriş denemesi', { username, reason: 'user_not_found', ip: req.ip });
+    throw unauthorized('Kullanıcı adı veya şifre yanlış');
+  }
 
-  // Hesap Durum Kontrolleri: EXPIRED veya ACTIVE olmayan kullanıcı giriş yapamaz
   if (user.status === 'EXPIRED') {
+    logger.warn('Başarısız giriş denemesi', { username, reason: 'account_expired', ip: req.ip });
     throw forbidden('Hesabınızın süresi dolmuştur. Sisteme giriş yapamazsınız.');
   }
 
   if (user.status !== 'ACTIVE') {
+    logger.warn('Başarısız giriş denemesi', { username, reason: 'account_not_active', status: user.status, ip: req.ip });
     throw forbidden('Hesabınız henüz aktif değil. Admin onayı bekleniyor.');
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-  if (!isPasswordValid) throw unauthorized('Kullanıcı adı veya şifre yanlış');
+  if (!isPasswordValid) {
+    logger.warn('Başarısız giriş denemesi', { username, reason: 'invalid_password', ip: req.ip });
+    throw unauthorized('Kullanıcı adı veya şifre yanlış');
+  }
 
   const tokenPayload: JwtPayload = {
     id: user.id,
@@ -93,7 +110,6 @@ export const login = asyncHandler(async (req, res) => {
   const accessToken = generateAccessToken(tokenPayload);
   const refreshToken = generateRefreshToken(tokenPayload);
 
-  // Token'ları HTTP-Only Cookie olarak set et (Güvenlik için JavaScript erişimi kapalıdır)
   res.cookie('accessToken', accessToken, {
     httpOnly: true,
     sameSite: cookieConfig.sameSite,
@@ -108,13 +124,8 @@ export const login = asyncHandler(async (req, res) => {
     maxAge: cookieConfig.maxAge.refresh,
   });
 
-  await createAuditLog(db, {
-    action: AUDIT_ACTION.USER_LOGIN,
-    actor: { username: user.username, role: user.role },
-    entityType: AUDIT_ENTITY_TYPE.USER,
-    entityId: user.id,
-    summary: `${user.username} sisteme giriş yaptı.`,
-  });
+  // Giriş olayı → Docker logs (sistemsel izleme). DB audit_logs'a yazmıyoruz.
+  logger.info('Kullanıcı girişi', { username: user.username, role: user.role, ip: req.ip });
 
   return ok(res, {
     user: {
@@ -159,15 +170,12 @@ export const refresh = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  // Access token'ı (varsa) decode edip log için kullanıcı bilgisini al — başarısız olursa anonim çıkış logla
-  let actor: { username: string; role: string | null } = { username: 'UNKNOWN', role: null };
-  let entityId: string | null = null;
+  let actor = { username: 'UNKNOWN', role: null as string | null };
   const accessToken = req.cookies?.accessToken as string | undefined;
   if (accessToken) {
     try {
       const decoded = verifyAccessToken(accessToken);
       actor = { username: decoded.username, role: decoded.role };
-      entityId = decoded.id ?? null;
     } catch {
       // Token geçersiz; sessizce devam
     }
@@ -185,14 +193,9 @@ export const logout = asyncHandler(async (req, res) => {
     secure: cookieConfig.secure,
   });
 
+  // Çıkış olayı → Docker logs (sistemsel izleme). DB audit_logs'a yazmıyoruz.
   if (actor.username !== 'UNKNOWN') {
-    await createAuditLog(db, {
-      action: AUDIT_ACTION.USER_LOGOUT,
-      actor,
-      entityType: AUDIT_ENTITY_TYPE.USER,
-      entityId,
-      summary: `${actor.username} sistemden çıkış yaptı.`,
-    });
+    logger.info('Kullanıcı çıkışı', { username: actor.username, role: actor.role, ip: req.ip });
   }
 
   return ok(res, undefined, 'Çıkış yapıldı');

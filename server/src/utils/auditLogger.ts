@@ -6,6 +6,7 @@
 import { AUDIT_ENTITY_TYPE } from '@timesheet/shared';
 import type { AuditAction, AuditEntityType } from '@timesheet/shared';
 import type { Request } from 'express';
+import logger from './logger.js';
 
 import { auditLogs } from '../../database/schema.js';
 import type { DbExecutor } from '../types/db.js';
@@ -50,15 +51,15 @@ export async function createAuditLog(executor: DbExecutor, {
   metadata = {},
 }: CreateAuditLogParams): Promise<void> {
   if (!action) {
-    console.error('[AUDIT] action zorunludur');
+    logger.warn('[AUDIT] action zorunludur');
     return;
   }
   if (!actor || !actor.username) {
-    console.error('[AUDIT] actor.username zorunludur');
+    logger.warn('[AUDIT] actor.username zorunludur');
     return;
   }
   if (!summary) {
-    console.error('[AUDIT] summary zorunludur');
+    logger.warn('[AUDIT] summary zorunludur');
     return;
   }
 
@@ -78,7 +79,7 @@ export async function createAuditLog(executor: DbExecutor, {
     });
   } catch (err: unknown) {
     // Audit log hatası ana işlemi durdurmamalı
-    console.error('[AUDIT] log kaydedilemedi:', err);
+    logger.error('[AUDIT] log kaydedilemedi', { error: err instanceof Error ? err.message : String(err) });
   }
 }
 

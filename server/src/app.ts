@@ -8,6 +8,7 @@ import type { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { AppError } from './utils/AppError.js';
+import logger from './utils/logger.js';
 import authRoutes from './routes/authRoutes.js';
 import locationAndUnitRoutes from './routes/locationAndUnitRoutes.js';
 import timesheetRoutes from './routes/timesheetRoutes.js';
@@ -23,7 +24,6 @@ import importRoutes from './routes/importRoutes.js';
 const app = express();
 
 // CORS Yapılandırması: Cookie bazlı Auth için credentials: true olmalı
-
 app.use(
   cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -75,14 +75,16 @@ function isUniqueViolation(err: unknown): boolean {
 
 // Global error handler
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
-  // PostgreSQL Unique Violation (Hata Kodu 23505): Çakışan kayıt durumunda 409 döndürür
+  // PostgreSQL Unique Violation (23505): çakışan kayıt → 409
   if (isUniqueViolation(err)) {
     res.status(409).json({ success: false, message: 'Bu kayıt zaten mevcut' });
     return;
   }
 
-  // AppError — tip narrow
+  // AppError — bilinen uygulama hataları (4xx)
   if (err instanceof AppError) {
+    // 4xx hatalar operasyonel — sadece debug seviyesinde logla
+    logger.debug('AppError', { method: req.method, path: req.path, status: err.status, message: err.message });
     res.status(err.status).json({
       success: false,
       message: err.message,
@@ -90,11 +92,17 @@ app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
-  // Bilinmeyen hata — 500
+  // Bilinmeyen hata — 500 (sunucu hatası, error seviyesinde logla)
   const message = err instanceof Error ? err.message : 'Bilinmeyen hata';
   const stack = err instanceof Error ? err.stack : undefined;
 
-  console.error(`[${req.method} ${req.path}]`, message, stack);
+  logger.error('Unhandled server error', {
+    method: req.method,
+    path: req.path,
+    message,
+    stack,
+  });
+
   res.status(500).json({
     success: false,
     message: 'Sunucu hatası',

@@ -1,0 +1,87 @@
+# ============================================================================
+# docker-compose.prod.yml — PRODUCTION (deploy ortamı)
+#
+# Kullanım:
+#   cp server/.env.prod.example server/.env.prod   # ilk kez
+#   # server/.env.prod içindeki TÜM değerleri doldur (özellikle secret'ları)
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml logs -f server   # logları izle
+#   docker compose -f docker-compose.prod.yml down             # durdur
+# ============================================================================
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: timesheet_postgres
+    restart: always
+    env_file:
+      - ./server/.env.prod
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./docker/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    networks:
+      - timesheet_prod_net
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: timesheet_server
+    restart: always
+    env_file:
+      - ./server/.env.prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - timesheet_prod_net
+    expose:
+      - "3000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    container_name: timesheet_client
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    networks:
+      - timesheet_prod_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+volumes:
+  postgres_prod_data:
+
+networks:
+  timesheet_prod_net:
+    driver: bridge

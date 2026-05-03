@@ -5,6 +5,7 @@
 import type { Request, Response, NextFunction } from 'express';
 
 import { verifyAccessToken } from '../utils/tokenUtils.js';
+import logger from '../utils/logger.js';
 
 
 // Cookie'den token oku
@@ -28,7 +29,11 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 
     next();
   } catch (error: unknown) {
-    console.error('Auth middleware error:', error);
+    logger.warn('Auth token doğrulama başarısız', {
+      path: req.path,
+      ip: req.ip,
+      error: error instanceof Error ? error.message : String(error),
+    });
     res.status(401).json({
       success: false,
       message: 'Geçersiz veya süresi dolmuş token',

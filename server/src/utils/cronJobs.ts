@@ -10,15 +10,14 @@ import { users, periods } from '../../database/schema.js';
 import { formatPeriodLabel } from './dateUtils.js';
 import { createAuditLog, SYSTEM_CRON_ACTOR, truncateChanges } from './auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_STATUS } from '@timesheet/shared';
+import logger from './logger.js';
 
 export function initCronJobs(): void {
     cron.schedule('0 0 * * *', async () => {
-        console.log('[CRON] Nightly maintenance başladı...');
+        logger.info('[CRON] Nightly maintenance başladı');
 
         try {
-            // Envanter E kapatıldı: raw SQL injection riski ortadan kalktı — Drizzle parametrize
             await db.transaction(async (tx) => {
-                // Süresi (expiry_date) bugün itibariyle dolmuş olan ACTIVE kullanıcılar için durum güncellemesi
                 const expiredUsers = await tx.update(users)
                     .set({ status: USER_STATUS.EXPIRED })
                     .where(and(
@@ -28,7 +27,7 @@ export function initCronJobs(): void {
                     .returning({ id: users.id, username: users.username });
 
                 if (expiredUsers.length > 0) {
-                    console.log(`[CRON] ${expiredUsers.length} kullanıcı EXPIRED olarak işaretlendi.`);
+                    logger.info('[CRON] Kullanıcılar EXPIRED olarak işaretlendi', { count: expiredUsers.length });
 
                     const changes = truncateChanges(
                         expiredUsers.map((u) => u.username),
@@ -48,7 +47,6 @@ export function initCronJobs(): void {
                     });
                 }
 
-                // Dönem bitişinden (end_date) 3 gün sonra otomatik kilitleme yapar
                 const lockedPeriods = await tx.update(periods)
                     .set({ isLocked: true })
                     .where(and(
@@ -59,7 +57,7 @@ export function initCronJobs(): void {
 
                 for (const row of lockedPeriods) {
                     const periodLabel = formatPeriodLabel(row.year, row.month);
-                    console.log(`[CRON] Dönem kapatıldı: ${row.year}-${row.month}`);
+                    logger.info('[CRON] Dönem otomatik kilitlendi', { year: row.year, month: row.month });
 
                     await createAuditLog(tx, {
                         action: AUDIT_ACTION.PERIOD_AUTO_LOCK,
@@ -76,11 +74,13 @@ export function initCronJobs(): void {
                 }
             });
         } catch (error: unknown) {
-            console.error('[CRON] Nightly maintenance başarısız:', error);
+            logger.error('[CRON] Nightly maintenance başarısız', {
+                error: error instanceof Error ? error.message : String(error),
+            });
         }
 
-        console.log('[CRON] Nightly maintenance tamamlandı.');
+        logger.info('[CRON] Nightly maintenance tamamlandı');
     });
 
-    console.log('Cron jobs initialized.');
+    logger.info('Cron jobs başlatıldı');
 }

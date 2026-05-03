@@ -24,6 +24,7 @@
   "dependencies": {
     "@timesheet/shared": "*",
     "bcrypt": "^6.0.0",
+    "winston": "^3.17.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",

@@ -1,0 +1,10 @@
+node_modules
+.git
+.DS_Store
+*.md
+.env
+.env.*
+!server/.env.example
+!server/.env.test.example
+!server/.env.prod.example
+dist

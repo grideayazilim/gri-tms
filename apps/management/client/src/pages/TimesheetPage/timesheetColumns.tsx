@@ -8,19 +8,10 @@ import type { MarkerCode, TimesheetUIRow } from "../../hooks/data/useTimesheets"
 
 export type { TimesheetUIRow };
 
-/**
- * @param {string[]} periodDays       - periyottaki günlerin YYYY-MM-DD listesi
- * @param {function} onDayClick       - (row, dateStr) => void
- * @param {function} isDayCellDirty   - (rowId, dateStr) => boolean — opsiyonel
- * @param {string}   period           - YYYY-MM
- * @param {function} isPublicHoliday  - (dateStr) => boolean — opsiyonel
- */
-
 export const timesheetColumns = (
   periodDays: string[],
   onDayClick: (row: TimesheetUIRow, dateStr: string, markerCode: MarkerCode) => void,
   originalSnapshot: TimesheetUIRow[],
-  period: string,
   isPublicHoliday: ((dateStr: string) => boolean) | undefined,
 ): Column<TimesheetUIRow>[] => [
     { header: "TC No", accessor: "tc", width: "120px" },
@@ -34,7 +25,6 @@ export const timesheetColumns = (
             timesheetDays={row.timesheet_days}
             originalDays={originalRow?.timesheet_days}
             periodDays={periodDays}
-            period={period}
             onDayClick={(dateStr, markerCode) => onDayClick(row, dateStr, markerCode)}
             isPublicHoliday={isPublicHoliday}
             isLocked={row.isLocked}

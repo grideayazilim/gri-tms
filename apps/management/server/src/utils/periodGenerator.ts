@@ -40,11 +40,16 @@ export async function regeneratePeriodsForRange(
       ? parsedEnd
       : endOfMonth(monthDate);
 
-    await settingsRepo.upsertPeriod(tx, {
-      year: y,
-      month: m,
-      startDate: toISODateString(periodStart)!,
-      endDate: toISODateString(periodEnd)!,
-    });
+    const startStr = toISODateString(periodStart);
+    const endStr = toISODateString(periodEnd);
+
+    if (startStr && endStr) {
+      await settingsRepo.upsertPeriod(tx, {
+        year: y,
+        month: m,
+        startDate: startStr,
+        endDate: endStr,
+      });
+    }
   }
 }

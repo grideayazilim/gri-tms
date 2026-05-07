@@ -15,7 +15,7 @@ export const auditLogRepo = {
     const conditions = [];
 
     if (filters.actor) {
-      conditions.push(ilike(auditLogs.actorUsername, `%${filters.actor}%`));
+      conditions.push(ilike(auditLogs.actorUsername, `%${filters.actor.trim()}%`));
     }
     if (filters.action) {
       conditions.push(eq(auditLogs.action, filters.action));

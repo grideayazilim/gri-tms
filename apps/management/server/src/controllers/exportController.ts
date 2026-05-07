@@ -9,7 +9,8 @@ import {
   generateBotExcel,
 } from '../utils/excelHandler.js';
 import { createAuditLog, buildActor } from '../utils/auditLogger.js';
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, TURKISH_MONTHS_UPPER as TURKISH_MONTHS } from '@timesheet/shared';
+import logger from '../utils/logger.js';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, TURKISH_MONTHS_UPPER as TURKISH_MONTHS, type MarkerCode } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { notFound } from '../utils/AppError.js';
 import { importRepo } from '../repositories/importRepo.js';
@@ -22,7 +23,7 @@ export async function fetchExportData(tx: DbExecutor, locationId: string, year: 
   const period = await importRepo.findPeriod(tx, year, month);
   const employees = await importRepo.getEmployeesByLocation(tx, locationId);
 
-  const daysMap = new Map<string, Record<string, string>>();
+  const daysMap = new Map<string, Record<string, MarkerCode>>();
 
   if (period && employees.length > 0) {
     const empIds = employees.map((e) => e.id);
@@ -30,7 +31,7 @@ export async function fetchExportData(tx: DbExecutor, locationId: string, year: 
 
     for (const row of tsDays) {
       if (!daysMap.has(row.employeeId)) daysMap.set(row.employeeId, {});
-      daysMap.get(row.employeeId)![row.day] = row.markerCode;
+      daysMap.get(row.employeeId)![row.day] = row.markerCode as MarkerCode;
     }
   }
 
@@ -72,7 +73,7 @@ async function fireExportAuditLog(req: Request, params: { exportType: string; lo
       metadata: { exportType, locationName, periodLabel: periodLabel(year, month), year, month },
     });
   } catch (err) {
-    console.error('[AUDIT] Export audit log kaydedilemedi:', err);
+    logger.error('[AUDIT] Export audit log kaydedilemedi', { error: err instanceof Error ? err.message : String(err) });
   }
 }
 

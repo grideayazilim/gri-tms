@@ -36,7 +36,7 @@ export const useAuditLogs = (): UseAuditLogsReturn => {
         page: String(page),
         limit: String(DEFAULT_PAGINATION.limit),
       };
-      const response = await auditLogService.getAuditLogs(finalParams as Record<string, string>);
+      const response = await auditLogService.getAuditLogs(finalParams);
       if (!response.success) {
         const message = response.message ?? 'İşlem kayıtları alınamadı';
         setError(message);

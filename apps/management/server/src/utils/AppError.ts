@@ -12,6 +12,9 @@ export class AppError extends Error {
     super(message);
     this.status = status;
     this.name = 'AppError';
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, AppError);
+    }
   }
 }
 
@@ -25,17 +28,16 @@ export const locked       = (msg = 'Kayıt kilitli'): AppError            => new
 // PostgreSQL hata kodları (https://www.postgresql.org/docs/current/errcodes-appendix.html)
 const PG_UNIQUE_VIOLATION = '23505';
 
+function isRecordWithCode(err: unknown): err is { code: string } {
+  return typeof err === 'object' && err !== null && 'code' in err;
+}
+
 /**
  * Verilen hatayı kontrol eder; eğer Postgres unique violation ise belirtilen
  * mesajla `conflict` (409) hatası fırlatır, değilse hatayı yeniden fırlatır.
  */
 export function rethrowIfNotUniqueViolation(err: unknown, message: string): never {
-  if (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: unknown }).code === PG_UNIQUE_VIOLATION
-  ) {
+  if (isRecordWithCode(err) && err.code === PG_UNIQUE_VIOLATION) {
     throw conflict(message);
   }
   throw err;

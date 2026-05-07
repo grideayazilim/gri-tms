@@ -89,7 +89,12 @@ export const useUsers = (): UseUsersReturn => {
 
     try {
       const response = await userService.deleteUser(userId);
-      return { success: true as const, data: undefined as void, message: response.success ? response.message : undefined };
+      if (!response.success) {
+        const message = response.message ?? 'Kullanıcı silinemedi';
+        setError(message);
+        return { success: false as const, error: message };
+      }
+      return { success: true as const, data: undefined as void };
     } catch (err: unknown) {
       const message = getErrorMessage(err, 'Kullanıcı silinirken bir hata oluştu');
       setError(message);

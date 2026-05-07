@@ -104,7 +104,12 @@ export const useEmployees = (): UseEmployeesReturn => {
     setIsLoading(true);
     setError(null);
     try {
-      await employeeService.deleteEmployee(id);
+      const response = await employeeService.deleteEmployee(id);
+      if (!response.success) {
+        const message = response.message ?? 'Çalışan silinemedi';
+        setError(message);
+        return { success: false as const, error: message };
+      }
       return { success: true as const, data: undefined as void };
     } catch (err: unknown) {
       const message = getErrorMessage(err, 'Bir hata oluştu');

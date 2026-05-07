@@ -10,7 +10,7 @@ import './UserEditModal.scss';
 
 interface UserEditModalProps {
   user: UserListItem;
-  onClose: (data: unknown) => void;
+  onClose: (data: null) => void;
   onSave: (data: UserEditType) => void;
 }
 
@@ -24,7 +24,6 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors, isDirty },
     reset,
     resetField,
@@ -32,9 +31,9 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
     resolver: zodResolver(userEditSchema),
     defaultValues: {
       role: user?.role,
-      expiryDate: toISODateString(user?.expiryDate) || '',
-      locationId: user?.unit?.location?.id?.toString() || '',
-      unitId: user?.unit?.id?.toString() || '',
+      expiryDate: toISODateString(user?.expiryDate) ?? '',
+      locationId: user?.unit?.location?.id?.toString() ?? '',
+      unitId: user?.unit?.id?.toString() ?? '',
     },
   });
 
@@ -52,17 +51,15 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
     if (user) {
       reset({
         role: user.role,
-        expiryDate: toISODateString(user.expiryDate) || '',
-        locationId: user.unit?.location?.id?.toString() || '',
-        unitId: user.unit?.id?.toString() || '',
+        expiryDate: toISODateString(user.expiryDate) ?? '',
+        locationId: user.unit?.location?.id?.toString() ?? '',
+        unitId: user.unit?.id?.toString() ?? '',
       });
       // Kullanıcı değiştiğinde şifre alanını sıfırla
       setChangePassword(false);
     }
   }, [user, reset]);
 
-  const selectedLocationId = watch('locationId');
-  const selectedUnitId = watch('unitId');
 
   const onSubmit = (data: UserEditType) => {
     onSave({
@@ -121,14 +118,13 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
           <select
             id="locationId"
             className={`input ${errors.locationId ? 'input--error' : ''}`}
-            {...register('locationId')}
-            value={selectedLocationId || ''}
-            onChange={(e) => {
-              const locId = e.target.value;
-              setValue('locationId', locId, { shouldDirty: true });
-              setValue('unitId', '', { shouldDirty: true });
-              if (locId) fetchUnitsByLocation(locId);
-            }}
+            {...register('locationId', {
+              onChange: (e: React.ChangeEvent<HTMLSelectElement>) => {
+                const locId = e.target.value;
+                setValue('unitId', '', { shouldDirty: true });
+                if (locId) fetchUnitsByLocation(locId);
+              },
+            })}
           >
             <option value="" disabled hidden></option>
             {locations.map(loc => (
@@ -148,7 +144,6 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
             id="unitId"
             className={`input ${errors.unitId ? 'input--error' : ''}`}
             {...register('unitId')}
-            value={selectedUnitId || ''}
           >
             <option value="" disabled hidden></option>
             {units.map(unit => (

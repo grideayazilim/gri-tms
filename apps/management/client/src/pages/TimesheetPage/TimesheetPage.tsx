@@ -195,13 +195,17 @@ const TimesheetPage = () => {
     fetchTimesheets({ ...apiParams, page, limit: PAGE_LIMIT }).then((result) => {
       if (result.success && result.data?.rows) {
         setOriginalSnapshot(structuredClone(result.data.rows));
-        const locked = result.data.rows[0]?.isLocked ?? false;
+        // Satır yoksa (boş sayfa) rows[0] undefined olur → periods listesinden al
+        const locked =
+          result.data.rows[0]?.isLocked ??
+          periods.find((p) => p.value === filters.period)?.isLocked ??
+          false;
         setPeriodIsLocked(locked);
       }
     }).catch(() => {
       // fetchTimesheets kendi catch bloğunda hata state'ini set ediyor
     });
-  }, [fetchTimesheets, apiParams, page]);
+  }, [fetchTimesheets, apiParams, page, periods, filters.period]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // HÜCRE TIKLAMA
@@ -321,8 +325,7 @@ const TimesheetPage = () => {
 
     const result = await toggleLockPeriod(periodId);
     if (result.success) {
-      // Sunucu { isLocked: boolean } döndürür, period wrapper'ı yoktur
-      const newState = (result.data as { isLocked?: boolean })?.isLocked ?? !periodIsLocked;
+      const newState = result.data.period.isLocked;
       setPeriodIsLocked(newState);
       setTimesheets((prev) => prev.map((r) => ({ ...r, isLocked: newState })));
       toast({
@@ -375,8 +378,8 @@ const TimesheetPage = () => {
   }, [activePeriod, filters.period]);
 
   const columns = useMemo(
-    () => timesheetColumns(periodDays, handleDayClick, originalSnapshot, filters.period as string, isPublicHoliday),
-    [periodDays, handleDayClick, originalSnapshot, filters.period, isPublicHoliday],
+    () => timesheetColumns(periodDays, handleDayClick, originalSnapshot, isPublicHoliday),
+    [periodDays, handleDayClick, originalSnapshot, isPublicHoliday],
   );
 
   const userName = user?.username || "Kullanıcı";

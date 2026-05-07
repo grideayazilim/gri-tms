@@ -5,13 +5,13 @@
 import type { Request, Response } from 'express';
 import { db, withDrizzleTransaction } from '../config/database.js';
 import { createAuditLog, buildActor, truncateChanges } from '../utils/auditLogger.js';
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, TURKISH_MONTHS as TURKISH_MONTHS_TC } from '@timesheet/shared';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, TURKISH_MONTHS as TURKISH_MONTHS_TC, ImportEmployeeType, ImportFinalizeType, BulkImportEmployeesType, MarkerCode } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { conflict, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
 import { importRepo } from '../repositories/importRepo.js';
 import { settingsRepo } from '../repositories/settingsRepo.js';
 
-export const importEmployee = asyncHandler(async (req: Request, res: Response) => {
+export const importEmployee = asyncHandler<Record<string, string>, unknown, ImportEmployeeType>(async (req, res) => {
   const {
     tcNo, firstName, lastName, unitName, ibanNo,
     startDate, endDate, locationId, year, month, markers,
@@ -51,8 +51,8 @@ export const importEmployee = asyncHandler(async (req: Request, res: Response) =
           firstName,
           lastName,
           ibanNo: ibanNo || null,
-          unitId: unitId!,
-          startDate: startDate || null,
+          unitId: unitId,
+          startDate: (startDate || new Date().toISOString().split('T')[0]) as string,
           endDate: endDate || null,
           isActive: true,
         });
@@ -75,18 +75,19 @@ export const importEmployee = asyncHandler(async (req: Request, res: Response) =
         timesheetId = existingTs.id;
         await importRepo.touchTimesheet(tx, timesheetId);
       } else {
-        const newTs = await importRepo.insertTimesheet(tx, employeeId, periodId, unitId!);
+        if (!unitId) throw new Error('Puantaj oluşturmak için geçerli bir birim bulunamadı.');
+        const newTs = await importRepo.insertTimesheet(tx, employeeId, periodId, unitId);
         timesheetId = newTs.id;
       }
 
       await importRepo.deleteTimesheetDays(tx, timesheetId);
 
-      const dayEntries = markers ? Object.entries(markers).filter(([, code]) => !!code) : [];
+      const dayEntries = markers ? Object.entries(markers).filter((entry): entry is [string, string] => !!entry[1]) : [];
       if (dayEntries.length > 0) {
         const dayRows = dayEntries.map(([day, code]) => ({
           timesheetId,
           day,
-          markerCode: code as string,
+          markerCode: code as MarkerCode,
         }));
         await importRepo.insertTimesheetDays(tx, dayRows);
       }
@@ -100,7 +101,7 @@ export const importEmployee = asyncHandler(async (req: Request, res: Response) =
   res.json({ success: true, data: result });
 });
 
-export const finalizeImport = asyncHandler(async (req: Request, res: Response) => {
+export const finalizeImport = asyncHandler<Record<string, string>, unknown, ImportFinalizeType>(async (req, res) => {
   const {
     locationName, year, month,
     createdCount = 0, skippedCount = 0,
@@ -115,7 +116,7 @@ export const finalizeImport = asyncHandler(async (req: Request, res: Response) =
 
     let wageUpdated = false;
     let previousWage: number | null = null;
-    const newWage = parseFloat(dailyWage);
+    const newWage = dailyWage ? Number(dailyWage) : NaN;
 
     if (!isNaN(newWage) && newWage > 0) {
       const current = await settingsRepo.getSettings(tx);
@@ -176,7 +177,7 @@ export const finalizeImport = asyncHandler(async (req: Request, res: Response) =
   res.json({ success: true });
 });
 
-export const bulkImportEmployees = asyncHandler(async (req: Request, res: Response) => {
+export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown, BulkImportEmployeesType>(async (req, res) => {
   const { employees } = req.body;
 
   if (!Array.isArray(employees)) {
@@ -240,7 +241,7 @@ export const bulkImportEmployees = asyncHandler(async (req: Request, res: Respon
           lastName,
           ibanNo: ibanNo || null,
           unitId: unitId,
-          startDate: startDate || null,
+          startDate: (startDate || new Date().toISOString().split('T')[0]) as string,
           endDate: endDate || null,
           isActive: true,
         });

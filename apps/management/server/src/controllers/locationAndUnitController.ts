@@ -45,8 +45,8 @@ export const getUnits = asyncHandler(async (_req, res) => {
   return ok(res, { units });
 });
 
-export const getUnitsByLocation = asyncHandler(async (req, res) => {
-  const { locationId } = req.params as { locationId: string };
+export const getUnitsByLocation = asyncHandler<{ locationId: string }>(async (req, res) => {
+  const { locationId } = req.params;
 
   const rows = await locationRepo.findUnitsByLocation(db, locationId);
 
@@ -64,8 +64,8 @@ export const getUnitsByLocation = asyncHandler(async (req, res) => {
 
 // ==================== YAZMA (POST) İŞLEMLERİ ====================
 
-export const createLocation = asyncHandler(async (req, res) => {
-  const { name, programNo } = req.body as LocationType;
+export const createLocation = asyncHandler<Record<string, string>, unknown, LocationType>(async (req, res) => {
+  const { name, programNo } = req.body;
 
   let newLocation;
   try {
@@ -98,8 +98,8 @@ export const createLocation = asyncHandler(async (req, res) => {
   });
 });
 
-export const createUnit = asyncHandler(async (req, res) => {
-  const { locationId, name } = req.body as UnitType;
+export const createUnit = asyncHandler<Record<string, string>, unknown, UnitType>(async (req, res) => {
+  const { locationId, name } = req.body;
 
   const newUnit = await withDrizzleTransaction(async (tx) => {
     const locExists = await locationRepo.locationExists(tx, locationId);
@@ -135,9 +135,9 @@ export const createUnit = asyncHandler(async (req, res) => {
 
 // ==================== GÜNCELLEME (PUT) İŞLEMLERİ ====================
 
-export const updateLocation = asyncHandler(async (req, res) => {
-  const { locationId } = req.params as { locationId: string };
-  const { name, programNo } = req.body as LocationType;
+export const updateLocation = asyncHandler<{ locationId: string }, unknown, LocationType>(async (req, res) => {
+  const { locationId } = req.params;
+  const { name, programNo } = req.body;
 
   let updatedLocation;
   try {
@@ -150,8 +150,8 @@ export const updateLocation = asyncHandler(async (req, res) => {
 
       const changes = diffEntity(
         AUDIT_ENTITY_TYPE.LOCATION,
-        oldLoc as unknown as Record<string, unknown>,
-        loc as unknown as Record<string, unknown>,
+        oldLoc,
+        loc,
       );
 
       await createAuditLog(tx, {
@@ -182,9 +182,9 @@ export const updateLocation = asyncHandler(async (req, res) => {
   });
 });
 
-export const updateUnit = asyncHandler(async (req, res) => {
-  const { unitId } = req.params as { unitId: string };
-  const { locationId, name } = req.body as UnitType;
+export const updateUnit = asyncHandler<{ unitId: string }, unknown, UnitType>(async (req, res) => {
+  const { unitId } = req.params;
+  const { locationId, name } = req.body;
 
   const updatedUnit = await withDrizzleTransaction(async (tx) => {
     const oldUnit = await locationRepo.findUnitById(tx, unitId);
@@ -204,8 +204,8 @@ export const updateUnit = asyncHandler(async (req, res) => {
     }
     const changes = diffEntityWithLookups(
       AUDIT_ENTITY_TYPE.UNIT,
-      oldUnit as unknown as Record<string, unknown>,
-      unit as unknown as Record<string, unknown>,
+      oldUnit,
+      unit,
       { locationId: locationLookup },
     );
 
@@ -234,9 +234,9 @@ export const updateUnit = asyncHandler(async (req, res) => {
   });
 });
 
-export const syncLocationWithUnits = asyncHandler(async (req, res) => {
-  const { locationId } = req.params as { locationId: string };
-  const { name, programNo, units } = req.body as SyncLocationType;
+export const syncLocationWithUnits = asyncHandler<{ locationId: string }, unknown, SyncLocationType>(async (req, res) => {
+  const { locationId } = req.params;
+  const { name, programNo, units } = req.body;
 
   let result;
   try {
@@ -296,8 +296,8 @@ export const syncLocationWithUnits = asyncHandler(async (req, res) => {
       // Build detailed changes array
       const locFieldChanges = diffEntity(
         AUDIT_ENTITY_TYPE.LOCATION,
-        oldLoc as unknown as Record<string, unknown>,
-        { name, programNo } as unknown as Record<string, unknown>,
+        oldLoc,
+        { name, programNo },
       );
       const unitChanges = [
         ...addedUnits.map((n) => `Birim eklendi: "${n}"`),
@@ -336,8 +336,8 @@ export const syncLocationWithUnits = asyncHandler(async (req, res) => {
 
 // ==================== SİLME (DELETE) İŞLEMLERİ ====================
 
-export const deleteLocation = asyncHandler(async (req, res) => {
-  const { locationId } = req.params as { locationId: string };
+export const deleteLocation = asyncHandler<{ locationId: string }>(async (req, res) => {
+  const { locationId } = req.params;
 
   await withDrizzleTransaction(async (tx) => {
     const oldLoc = await locationRepo.findLocationById(tx, locationId);
@@ -358,8 +358,8 @@ export const deleteLocation = asyncHandler(async (req, res) => {
   return ok(res, undefined, 'Yerleşke ve bağlı tüm alt veriler başarıyla silindi.');
 });
 
-export const deleteUnit = asyncHandler(async (req, res) => {
-  const { unitId } = req.params as { unitId: string };
+export const deleteUnit = asyncHandler<{ unitId: string }>(async (req, res) => {
+  const { unitId } = req.params;
 
   await withDrizzleTransaction(async (tx) => {
     const oldUnit = await locationRepo.findUnitById(tx, unitId);

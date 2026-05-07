@@ -5,11 +5,11 @@
 import type { Request, Response } from 'express';
 import { db, withDrizzleTransaction } from '../config/database.js';
 import { createAuditLog, buildActor, diffEntity } from '../utils/auditLogger.js';
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_ROLE } from '@timesheet/shared';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_ROLE, SystemSettingsType } from '@timesheet/shared';
 import { toISODateString } from '../utils/dateUtils.js';
 import { regeneratePeriodsForRange } from '../utils/periodGenerator.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { notFound } from '../utils/AppError.js';
+import { notFound, badRequest } from '../utils/AppError.js';
 import { settingsRepo } from '../repositories/settingsRepo.js';
 
 // --- PENDING USERS ---
@@ -38,8 +38,8 @@ export const getPendingUsers = asyncHandler(async (req: Request, res: Response) 
   res.json({ success: true, data: { pendingUsers } });
 });
 
-export const approvePendingUser = asyncHandler(async (req: Request, res: Response) => {
-  const id = req.params.id as string;
+export const approvePendingUser = asyncHandler<{ id: string }>(async (req, res) => {
+  const { id } = req.params;
 
   const updatedUser = await withDrizzleTransaction(async (tx) => {
     const user = await settingsRepo.approveUser(tx, id);
@@ -66,8 +66,8 @@ export const approvePendingUser = asyncHandler(async (req: Request, res: Respons
   res.json({ success: true, message: 'Kullanıcı onaylandı' });
 });
 
-export const rejectPendingUser = asyncHandler(async (req: Request, res: Response) => {
-  const id = req.params.id as string;
+export const rejectPendingUser = asyncHandler<{ id: string }>(async (req, res) => {
+  const { id } = req.params;
 
   const deletedUser = await withDrizzleTransaction(async (tx) => {
     const user = await settingsRepo.rejectUser(tx, id);
@@ -117,9 +117,8 @@ export const getSystemSettings = asyncHandler(async (req: Request, res: Response
   });
 });
 
-export const updateSystemSettings = asyncHandler(async (req: Request, res: Response) => {
+export const updateSystemSettings = asyncHandler<Record<string, string>, unknown, SystemSettingsType>(async (req, res) => {
   const { dailyWage, maxWeeklyDays, programStartDate, programEndDate } = req.body;
-  const dailyWageFloat = dailyWage !== undefined && dailyWage !== '' ? dailyWage : undefined;
 
   const updatedSettings = await withDrizzleTransaction(async (tx) => {
     const current = await settingsRepo.getSettings(tx);
@@ -133,11 +132,17 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
 
     const dateChanged = (newStart !== oldStart) || (newEnd !== oldEnd);
 
+    if (!newStart || !newEnd) {
+      throw badRequest('Program başlangıç ve bitiş tarihleri zorunludur.');
+    }
+
+    const dailyWageStr = (dailyWage !== undefined && dailyWage !== null) ? String(dailyWage) : undefined;
+
     const saved = await settingsRepo.upsertSettings(tx, {
-      dailyWage: dailyWageFloat,
-      maxWeeklyDays: maxWeeklyDays,
-      programStartDate: newStart!,
-      programEndDate: newEnd!,
+      ...(dailyWageStr ? { dailyWage: dailyWageStr } : {}),
+      maxWeeklyDays: maxWeeklyDays ?? 6,
+      programStartDate: newStart,
+      programEndDate: newEnd,
     });
 
     if (dateChanged) {
@@ -155,7 +160,9 @@ export const updateSystemSettings = asyncHandler(async (req: Request, res: Respo
       }
     }
 
-    const changes = diffEntity(AUDIT_ENTITY_TYPE.SETTINGS, current || {}, saved);
+    const changes = current != null
+      ? diffEntity(AUDIT_ENTITY_TYPE.SETTINGS, current, saved)
+      : [];
 
     await createAuditLog(tx, {
       action: AUDIT_ACTION.SETTINGS_UPDATE,

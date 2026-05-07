@@ -7,7 +7,7 @@ import ExcelJS from 'exceljs';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { PAID_CODES } from '@timesheet/shared';
+import { PAID_CODES, MARKERS, type MarkerCode } from '@timesheet/shared';
 import { AppError } from './AppError.js';
 import { parseLocalDate } from './dateUtils.js';
 
@@ -31,7 +31,7 @@ export interface ExcelEmployee {
 
 export interface TimesheetExcelOptions {
   employees: ExcelEmployee[];
-  daysMap: Record<string, Record<string, string>>;
+  daysMap: Record<string, Record<string, MarkerCode>>;
   dailyWage: number;
   year: number;
   month: number;
@@ -43,7 +43,7 @@ export interface TimesheetExcelOptions {
 
 export interface BotExcelOptions {
   employees: ExcelEmployee[];
-  daysMap: Record<string, Record<string, string>>;
+  daysMap: Record<string, Record<string, MarkerCode>>;
   year: number;
   month: number;
   locationName: string;
@@ -53,6 +53,7 @@ export interface BotExcelOptions {
 
 function formatDateTR(dateStr: string): string {
   const parts = dateStr.split('-');
+  if (parts.length < 3) return dateStr;
   return `${parts[2]}.${parts[1]}.${parts[0]}`;
 }
 
@@ -134,6 +135,13 @@ export async function generateTimesheetExcel(options: TimesheetExcelOptions): Pr
 
 // ─── Bot Girdisi (Şablonsuz) ──────────────────────────────────────────────────
 
+// Bot için "devamda sayılan" işaretçiler: geldi (X) + izinli (İ) + raporlu (R)
+const BOT_PRESENT_CODES: Set<MarkerCode> = new Set([
+  MARKERS.X.code,
+  MARKERS.I.code,
+  MARKERS.R.code,
+]);
+
 export async function generateBotExcel({ employees, daysMap, year, month }: BotExcelOptions): Promise<Buffer> {
   const daysInMonth = new Date(year, month, 0).getDate();
   const sorted = sortAlphabetically(employees);
@@ -171,7 +179,7 @@ export async function generateBotExcel({ employees, daysMap, year, month }: BotE
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const marker = days[dateStr];
-      dayValues.push(marker && (PAID_CODES as Set<string>).has(marker) ? 1 : 0);
+      dayValues.push(marker && BOT_PRESENT_CODES.has(marker) ? 1 : 0);
     }
 
     const dataRow = ws.addRow([

@@ -21,7 +21,7 @@ export const importRepo = {
     return res[0];
   },
 
-  async findEmployeeByTc(executor: DbExecutor, tcNo: string) {
+  async findEmployeeByTc(executor: DbExecutor, tcNo: string): Promise<EmployeeRow | undefined> {
     const res = await executor.select().from(employees).where(eq(employees.tcNo, tcNo)).limit(1);
     return res[0];
   },
@@ -47,14 +47,15 @@ export const importRepo = {
   },
 
   async insertPeriod(executor: DbExecutor, year: number, month: number) {
+    const lastDay = new Date(year, month, 0).getDate();
+    const mm = month.toString().padStart(2, '0');
+
     const res = await executor.insert(periods)
-      // We pass a dummy start/end date because schema requires it, but in import they only have year/month.
-      // We'll calculate it safely based on month bounds.
       .values({ 
         year, 
         month, 
-        startDate: `${year}-${month.toString().padStart(2, '0')}-01`, 
-        endDate: `${year}-${month.toString().padStart(2, '0')}-28`, // dummy
+        startDate: `${year}-${mm}-01`, 
+        endDate: `${year}-${mm}-${lastDay.toString().padStart(2, '0')}`,
         isDeleted: false 
       })
       .returning();

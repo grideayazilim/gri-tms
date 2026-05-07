@@ -37,14 +37,23 @@ export async function list(
   if (filters.unitId) conditions.push(eq(employees.unitId, filters.unitId));
   if (filters.locationId) conditions.push(eq(units.locationId, filters.locationId));
   if (filters.search) {
-    const pattern = `%${filters.search}%`;
-    conditions.push(
-      or(
-        ilike(employees.firstName, pattern),
-        ilike(employees.lastName, pattern),
-        ilike(employees.tcNo, pattern),
-      ),
-    );
+    const s = filters.search.trim();
+    const isNumeric = /^\d+$/.test(s);
+
+    if (isNumeric) {
+      // Sayısal ise sadece TC No ile başlangıç kontrolü (prefix match)
+      conditions.push(ilike(employees.tcNo, `${s}%`));
+    } else {
+      // Metin ise isim/soyad içerisinde substring kontrolü
+      const pattern = `%${s}%`;
+      conditions.push(
+        or(
+          ilike(employees.firstName, pattern),
+          ilike(employees.lastName, pattern),
+          ilike(sql`${employees.firstName} || ' ' || ${employees.lastName}`, pattern),
+        ),
+      );
+    }
   }
   if (filters.status === 'active') conditions.push(eq(employees.isActive, true));
   else if (filters.status === 'inactive') conditions.push(eq(employees.isActive, false));

@@ -6,20 +6,7 @@ import type { ApiResponse, PaginationMeta, AuditLogItem } from '@timesheet/share
 
 import { api } from './httpClient';
 
-// ─── Tipler ───────────────────────────────────────────────────────────────────
-
-interface AuditLogQuery {
-  action?: string;
-  category?: string;
-  entityType?: string;
-  searchActor?: string;
-  startDate?: string;
-  endDate?: string;
-  page?: number;
-  limit?: number;
-}
-
 // ─── Servis ───────────────────────────────────────────────────────────────────
 
-export const getAuditLogs = (params: AuditLogQuery = {}) =>
+export const getAuditLogs = (params: Record<string, unknown> = {}) =>
   api.get<ApiResponse<{ auditLogs: AuditLogItem[]; pagination: PaginationMeta }>>('/audit-logs', { params });

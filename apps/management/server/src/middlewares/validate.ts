@@ -21,11 +21,10 @@ export const validate = (schema: ZodSchema, target: 'body' | 'query' | 'params' 
     }
 
     if (target === 'body') {
-      req.body = result.data;
+      req.body = result.data as unknown;
     } else {
-      // req.query ve req.params genellikle getter'dır, doğrudan atama yapılamayabilir
       const targetObj = req[target] as Record<string, unknown>;
-      // Mevcut keyleri temizle
+      // Clear existing keys to ensure only validated data exists
       for (const key of Object.keys(targetObj)) {
         delete targetObj[key];
       }

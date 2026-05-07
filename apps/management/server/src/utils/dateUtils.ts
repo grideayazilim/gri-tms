@@ -2,7 +2,7 @@
    TARİH YARDIMCI FONKSİYONLARI (SERVER)
    Tüm tarih işlemleri bu dosyadan yönetilir; date-fns üzerine kurulmuştur.
    ======================================================================== */
-import { format, isValid, startOfMonth, endOfMonth, eachMonthOfInterval, eachDayOfInterval, parseISO } from 'date-fns';
+import { format, isValid, startOfMonth, endOfMonth, eachMonthOfInterval, eachDayOfInterval, parseISO, getISOWeek, getISOWeekYear } from 'date-fns';
 
 
 
@@ -40,6 +40,14 @@ export function parseLocalDate(dateInput: Date | string | null | undefined): Dat
   return null;
 }
 
+/**
+ * Verilen tarihin hafta sonu olup olmadığını kontrol eder.
+ */
+export function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+}
+
 // ─── date-fns re-exports ──────────────────────────────────────────────────────
 
 export { startOfMonth, endOfMonth, eachMonthOfInterval, eachDayOfInterval };
@@ -53,10 +61,7 @@ export function formatPeriodLabel(year: number, month: number): string {
 // ─── ISO hafta anahtarı ───────────────────────────────────────────────────────
 
 export function getISOWeekKey(date: Date): string {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  // TS strict: Date arithmetic — explicit getTime() çağrısı
-  const weekNo = Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-  return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  const week = getISOWeek(date);
+  const year = getISOWeekYear(date);
+  return `${year}-W${String(week).padStart(2, '0')}`;
 }

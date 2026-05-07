@@ -72,7 +72,7 @@ const mapTimesheetToUI = (ts: TimesheetListItem): TimesheetUIRow => {
   const timesheet_days: Record<string, MarkerCode> = {};
   
   // Günleri 'YYYY-MM-DD': 'X' şeklinde bir Map objesine çeviriyoruz (O(1) erişim için)
-  (ts.timesheet.days || []).forEach(({ day, markerCode }) => {
+  (ts.timesheet.days ?? []).forEach(({ day, markerCode }) => {
     if (day && markerCode) {
       timesheet_days[day] = markerCode;
     }
@@ -101,7 +101,7 @@ const mapTimesheetToUI = (ts: TimesheetListItem): TimesheetUIRow => {
 const mapUIToSavePayload = (uiRows: TimesheetUIRow[]) =>
   uiRows.map((row) => ({
     employeeId: row.employeeId,
-    days: Object.entries(row.timesheet_days || {}).map(([day, markerCode]) => ({
+    days: Object.entries(row.timesheet_days ?? {}).map(([day, markerCode]) => ({
       day,
       markerCode,
     })),
@@ -127,10 +127,10 @@ export const useTimesheets = (): UseTimesheetsReturn => {
     try {
       const response = await timesheetService.getTimesheets(apiParams);
 
-      if (response.success && response.data) {
-        const mapped = (response.data.timesheets || []).map(mapTimesheetToUI);
+      if (response.success) {
+        const mapped = response.data.timesheets.map(mapTimesheetToUI);
         setTimesheets(mapped);
-        setPagination(response.data.pagination || null);
+        setPagination(response.data.pagination);
         return { success: true, data: { rows: mapped } };
       } else {
         setTimesheets([]);
@@ -171,7 +171,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
       if (response.success) {
         return { success: true, data: {} };
       } else {
-         return { success: false, error: response.message || 'Puantaj kaydedilemedi' };
+         return { success: false, error: response.message };
       }
     } catch (err: unknown) {
       const message = getErrorMessage(err, 'Puantaj kaydedilemedi');
@@ -188,7 +188,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
       if (response.success) {
          return { success: true, data: response.data };
       } else {
-         return { success: false, error: response.message || 'Kilit durumu değiştirilemedi' };
+         return { success: false, error: response.message };
       }
     } catch (err: unknown) {
       const message = getErrorMessage(err, 'Kilit durumu değiştirilemedi');

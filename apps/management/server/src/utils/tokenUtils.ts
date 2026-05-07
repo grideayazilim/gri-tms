@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 
 import type { JwtPayload } from '@timesheet/shared';
 import { jwtConfig } from '../config/jwt.js';
-import { unauthorized } from './AppError.js';
+import { AppError, unauthorized } from './AppError.js';
 
 // Access Token: Kısa ömürlü, her istekte gönderilen kimlik bilgisi
 export const generateAccessToken = (payload: JwtPayload): string => {
@@ -25,8 +25,13 @@ export const generateRefreshToken = (payload: JwtPayload): string => {
 // Access token doğrula
 export const verifyAccessToken = (token: string): JwtPayload => {
   try {
-    return jwt.verify(token, jwtConfig.access.secret) as JwtPayload;
-  } catch {
+    const decoded = jwt.verify(token, jwtConfig.access.secret);
+    if (typeof decoded === 'string') {
+      throw unauthorized('Invalid token payload');
+    }
+    return decoded as JwtPayload;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
     throw unauthorized('Invalid access token');
   }
 };
@@ -34,8 +39,13 @@ export const verifyAccessToken = (token: string): JwtPayload => {
 // Refresh token doğrula
 export const verifyRefreshToken = (token: string): JwtPayload => {
   try {
-    return jwt.verify(token, jwtConfig.refresh.secret) as JwtPayload;
-  } catch {
+    const decoded = jwt.verify(token, jwtConfig.refresh.secret);
+    if (typeof decoded === 'string') {
+      throw unauthorized('Invalid token payload');
+    }
+    return decoded as JwtPayload;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
     throw unauthorized('Invalid refresh token');
   }
 };

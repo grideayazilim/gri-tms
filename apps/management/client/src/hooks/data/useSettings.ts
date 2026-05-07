@@ -114,9 +114,9 @@ export const useSettings = (): UseSettingsReturn => {
           setSystemSettings(response.data.settings);
           return { success: true, data: response.data };
         }
-        // Sunucu data dönmemişse yeniden çek; state async güncelleneceği için fallback döner
-        await fetchSystemSettings();
-        return { success: true, data: { settings: systemSettings ?? ({} as SystemSettings) } };
+        const refetch = await fetchSystemSettings();
+        if (refetch.success) return { success: true, data: refetch.data };
+        return { success: false, error: refetch.error };
       }
       return { success: false, error: response.message ?? 'Bilinmeyen hata' };
     } catch (err: unknown) {

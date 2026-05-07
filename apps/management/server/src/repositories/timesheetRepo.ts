@@ -25,13 +25,22 @@ export const timesheetRepo = {
     }
 
     if (filters.search) {
-      const s = `%${filters.search}%`;
-      const searchCondition = or(
-        ilike(employees.firstName, s),
-        ilike(employees.lastName, s),
-        ilike(employees.tcNo, s)
-      );
-      if (searchCondition) conditions.push(searchCondition);
+      const s = filters.search.trim();
+      const isNumeric = /^\d+$/.test(s);
+
+      if (isNumeric) {
+        // Sayısal ise TC No ile başlangıç kontrolü (prefix match)
+        conditions.push(ilike(employees.tcNo, `${s}%`));
+      } else {
+        // Metin ise isim/soyad içerisinde substring kontrolü
+        const pattern = `%${s}%`;
+        const searchCondition = or(
+          ilike(employees.firstName, pattern),
+          ilike(employees.lastName, pattern),
+          ilike(sql`${employees.firstName} || ' ' || ${employees.lastName}`, pattern)
+        );
+        if (searchCondition) conditions.push(searchCondition);
+      }
     }
 
     const validConditions = conditions.filter(c => c !== undefined) as import('drizzle-orm').SQL<unknown>[];

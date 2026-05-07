@@ -8,6 +8,15 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 
+export interface ApiError {
+  message: string;
+  status: number;
+}
+
+function hasMessage(data: unknown): data is { message: string } {
+  return typeof data === 'object' && data !== null && 'message' in data && typeof (data as { message: unknown }).message === 'string';
+}
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
 const httpClient = axios.create({
@@ -23,7 +32,8 @@ httpClient.interceptors.response.use(
   (response) => response.data,
   async (error: unknown) => {
     if (!axios.isAxiosError(error)) {
-      return Promise.reject({ message: 'Beklenmeyen hata', status: 0 });
+      const unexpectedError: ApiError = { message: 'Beklenmeyen hata', status: 0 };
+      return Promise.reject(unexpectedError);
     }
 
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
@@ -36,12 +46,14 @@ httpClient.interceptors.response.use(
       originalRequest?.url?.includes('/auth/register')
     ) {
       if (error.response) {
-        return Promise.reject({
-          message: (error.response.data as { message?: string })?.message ?? 'Bir hata oluştu',
+        const apiError: ApiError = {
+          message: hasMessage(error.response.data) ? error.response.data.message : 'Bir hata oluştu',
           status: error.response.status,
-        });
+        };
+        return Promise.reject(apiError);
       }
-      return Promise.reject({ message: 'Sunucuya ulaşılamıyor', status: 0 });
+      const networkError: ApiError = { message: 'Sunucuya ulaşılamıyor', status: 0 };
+      return Promise.reject(networkError);
     }
 
     // 401 + henüz retry yapılmadıysa — session yenile
@@ -71,12 +83,14 @@ httpClient.interceptors.response.use(
           // Parse edilemezse varsayılan hata kalır
         }
       } else {
-        errorMessage = (error.response.data as { message?: string })?.message ?? errorMessage;
+        errorMessage = hasMessage(error.response.data) ? error.response.data.message : errorMessage;
       }
-      return Promise.reject({ message: errorMessage, status: error.response.status });
+      const apiError: ApiError = { message: errorMessage, status: error.response.status };
+      return Promise.reject(apiError);
     }
 
-    return Promise.reject({ message: 'Sunucuya ulaşılamıyor', status: 0 });
+    const finalError: ApiError = { message: 'Sunucuya ulaşılamıyor', status: 0 };
+    return Promise.reject(finalError);
   },
 );
 

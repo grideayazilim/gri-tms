@@ -51,7 +51,7 @@ export function initCronJobs(): void {
                     .set({ isLocked: true })
                     .where(and(
                         eq(periods.isLocked, false),
-                        sql`CURRENT_DATE >= (${periods.endDate}::date + INTERVAL '3 days')::DATE`,
+                        sql`CURRENT_DATE >= (${periods.endDate}::date + INTERVAL '5 days')::DATE`,
                     ))
                     .returning({ id: periods.id, year: periods.year, month: periods.month });
 

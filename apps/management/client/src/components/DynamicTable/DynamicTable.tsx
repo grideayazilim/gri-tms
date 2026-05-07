@@ -41,7 +41,7 @@ function TableRow<T extends { id: string | number }>({
           {col.render
             ? col.render(row)
             : col.accessor
-              ? (row[col.accessor] as ReactNode)
+              ? String(row[col.accessor] ?? '')
               : null}
         </td>
       ))}

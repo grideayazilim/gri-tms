@@ -90,6 +90,7 @@ const runDemoSeed = async () => {
         RETURNING id;
       `);
       const locId = locResult.rows[0]?.id as string;
+      if (!locId) throw new Error(`${loc.name} oluşturulamadı (ID dönmedi)`);
 
       for (const unit of DEMO_UNITS) {
         const unitResult = await db.execute(sql`
@@ -98,6 +99,7 @@ const runDemoSeed = async () => {
           RETURNING id;
         `);
         const unitId = unitResult.rows[0]?.id as string;
+        if (!unitId) throw new Error(`${unit.name} oluşturulamadı (ID dönmedi)`);
         createdUnitIds.push(unitId);
 
         // Kullanıcı adı: yerleşke_birim (örn: kuzey_ik)
@@ -168,8 +170,8 @@ const runDemoSeed = async () => {
     console.log(`   - 63 Birim Sorumlusu (Şifreler kullanıcı adlarıyla BİREBİR AYNI)`);
     console.log(`   - 1000 Gerçekçi Öğrenci (İşe Giriş: ${todayStr}, Çıkış: null, Tamamı Aktif)`);
     console.log(`   - Program: ${startDate} → ${endDate}`);
-  } catch (error) {
-    console.error('❌ Demo seed hatası:', error);
+  } catch (error: unknown) {
+    console.error('❌ Demo seed hatası:', error instanceof Error ? error.message : error);
     process.exit(1);
   } finally {
     await seedPool.end();

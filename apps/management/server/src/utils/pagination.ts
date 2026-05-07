@@ -14,7 +14,7 @@ export function buildPagination(page: number, limit: number, total: number): Pag
 }
 
 // Controller'ların query'den pagination parametrelerini tek satırda alması için
-export function paginationParams(query: { page?: unknown; limit?: unknown }): {
+export function paginationParams(query: { page?: string | number; limit?: string | number }): {
   page: number;
   limit: number;
   offset: number;

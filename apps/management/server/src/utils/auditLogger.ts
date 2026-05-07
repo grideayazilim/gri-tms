@@ -4,7 +4,7 @@
    Kullanım: createAuditLog(executor, { action, actor, entityType, ... })
    ======================================================================== */
 import { AUDIT_ENTITY_TYPE } from '@timesheet/shared';
-import type { AuditAction, AuditEntityType } from '@timesheet/shared';
+import type { AuditAction, AuditEntityType, UserRole } from '@timesheet/shared';
 import type { Request } from 'express';
 import logger from './logger.js';
 
@@ -20,7 +20,7 @@ interface FieldConfig {
   readonly format: (v: unknown) => string;
 }
 
-type AuditActorRole = string;
+type AuditActorRole = UserRole | 'SYSTEM' | 'SYSTEM_CRON';
 
 interface AuditActor {
   readonly username: string;
@@ -133,7 +133,7 @@ function valuesEqual(a: unknown, b: unknown): boolean {
 
 // FIELD_MAPS: Entity tipine göre hangi alanların loglanacağını belirleyen Whitelist.
 // Key'ler camelCase — Drizzle row'ları doğrudan camelCase döndürdüğü için.
-export const FIELD_MAPS: Record<string, Record<string, FieldConfig>> = {
+export const FIELD_MAPS: Partial<Record<AuditEntityType, Record<string, FieldConfig>>> = {
 
   [AUDIT_ENTITY_TYPE.EMPLOYEE]: {
     tcNo:       { label: 'TC No',                 format: fmtStr },
@@ -181,9 +181,12 @@ export const FIELD_MAPS: Record<string, Record<string, FieldConfig>> = {
  * Eski/yeni satırlardan değişen alanlar için
  * "Ad: 'Ahmet' → 'Mehmet'" formatında string array döner.
  */
-export function diffFieldsAsChanges(
-  oldRow: Record<string, unknown>,
-  newRow: Record<string, unknown>,
+export function diffFieldsAsChanges<
+  Old extends Record<string, unknown>,
+  New extends Record<string, unknown>,
+>(
+  oldRow: Old,
+  newRow: New,
   fieldMap: Record<string, FieldConfig>,
 ): string[] {
   if (!oldRow || !newRow || !fieldMap) return [];
@@ -199,10 +202,13 @@ export function diffFieldsAsChanges(
 }
 
 /** Entity tipine göre whitelist'li diff. */
-export function diffEntity(
-  entityType: string,
-  oldRow: Record<string, unknown>,
-  newRow: Record<string, unknown>,
+export function diffEntity<
+  Old extends Record<string, unknown>,
+  New extends Record<string, unknown>,
+>(
+  entityType: AuditEntityType,
+  oldRow: Old,
+  newRow: New,
 ): string[] {
   const fieldMap = FIELD_MAPS[entityType];
   if (!fieldMap) return [];
@@ -211,10 +217,13 @@ export function diffEntity(
 
 // diffEntityWithLookups: ID alanlarını (Birim ID vb.) isimle göstermek için lookup haritası kullanır.
 // lookups: { unitId: { 'uuid': 'Birim Adı' } } şeklinde bir Payload bekler.
-export function diffEntityWithLookups(
-  entityType: string,
-  oldRow: Record<string, unknown>,
-  newRow: Record<string, unknown>,
+export function diffEntityWithLookups<
+  Old extends Record<string, unknown>,
+  New extends Record<string, unknown>,
+>(
+  entityType: AuditEntityType,
+  oldRow: Old,
+  newRow: New,
   lookups: Record<string, Record<string, string>> = {},
 ): string[] {
   const fieldMap = FIELD_MAPS[entityType];

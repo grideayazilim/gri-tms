@@ -6,6 +6,7 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 
 import cors from 'cors';
+import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { AppError } from './utils/AppError.js';
 import logger from './utils/logger.js';
@@ -21,7 +22,11 @@ import holidayRoutes from './routes/holidayRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
 import importRoutes from './routes/importRoutes.js';
 
+import { errorMiddleware } from './middlewares/errorMiddleware.js';
+
 const app = express();
+
+app.use(helmet());
 
 // CORS Yapılandırması: Cookie bazlı Auth için credentials: true olmalı
 app.use(
@@ -62,51 +67,7 @@ app.use((_req: Request, res: Response) => {
   });
 });
 
-// ─── PG error narrowing helper ──────────────────────────────────────────────
-
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code: unknown }).code === '23505'
-  );
-}
-
 // Global error handler
-app.use((err: unknown, req: Request, res: Response, _next: NextFunction) => {
-  // PostgreSQL Unique Violation (23505): çakışan kayıt → 409
-  if (isUniqueViolation(err)) {
-    res.status(409).json({ success: false, message: 'Bu kayıt zaten mevcut' });
-    return;
-  }
-
-  // AppError — bilinen uygulama hataları (4xx)
-  if (err instanceof AppError) {
-    // 4xx hatalar operasyonel — sadece debug seviyesinde logla
-    logger.debug('AppError', { method: req.method, path: req.path, status: err.status, message: err.message });
-    res.status(err.status).json({
-      success: false,
-      message: err.message,
-    });
-    return;
-  }
-
-  // Bilinmeyen hata — 500 (sunucu hatası, error seviyesinde logla)
-  const message = err instanceof Error ? err.message : 'Bilinmeyen hata';
-  const stack = err instanceof Error ? err.stack : undefined;
-
-  logger.error('Unhandled server error', {
-    method: req.method,
-    path: req.path,
-    message,
-    stack,
-  });
-
-  res.status(500).json({
-    success: false,
-    message: 'Sunucu hatası',
-  });
-});
+app.use(errorMiddleware);
 
 export default app;

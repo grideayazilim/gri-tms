@@ -20,11 +20,10 @@ import { unauthorized, forbidden, notFound, rethrowIfNotUniqueViolation } from '
 import { ok, created } from '../utils/responses.js';
 import * as userRepo from '../repositories/userRepo.js';
 import logger from '../utils/logger.js';
-import type { DatabaseError } from 'pg';
 
 
-export const register = asyncHandler(async (req, res) => {
-  const { username, password, role, unitId, locationId } = req.body as SignUpType;
+export const register = asyncHandler<Record<string, string>, unknown, SignUpType>(async (req, res) => {
+  const { username, password, role, unitId, locationId } = req.body;
 
   const passwordHash = await bcrypt.hash(password, 10);
 
@@ -34,7 +33,7 @@ export const register = asyncHandler(async (req, res) => {
       const user = await userRepo.createPendingUser(tx, {
         username,
         passwordHash,
-        role: role as JwtPayload['role'],
+        role: role,
         unitId: unitId ?? null,
         locationId: locationId ?? null,
       });
@@ -74,8 +73,8 @@ export const register = asyncHandler(async (req, res) => {
   }, 'Kullanıcı başarıyla oluşturuldu');
 });
 
-export const login = asyncHandler(async (req, res) => {
-  const { username, password } = req.body as SignInType;
+export const login = asyncHandler<Record<string, string>, unknown, SignInType>(async (req, res) => {
+  const { username, password } = req.body;
 
   const user = await userRepo.findByUsername(db, username);
   if (!user) {
@@ -102,7 +101,7 @@ export const login = asyncHandler(async (req, res) => {
   const tokenPayload: JwtPayload = {
     id: user.id,
     username: user.username,
-    role: user.role as JwtPayload['role'],
+    role: user.role,
     unitId: user.unitId ?? null,
     locationId: user.locationId ?? null,
   };

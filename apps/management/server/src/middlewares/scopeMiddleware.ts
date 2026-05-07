@@ -33,10 +33,12 @@ export function scopeMiddleware(req: Request, _res: Response, next: NextFunction
 
   // RESPONSIBLE (Sorumlu) rolü için Scope kontrolü:
   // Sadece kendi tanımlı olduğu Birim ve Yerleşke verilerine erişebilir.
-  req.scope = {
-    unitId: req.user.unitId,
-    locationId: req.user.locationId,
-  };
+  const { unitId, locationId } = req.user;
+  if (!unitId || !locationId) {
+    throw forbidden('Hesabınıza tanımlı bir birim veya yerleşke yok. Lütfen yöneticinizle iletişime geçin.');
+  }
+
+  req.scope = { unitId, locationId };
 
   next();
 }

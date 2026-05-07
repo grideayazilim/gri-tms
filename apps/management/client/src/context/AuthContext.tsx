@@ -8,6 +8,7 @@ import { USER_ROLE } from '@timesheet/shared';
 import type { AuthUser, Result, SignUpType } from '@timesheet/shared';
 
 import { authService } from '../api';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 // ─── Tipler ───────────────────────────────────────────────────────────────────
 
@@ -56,8 +57,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void checkAuth();
+    const initAuth = async () => {
+      await checkAuth();
+    };
+    void initAuth();
   }, []); // checkAuth sadece mount'ta bir kez çalışır
 
   const login = async (
@@ -73,7 +76,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setIsAuthenticated(true);
       return { success: true, data: {} };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Kullanıcı adı veya şifre yanlış';
+      const message = getErrorMessage(error, 'Kullanıcı adı veya şifre yanlış');
       return { success: false, error: message };
     }
   };
@@ -86,7 +89,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
       return { success: true, data: {} };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Kayıt başarısız';
+      const message = getErrorMessage(error, 'Kayıt başarısız');
       return { success: false, error: message };
     }
   };
@@ -110,7 +113,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       await authService.changePassword(oldPassword, newPassword);
       return { success: true, data: {} };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Şifre değiştirme başarısız';
+      const message = getErrorMessage(error, 'Şifre değiştirme başarısız');
       return { success: false, error: message };
     }
   };

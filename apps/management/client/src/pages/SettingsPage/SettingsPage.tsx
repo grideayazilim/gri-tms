@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { loginSettingsSchema, systemSettingsSchema } from "@timesheet/shared";
 import type { LoginSettingsType, SystemSettingsType } from "@timesheet/shared";
 import { toISODateString } from "../../utils/dateUtils";
@@ -31,9 +32,9 @@ function SettingsPage() {
     formState: { errors: loginErrors, isDirty: isLoginDirty },
     reset: resetLogin,
     setError: setLoginError,
-  } = useForm<LoginSettingsType>({
+  } = useForm<z.input<typeof loginSettingsSchema>, unknown, LoginSettingsType>({
     resolver: zodResolver(loginSettingsSchema),
-    defaultValues: { username: user?.username || "", currentPassword: "", password: "" },
+    defaultValues: { username: user?.username ?? "", currentPassword: "", password: "" },
   });
 
   const onLoginSubmit = async (data: LoginSettingsType) => {
@@ -49,7 +50,7 @@ function SettingsPage() {
       // AuthContext'i güncelle ki Navbar'daki isim anlık değişsin
       updateProfile({ username: result.data.user.username || data.username });
       // Formu temizle ve yeni kullanıcı adını default yap
-      resetLogin({ username: result.data.user.username || data.username, currentPassword: "", password: "" });
+      resetLogin({ username: result.data.user.username ?? data.username, currentPassword: "", password: "" });
     } else {
       toast({ type: "error", message: result.error || "Güncelleme başarısız." });
       // Eğer kullanıcı adı başkası tarafından alınmışsa (409 Conflict)
@@ -128,7 +129,7 @@ function SettingsPage() {
     handleSubmit: handleSystemSubmit,
     formState: { errors: systemErrors, isDirty: isSystemDirty },
     reset: resetSystem,
-  } = useForm<SystemSettingsType>({
+  } = useForm<z.input<typeof systemSettingsSchema>, unknown, SystemSettingsType>({
     resolver: zodResolver(systemSettingsSchema),
     defaultValues: {
       dailyWage: "",
@@ -139,7 +140,7 @@ function SettingsPage() {
   });
 
   const onSystemSubmit = async (data: SystemSettingsType) => {
-    const norm = (v: string | number | null | undefined) => v || null;
+    const norm = (v: string | number | null | undefined) => v === '' ? null : (v ?? null);
     const datesChanged =
       norm(systemSettings?.programStartDate) !== norm(data.programStartDate) ||
       norm(systemSettings?.programEndDate) !== norm(data.programEndDate);
@@ -243,10 +244,10 @@ function SettingsPage() {
   useEffect(() => {
     if (systemSettings) {
       resetSystem({
-        dailyWage: systemSettings.dailyWage || "",
-        maxWeeklyDays: systemSettings.maxWeeklyDays || "",
-        programStartDate: toISODateString(systemSettings.programStartDate),
-        programEndDate: toISODateString(systemSettings.programEndDate),
+        dailyWage: systemSettings.dailyWage?.toString() ?? "",
+        maxWeeklyDays: systemSettings.maxWeeklyDays?.toString() ?? "",
+        programStartDate: toISODateString(systemSettings.programStartDate) ?? "",
+        programEndDate: toISODateString(systemSettings.programEndDate) ?? "",
       });
     }
   }, [systemSettings, resetSystem]);

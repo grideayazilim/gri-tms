@@ -111,7 +111,7 @@ const EmployeesPage = () => {
         <EmployeeModal
           onClose={() => closeModal(null)}
           onSave={async (newData) => {
-            const result = await addEmployee(newData as EmployeeType);
+            const result = await addEmployee(newData);
             if (result.success) {
               toast({ type: 'success', message: 'Çalışan başarıyla eklendi' });
               // Yeni eklenen en üstte görünsün diye sayfayı 1'e çekiyoruz

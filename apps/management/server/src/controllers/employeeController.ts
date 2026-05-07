@@ -36,10 +36,10 @@ function buildEmployeeResponse(
   };
 }
 
-export const getEmployees = asyncHandler(async (req, res) => {
-  const { unitId, locationId, search, status } = req.query as EmployeeListQuery;
+export const getEmployees = asyncHandler<Record<string, string>, unknown, unknown, EmployeeListQuery>(async (req, res) => {
+  const { unitId, locationId, search, status } = req.query;
 
-  const { page, limit, offset } = paginationParams({ ...req.query, limit: req.query.limit ?? 50 } as Record<string, unknown>);
+  const { page, limit, offset } = paginationParams(req.query);
 
   const filters = {
     ...(unitId !== undefined ? { unitId } : {}),
@@ -71,8 +71,8 @@ export const getEmployees = asyncHandler(async (req, res) => {
   return paginated(res, 'employees', employees, buildPagination(page, limit, result.total));
 });
 
-export const createEmployee = asyncHandler(async (req, res) => {
-  const body = req.body as EmployeeType;
+export const createEmployee = asyncHandler<Record<string, string>, unknown, EmployeeType>(async (req, res) => {
+  const body = req.body;
   const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate, isActive } = body;
 
   let result: { employee: ReturnType<typeof buildEmployeeResponse> };
@@ -117,9 +117,9 @@ export const createEmployee = asyncHandler(async (req, res) => {
   return created(res, { employee: result.employee });
 });
 
-export const updateEmployee = asyncHandler(async (req, res) => {
-  const { id } = req.params as { id: string };
-  const body = req.body as Partial<EmployeeType>;
+export const updateEmployee = asyncHandler<{ id: string }, unknown, Partial<EmployeeType>>(async (req, res) => {
+  const { id } = req.params;
+  const body = req.body;
   const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate } = body;
 
   let result: { employee: ReturnType<typeof buildEmployeeResponse> };
@@ -151,8 +151,8 @@ export const updateEmployee = asyncHandler(async (req, res) => {
 
       const changes = diffEntityWithLookups(
         AUDIT_ENTITY_TYPE.EMPLOYEE,
-        oldRow ? oldRow as unknown as Record<string, unknown> : {},
-        updatedEmployee as unknown as Record<string, unknown>,
+        oldRow ?? {},
+        updatedEmployee,
         { unitId: unitLookup },
       );
 
@@ -186,8 +186,8 @@ export const updateEmployee = asyncHandler(async (req, res) => {
   return ok(res, { employee: result.employee });
 });
 
-export const deleteEmployee = asyncHandler(async (req, res) => {
-  const { id } = req.params as { id: string };
+export const deleteEmployee = asyncHandler<{ id: string }>(async (req, res) => {
+  const { id } = req.params;
 
   const result = await withDrizzleTransaction(async (tx) => {
     const oldRow = await employeeRepo.findById(tx, id);

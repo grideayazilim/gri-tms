@@ -108,7 +108,7 @@ export async function list(
   if (filters.status) conditions.push(eq(users.status, filters.status));
   if (filters.unitId) conditions.push(eq(users.unitId, filters.unitId));
   if (filters.locationId) conditions.push(eq(users.locationId, filters.locationId));
-  if (filters.search) conditions.push(ilike(users.username, `%${filters.search}%`));
+  if (filters.search) conditions.push(ilike(users.username, `%${filters.search.trim()}%`));
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 

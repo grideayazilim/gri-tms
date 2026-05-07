@@ -6,7 +6,7 @@ import type { Request, Response } from 'express';
 import { db, withDrizzleTransaction } from '../config/database.js';
 import { getISOWeekKey, parseLocalDate, formatPeriodLabel } from '../utils/dateUtils.js';
 import { createAuditLog, buildActor, truncateChanges } from '../utils/auditLogger.js';
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, PAID_CODES, USER_ROLE } from '@timesheet/shared';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, PAID_CODES, USER_ROLE, MarkerCode, TimesheetSaveType } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { badRequest, forbidden, notFound, locked } from '../utils/AppError.js';
 import { buildPagination } from '../utils/pagination.js';
@@ -16,53 +16,90 @@ import { settings } from '../../database/schema.js';
 import type { TimesheetDayInsert } from '../../database/schema.js';
 
 // ======================== GET /timesheets ========================
+
+type TimesheetQueryParams = {
+  month: string | undefined;
+  year: string | undefined;
+  status: string | undefined;
+  search: string | undefined;
+  unitId: string | undefined;
+  locationId: string | undefined;
+  pageNum: number;
+  limitNum: number;
+  offset: number;
+};
+
+function parseTimesheetQuery(query: Request['query']): TimesheetQueryParams {
+  const str = (key: string) => (typeof query[key] === 'string' ? (query[key] as string) : undefined);
+  const pageNum = Math.max(1, parseInt(str('page') ?? '1', 10));
+  const limitNum = Math.min(100, Math.max(1, parseInt(str('limit') ?? '50', 10)));
+  return {
+    month: str('month'),
+    year: str('year'),
+    status: str('status'),
+    search: str('search'),
+    unitId: str('unitId'),
+    locationId: str('locationId'),
+    pageNum,
+    limitNum,
+    offset: (pageNum - 1) * limitNum,
+  };
+}
+
+type TimesheetDayEntry = { id: string; day: string; markerCode: MarkerCode; note: string | null };
+type PeriodSnapshot = { id: string; year: number; month: number; startDate: string; endDate: string; isLocked: boolean };
+
+function buildDaysMap(daysResult: { timesheetId: string; id: string; day: string; markerCode: string; note: string | null }[]): Record<string, TimesheetDayEntry[]> {
+  const map: Record<string, TimesheetDayEntry[]> = {};
+  for (const d of daysResult) {
+    if (!map[d.timesheetId]) map[d.timesheetId] = [];
+    map[d.timesheetId]!.push({ id: d.id, day: d.day, markerCode: d.markerCode as MarkerCode, note: d.note });
+  }
+  return map;
+}
+
+function toTimesheetRow(
+  row: { employeeId: string; firstName: string; lastName: string; tcNo: string | null; ibanNo: string | null; timesheetId: string | null; unitId: string | null; unitName: string | null; locationId: string | null; locationName: string | null },
+  daysMap: Record<string, TimesheetDayEntry[]>,
+  period: PeriodSnapshot,
+  dailyWage: number,
+) {
+  const days = row.timesheetId ? (daysMap[row.timesheetId] ?? []) : [];
+  const totalWorkDays = days.filter((d) => PAID_CODES.has(d.markerCode)).length;
+  return {
+    employee: { id: row.employeeId, firstName: row.firstName, lastName: row.lastName, tcNo: row.tcNo, ibanNo: row.ibanNo, isActive: true, startDate: null, endDate: null },
+    unit: row.unitId ? { id: row.unitId, name: row.unitName } : null,
+    location: row.locationId ? { id: row.locationId, name: row.locationName } : null,
+    timesheet: { id: row.timesheetId, periodId: period.id, days },
+    period,
+    totalWorkDays,
+    totalPaidAmount: totalWorkDays * dailyWage,
+  };
+}
+
 export const getTimesheets = asyncHandler(async (req: Request, res: Response) => {
-  const user = req.user!;
+  const user = req.user;
+  if (!user) throw forbidden('Yetkisiz erişim');
   const scope = req.scope;
 
-  const month = typeof req.query.month === 'string' ? req.query.month : undefined;
-  const year = typeof req.query.year === 'string' ? req.query.year : undefined;
-  const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-  const search = typeof req.query.search === 'string' ? req.query.search : undefined;
-  const unitId = typeof req.query.unitId === 'string' ? req.query.unitId : undefined;
-  const locationId = typeof req.query.locationId === 'string' ? req.query.locationId : undefined;
-  const page = typeof req.query.page === 'string' ? req.query.page : undefined;
-  const limit = typeof req.query.limit === 'string' ? req.query.limit : undefined;
+  const { month, year, status, search, unitId, locationId, pageNum, limitNum, offset } = parseTimesheetQuery(req.query);
 
-  // Yetki Kontrolü: RESPONSIBLE sadece kendi birimine/yerleşkesine erişebilir
   if (user.role === USER_ROLE.RESPONSIBLE) {
     if ((unitId && unitId !== user.unitId) || (locationId && locationId !== user.locationId)) {
       throw forbidden('Bu birim veya yerleşkeye erişim yetkiniz yok');
     }
   }
 
-  // Sayfalama (Pagination) ayarları: 1'den küçük sayfa ve 100'den büyük limit kabul edilmez
-  const pageNum = Math.max(1, parseInt(page || '1', 10));
-  const limitNum = Math.min(100, Math.max(1, parseInt(limit || '50', 10)));
-  const offset = (pageNum - 1) * limitNum;
+  const emptyPage = { success: true, data: { timesheets: [], pagination: buildPagination(pageNum, limitNum, 0) } };
 
-  // Dönem Bilgisi: Ay/Yıl bazlı veya varsayılan aktif dönemi bulur
   const period = await periodRepo.findActive(db, { ...(month ? { month } : {}), ...(year ? { year } : {}) });
+  if (!period) { res.json(emptyPage); return; }
+  if (status === 'locked' && !period.isLocked) { res.json(emptyPage); return; }
+  if (status === 'unlocked' && period.isLocked) { res.json(emptyPage); return; }
 
-  if (!period) {
-    res.json({ success: true, data: { timesheets: [], pagination: buildPagination(pageNum, limitNum, 0) } });
-    return;
-  }
-
-  // Durum Filtresi: Dönemin kilitli olup olmamasına göre boş sonuç döner
-  if (status === 'locked' && !period.isLocked) {
-    res.json({ success: true, data: { timesheets: [], pagination: buildPagination(pageNum, limitNum, 0) } });
-    return;
-  }
-  if (status === 'unlocked' && period.isLocked) {
-    res.json({ success: true, data: { timesheets: [], pagination: buildPagination(pageNum, limitNum, 0) } });
-    return;
-  }
-
-  // Ana Veri Sorgusu (Çalışanlar ve Puantajlar)
   const { data: timesheetData, totalRecords } = await timesheetRepo.listWithEmployees(db, {
     periodId: period.id,
-    search: search || undefined,
+    search,
     unitId,
     locationId,
     scope,
@@ -71,84 +108,29 @@ export const getTimesheets = asyncHandler(async (req: Request, res: Response) =>
     offset,
   });
 
-  const timesheetIds = timesheetData.map((r) => r.timesheetId).filter(Boolean) as string[];
+  const timesheetIds = timesheetData.map((r) => r.timesheetId).filter((id): id is string => id != null);
+  const daysMap = timesheetIds.length > 0
+    ? buildDaysMap(await timesheetRepo.getTimesheetDays(db, timesheetIds))
+    : {};
 
-  // Günlük Günlerin Alınması
-  const daysMap: Record<string, { id: string; day: string; markerCode: string; note: string | null }[]> = {};
-  if (timesheetIds.length > 0) {
-    const daysResult = await timesheetRepo.getTimesheetDays(db, timesheetIds);
-    for (const d of daysResult) {
-      if (!daysMap[d.timesheetId]) daysMap[d.timesheetId] = [];
-      // Drizzle maps pg date to string (YYYY-MM-DD)
-      daysMap[d.timesheetId]!.push({
-        id: d.id,
-        day: d.day,
-        markerCode: d.markerCode,
-        note: d.note,
-      });
-    }
-  }
-
-  // Maaş Ayarları
   const settingsResult = await db.select({ dailyWage: settings.dailyWage }).from(settings).limit(1);
-  const dailyWage = parseFloat(settingsResult[0]?.dailyWage || '0');
+  const dailyWage = Number(settingsResult[0]?.dailyWage ?? 0);
 
-  // Veri Transformasyonu
-  const timesheets = timesheetData.map((row) => {
-    const days = row.timesheetId ? daysMap[row.timesheetId] || [] : [];
-    // Ücretli Gün Hesabı
-    const totalWorkDays = days.filter((d) => PAID_CODES.has(d.markerCode)).length;
+  const periodSnapshot: PeriodSnapshot = { id: period.id, year: period.year, month: period.month, startDate: period.startDate, endDate: period.endDate, isLocked: period.isLocked };
+  const timesheets = timesheetData.map((row) => toTimesheetRow(row, daysMap, periodSnapshot, dailyWage));
 
-    return {
-      employee: {
-        id: row.employeeId,
-        firstName: row.firstName,
-        lastName: row.lastName,
-        tcNo: row.tcNo,
-        ibanNo: row.ibanNo,
-        isActive: true,
-        startDate: null,
-        endDate: null,
-      },
-      unit: row.unitId ? { id: row.unitId, name: row.unitName } : null,
-      location: row.locationId ? { id: row.locationId, name: row.locationName } : null,
-      timesheet: {
-        id: row.timesheetId,
-        periodId: period.id,
-        days,
-      },
-      period: {
-        id: period.id,
-        year: period.year,
-        month: period.month,
-        startDate: period.startDate,
-        endDate: period.endDate,
-        isLocked: period.isLocked,
-      },
-      totalWorkDays,
-      totalPaidAmount: totalWorkDays * dailyWage,
-    };
-  });
-
-  res.json({
-    success: true,
-    data: {
-      timesheets,
-      pagination: buildPagination(pageNum, limitNum, totalRecords),
-    },
-  });
+  res.json({ success: true, data: { timesheets, pagination: buildPagination(pageNum, limitNum, totalRecords) } });
 });
 
 // ======================== POST /timesheets ========================
 // Gelen request body'deki puantaj girişi tipi
 interface TimesheetEntry {
   employeeId: string;
-  days: { markerCode: string; day: string; note?: string }[];
+  days: { markerCode: MarkerCode; day: string; note?: string }[];
 }
 
-export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: Response) => {
-  const periodId = req.body.periodId as string;
-  const timesheets: TimesheetEntry[] = req.body.timesheets;
+export const createOrUpdateTimesheets = asyncHandler<Record<string, string>, unknown, TimesheetSaveType>(async (req, res) => {
+  const { periodId, timesheets } = req.body;
   const scope = req.scope;
 
   await withDrizzleTransaction(async (tx) => {
@@ -175,7 +157,7 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
     }
 
     const settingsResult = await tx.select({ maxWeeklyDays: settings.maxWeeklyDays }).from(settings).limit(1);
-    const maxWeeklyDays = settingsResult[0]?.maxWeeklyDays || 6;
+    const maxWeeklyDays = settingsResult[0]?.maxWeeklyDays ?? 6;
 
     // Haftalık Çalışma Sınırı Kontrolü
     const periodISOWeeks: string[] = [];
@@ -199,7 +181,7 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
           const date = parseLocalDate(dayEntry.day);
           if (date) {
             const isoWeek = getISOWeekKey(date);
-            weekMap[isoWeek] = (weekMap[isoWeek] || 0) + 1;
+            weekMap[isoWeek] = (weekMap[isoWeek] ?? 0) + 1;
           }
         }
       }
@@ -320,17 +302,26 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
 });
 
 // ======================== PATCH /timesheets/:periodId/lock ========================
-export const toggleLockPeriod = asyncHandler(async (req: Request, res: Response) => {
-  const periodId = req.params.periodId as string;
+export const toggleLockPeriod = asyncHandler<{ periodId: string }>(async (req, res) => {
+  const { periodId } = req.params;
 
-  let newLockState = false;
+  let updatedPeriod: { id: string; year: number; month: number; startDate: string; endDate: string; isLocked: boolean } | null = null;
+
   await withDrizzleTransaction(async (tx) => {
     const period = await periodRepo.findById(tx, periodId!);
     if (!period || period.isDeleted) throw notFound('Dönem bulunamadı');
 
-    newLockState = !period.isLocked;
-
+    const newLockState = !period.isLocked;
     await periodRepo.updateLockStatus(tx, periodId!, newLockState);
+
+    updatedPeriod = {
+      id: period.id,
+      year: period.year,
+      month: period.month,
+      startDate: period.startDate,
+      endDate: period.endDate,
+      isLocked: newLockState,
+    };
 
     const periodLabel = formatPeriodLabel(period.year, period.month);
     await createAuditLog(tx, {
@@ -347,8 +338,8 @@ export const toggleLockPeriod = asyncHandler(async (req: Request, res: Response)
 
   res.json({
     success: true,
-    message: newLockState ? 'Dönem kilitlendi' : 'Dönem kilidi açıldı',
-    data: { isLocked: newLockState },
+    message: updatedPeriod!.isLocked ? 'Dönem kilitlendi' : 'Dönem kilidi açıldı',
+    data: { period: updatedPeriod },
   });
 });
 

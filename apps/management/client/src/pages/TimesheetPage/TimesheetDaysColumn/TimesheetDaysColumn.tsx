@@ -25,7 +25,6 @@ const OTHER_MARKERS = MARKER_LIST.filter((m) => m.code !== MARKERS.X.code);
 // ─── Bileşen ──────────────────────────────────────────────────────────────────
 
 interface TimesheetDaysColumnProps {
-  period?: string;
   timesheetDays: Record<string, MarkerCode>;
   originalDays?: Record<string, MarkerCode> | undefined;
   periodDays: string[];

@@ -7,20 +7,13 @@ import { db } from '../config/database.js';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { buildPagination } from '../utils/pagination.js';
 import { auditLogRepo } from '../repositories/auditLogRepo.js';
+import { AuditLogQueryType } from '@timesheet/shared';
 
-export const getAuditLogs = asyncHandler(async (req: Request, res: Response) => {
-  const actor = req.query.actor as string | undefined;
-  const action = req.query.action as string | undefined;
-  const category = req.query.category as string | undefined;
-  const entityType = req.query.entityType as string | undefined;
-  const startDate = req.query.startDate as string | undefined;
-  const endDate = req.query.endDate as string | undefined;
-  const pageStr = req.query.page as string | undefined;
-  const limitStr = req.query.limit as string | undefined;
-
-  const page = parseInt(pageStr || '1', 10);
-  const limit = parseInt(limitStr || '50', 10);
-  const offset = (page - 1) * limit;
+export const getAuditLogs = asyncHandler<Record<string, string>, unknown, unknown, AuditLogQueryType>(async (req, res) => {
+  const { actor, action, category, entityType, startDate, endDate, page = 1, limit = 50 } = req.query;
+  const p = Number(page);
+  const l = Number(limit);
+  const offset = (p - 1) * l;
 
   const { logs: logsResult, totalRecords } = await auditLogRepo.getLogs(db, {
     ...(actor ? { actor } : {}),
@@ -29,8 +22,8 @@ export const getAuditLogs = asyncHandler(async (req: Request, res: Response) => 
     ...(entityType ? { entityType } : {}),
     ...(startDate ? { startDate } : {}),
     ...(endDate ? { endDate } : {}),
-    limit,
-    offset,
+    limit: l,
+    offset: offset,
   });
 
   const auditLogs = logsResult.map((row) => ({

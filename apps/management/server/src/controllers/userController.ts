@@ -6,19 +6,19 @@ import bcrypt from 'bcrypt';
 
 import { db, withDrizzleTransaction } from '../config/database.js';
 import { createAuditLog, buildActor, diffEntityWithLookups } from '../utils/auditLogger.js';
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_STATUS, USER_ROLE } from '@timesheet/shared';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_STATUS, USER_ROLE, UserEditType } from '@timesheet/shared';
 import type { UserRole, UserStatus, ProfileUpdateType, UserListQuery } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
-import { notFound, badRequest, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
+import { notFound, badRequest, forbidden, rethrowIfNotUniqueViolation } from '../utils/AppError.js';
 import { buildPagination, paginationParams } from '../utils/pagination.js';
 import { ok, paginated } from '../utils/responses.js';
 import * as userRepo from '../repositories/userRepo.js';
 
 
-export const getUsers = asyncHandler(async (req, res) => {
-  const { role, status, unitId, locationId, search } = req.query as UserListQuery;
+export const getUsers = asyncHandler<Record<string, string>, unknown, unknown, UserListQuery>(async (req, res) => {
+  const { role, status, unitId, locationId, search } = req.query;
 
-  const { page, limit, offset } = paginationParams(req.query as Record<string, unknown>);
+  const { page, limit, offset } = paginationParams(req.query);
 
   const filters = {
     ...(role !== undefined ? { role } : {}),
@@ -47,16 +47,9 @@ export const getUsers = asyncHandler(async (req, res) => {
   return paginated(res, 'users', users, buildPagination(page, limit, result.total));
 });
 
-export const updateUser = asyncHandler(async (req, res) => {
-  const { userId } = req.params as { userId: string };
-  const { role, status, unitId, locationId, expiryDate, forceNewPassword } = req.body as {
-    role?: UserRole;
-    status?: UserStatus;
-    unitId?: string;
-    locationId?: string;
-    expiryDate?: string | null;
-    forceNewPassword?: string;
-  };
+export const updateUser = asyncHandler<{ userId: string }, unknown, UserEditType>(async (req, res) => {
+  const { userId } = req.params;
+  const { role, status, unitId, locationId, expiryDate, forceNewPassword } = req.body;
 
   const result = await withDrizzleTransaction(async (tx) => {
     const existingUser = await userRepo.findById(tx, userId);
@@ -82,8 +75,8 @@ export const updateUser = asyncHandler(async (req, res) => {
     // Admin şifre sıfırlama: forceNewPassword varsa sadece ADMIN yapabilir
     let passwordHash: string | undefined;
     if (forceNewPassword) {
-      if (req.user!.role !== USER_ROLE.ADMIN) {
-        throw Object.assign(new Error('Başka bir kullanıcının şifresini değiştirmek için admin yetkisi gereklidir.'), { status: 403 });
+      if (!req.user || req.user.role !== USER_ROLE.ADMIN) {
+        throw forbidden('Başka bir kullanıcının şifresini değiştirmek için admin yetkisi gereklidir.');
       }
       passwordHash = await bcrypt.hash(forceNewPassword, 10);
     }
@@ -112,8 +105,8 @@ export const updateUser = asyncHandler(async (req, res) => {
 
     const changes = diffEntityWithLookups(
       AUDIT_ENTITY_TYPE.USER,
-      existingUser as unknown as Record<string, unknown>,
-      updatedUser as unknown as Record<string, unknown>,
+      existingUser,
+      updatedUser,
       idLookup,
     );
 
@@ -137,7 +130,7 @@ export const updateUser = asyncHandler(async (req, res) => {
         actor: buildActor(req),
         entityType: AUDIT_ENTITY_TYPE.USER,
         entityId: userId,
-        summary: `Admin ${req.user!.username}, ${existingUser.username} kullanıcısının şifresini sıfırladı.`,
+        summary: `Admin ${req.user?.username}, ${existingUser.username} kullanıcısının şifresini sıfırladı.`,
         changes: ['Şifre güncellendi'],
       });
     }
@@ -160,8 +153,8 @@ export const updateUser = asyncHandler(async (req, res) => {
   });
 });
 
-export const deleteUser = asyncHandler(async (req, res) => {
-  const { userId } = req.params as { userId: string };
+export const deleteUser = asyncHandler<{ userId: string }>(async (req, res) => {
+  const { userId } = req.params;
 
   const result = await withDrizzleTransaction(async (tx) => {
     const oldUser = await userRepo.findById(tx, userId);
@@ -191,9 +184,11 @@ export const deleteUser = asyncHandler(async (req, res) => {
   return ok(res, undefined, 'Kullanıcı başarıyla silindi.');
 });
 
-export const updateProfile = asyncHandler(async (req, res) => {
-  const userId = req.user!.id;
-  const { username, newPassword, oldPassword } = req.body as ProfileUpdateType;
+export const updateProfile = asyncHandler<Record<string, string>, unknown, ProfileUpdateType>(async (req, res) => {
+  const user = req.user;
+  if (!user) throw forbidden('Yetkisiz erişim');
+  const userId = user.id;
+  const { username, newPassword, oldPassword } = req.body;
 
   let updatedUser;
   try {
@@ -222,7 +217,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
       if (!newUser) throw notFound('Kullanıcı bulunamadı.');
 
-      const actor = { username: oldUsername, role: req.user!.role };
+      const actor = { username: oldUsername, role: user.role };
 
       if (usernameChanged) {
         await createAuditLog(tx, {
@@ -238,7 +233,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
       if (passwordChanged) {
         await createAuditLog(tx, {
           action: AUDIT_ACTION.USER_PASSWORD_CHANGE,
-          actor: { username: newUser.username, role: req.user!.role },
+          actor: { username: newUser.username, role: user.role },
           entityType: AUDIT_ENTITY_TYPE.USER,
           entityId: userId,
           summary: `${newUser.username} kendi şifresini değiştirdi.`,

@@ -8,14 +8,8 @@ import { api } from './httpClient';
 
 // ─── Tipler ───────────────────────────────────────────────────────────────────
 
-interface TimesheetListQuery {
-  periodId?: string;
-  locationId?: string;
-  unitId?: string;
-  search?: string;
-  page?: number;
-  limit?: number;
-}
+// Client-side params: month sent as "YYYY-MM" string (not server-side year+month numbers)
+export type TimesheetListParams = Record<string, string | number | undefined>;
 
 interface TimesheetListData {
   timesheets: TimesheetListItem[];
@@ -25,7 +19,7 @@ interface TimesheetListData {
 // ─── Servis ───────────────────────────────────────────────────────────────────
 
 // Puantaj listesini getir (Ay/Yıl, Birim, Yerleşke filtreleri ile)
-export const getTimesheets = (params: TimesheetListQuery = {}) =>
+export const getTimesheets = (params: TimesheetListParams = {}) =>
   api.get<ApiResponse<TimesheetListData>>('/timesheets', { params });
 
 // Puantajları toplu olarak kaydet veya güncelle

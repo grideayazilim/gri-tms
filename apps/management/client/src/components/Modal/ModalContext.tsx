@@ -37,11 +37,11 @@ interface ConfirmOptions {
 interface ModalContextValue {
   showModal: <T = unknown>(options: ModalOptions<T>) => Promise<T | null>;
   showConfirm: (options: ConfirmOptions) => Promise<boolean>;
-  closeModal: (id: number, result: unknown) => void;
+  closeModal: (id: string, result: unknown) => void;
 }
 
 interface ModalEntry {
-  id: number;
+  id: string;
   type: string;
   title: string;
   content: ReactNode | ((close: (result: unknown) => void) => ReactNode);
@@ -117,7 +117,7 @@ export function ModalProvider({ children }: ModalProviderProps) {
 
   const showModal = useCallback(<T = unknown,>(options: ModalOptions<T>): Promise<T | null> => {
     return new Promise<T | null>((resolve) => {
-      const id = Date.now() + Math.random();
+      const id = crypto.randomUUID();
       // Modalları bir array'de tutarak üst üste açılabilmelerini (stackable) sağlıyoruz
       setModals(prev => [...prev, {
         id,
@@ -129,8 +129,8 @@ export function ModalProvider({ children }: ModalProviderProps) {
   }, []);
 
 
-  const showConfirm = useCallback((options: ConfirmOptions): Promise<boolean> => {
-    return showModal<boolean>({
+  const showConfirm = useCallback(async (options: ConfirmOptions): Promise<boolean> => {
+    const result = await showModal<boolean>({
       title: options.title ?? 'Emin misiniz?',
       size: options.size ?? 'small',
       content: (closeModal) => (
@@ -140,13 +140,14 @@ export function ModalProvider({ children }: ModalProviderProps) {
           confirmText={options.confirmText ?? 'Onayla'}
           cancelText={options.cancelText ?? 'Vazgeç'}
           {...(options.onConfirm != null ? { onConfirm: options.onConfirm } : {})}
-          onClose={closeModal as (result: boolean) => void}
+          onClose={closeModal}
         />
       )
-    }) as Promise<boolean>;
+    });
+    return result ?? false;
   }, [showModal]);
 
-  const closeModal = useCallback((id: number, result: unknown) => {
+  const closeModal = useCallback((id: string, result: unknown) => {
     setModals(prev => {
       const modal = prev.find(m => m.id === id);
       // Promise'i kullanıcıdan gelen sonuç (result) ile resolve et

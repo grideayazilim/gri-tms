@@ -43,5 +43,18 @@ export const importFinalizeSchema = z.object({
         .default([]),
 });
 
+export const bulkImportEmployeesSchema = z.object({
+    employees: z.array(z.object({
+        tcNo: z.string().min(1),
+        fullName: z.string().min(1),
+        locationName: z.string().min(1),
+        unitName: z.string().optional().nullable(),
+        ibanNo: z.string().optional().nullable(),
+        startDate: z.string().optional().nullable(),
+        endDate: z.string().optional().nullable(),
+    })),
+});
+
 export type ImportEmployeeType = z.infer<typeof importEmployeeSchema>;
 export type ImportFinalizeType = z.infer<typeof importFinalizeSchema>;
+export type BulkImportEmployeesType = z.infer<typeof bulkImportEmployeesSchema>;

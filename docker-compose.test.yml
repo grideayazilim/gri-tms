@@ -2,8 +2,8 @@
 # docker-compose.test.yml — TEST ORTAMI (tam stack)
 #
 # Kullanım:
-#   cp server/.env.test.example server/.env.test   # ilk kez
-#   # server/.env.test içindeki değerleri düzenle
+#   cp apps/management/server/.env.test.example apps/management/server/.env.test   # ilk kez
+#   # apps/management/server/.env.test içindeki değerleri düzenle
 #   docker compose -f docker-compose.test.yml up -d --build
 #   docker compose -f docker-compose.test.yml logs -f       # logları izle
 #   docker compose -f docker-compose.test.yml down -v       # sıfırla
@@ -15,7 +15,7 @@ services:
     container_name: timesheet_postgres_test
     restart: unless-stopped
     env_file:
-      - ./server/.env.test
+      - ./apps/management/server/.env.test
     volumes:
       - postgres_test_data:/var/lib/postgresql/data
       - ./docker/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
@@ -30,11 +30,11 @@ services:
   server:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: apps/management/server/Dockerfile
     container_name: timesheet_server_test
     restart: unless-stopped
     env_file:
-      - ./server/.env.test
+      - ./apps/management/server/.env.test
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,13 +49,41 @@ services:
   client:
     build:
       context: .
-      dockerfile: client/Dockerfile
+      dockerfile: apps/management/client/Dockerfile
     container_name: timesheet_client_test
     restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - server
+    networks:
+      - timesheet_test_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  bot-server:
+    build:
+      context: ./apps/bot/server
+      dockerfile: Dockerfile
+    container_name: timesheet_bot_server_test
+    restart: unless-stopped
+    networks:
+      - timesheet_test_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  bot-client:
+    build:
+      context: ./apps/bot/client
+      dockerfile: Dockerfile
+    container_name: timesheet_bot_client_test
+    restart: unless-stopped
     networks:
       - timesheet_test_net
     logging:

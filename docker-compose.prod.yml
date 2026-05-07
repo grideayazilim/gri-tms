@@ -2,8 +2,8 @@
 # docker-compose.prod.yml — PRODUCTION (deploy ortamı)
 #
 # Kullanım:
-#   cp server/.env.prod.example server/.env.prod   # ilk kez
-#   # server/.env.prod içindeki TÜM değerleri doldur (özellikle secret'ları)
+#   cp apps/management/server/.env.prod.example apps/management/server/.env.prod   # ilk kez
+#   # apps/management/server/.env.prod içindeki TÜM değerleri doldur (özellikle secret'ları)
 #   docker compose -f docker-compose.prod.yml up -d --build
 #   docker compose -f docker-compose.prod.yml logs -f server   # logları izle
 #   docker compose -f docker-compose.prod.yml down             # durdur
@@ -15,7 +15,7 @@ services:
     container_name: timesheet_postgres
     restart: always
     env_file:
-      - ./server/.env.prod
+      - ./apps/management/server/.env.prod
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
       - ./docker/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
@@ -37,11 +37,11 @@ services:
   server:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: apps/management/server/Dockerfile
     container_name: timesheet_server
     restart: always
     env_file:
-      - ./server/.env.prod
+      - ./apps/management/server/.env.prod
     depends_on:
       postgres:
         condition: service_healthy
@@ -64,13 +64,45 @@ services:
   client:
     build:
       context: .
-      dockerfile: client/Dockerfile
+      dockerfile: apps/management/client/Dockerfile
     container_name: timesheet_client
     restart: always
     ports:
       - "80:80"
     depends_on:
       - server
+    networks:
+      - timesheet_prod_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  bot-server:
+    build:
+      context: ./apps/bot/server
+      dockerfile: Dockerfile
+    container_name: timesheet_bot_server
+    restart: always
+    expose:
+      - "3001"
+    networks:
+      - timesheet_prod_net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "10"
+
+  bot-client:
+    build:
+      context: ./apps/bot/client
+      dockerfile: Dockerfile
+    container_name: timesheet_bot_client
+    restart: always
+    expose:
+      - "80"
     networks:
       - timesheet_prod_net
     logging:

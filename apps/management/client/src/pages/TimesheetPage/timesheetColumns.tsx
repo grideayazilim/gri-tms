@@ -19,7 +19,7 @@ export type { TimesheetUIRow };
 export const timesheetColumns = (
   periodDays: string[],
   onDayClick: (row: TimesheetUIRow, dateStr: string, markerCode: string) => void,
-  isDayCellDirty: ((rowId: string, dateStr: string) => boolean) | undefined,
+  originalSnapshot: TimesheetUIRow[],
   period: string,
   isPublicHoliday: ((dateStr: string) => boolean) | undefined,
 ): Column<TimesheetUIRow>[] => [
@@ -27,23 +27,24 @@ export const timesheetColumns = (
     { header: "Ad Soyad", accessor: "name", width: "150px" },
     {
       header: <div style={{ textAlign: "center" }}>Çalışma Günleri</div>,
-      // Bu sütun, ayın günlerini içeren devasa bir alt bileşeni (TimesheetDaysColumn) render eder.
-      render: (row: TimesheetUIRow) => (
-        <TimesheetDaysColumn
-          timesheetDays={row.timesheet_days}
-          periodDays={periodDays}
-          period={period}
-          onDayClick={(dateStr, markerCode) => onDayClick(row, dateStr, markerCode)}
-          {...(isDayCellDirty ? { isDayCellDirty: (dateStr: string) => isDayCellDirty(row.id, dateStr) } : {})}
-          {...(isPublicHoliday ? { isPublicHoliday } : {})}
-          {...(row.isLocked !== undefined ? { isLocked: row.isLocked } : {})}
-        />
-      ),
+      render: (row: TimesheetUIRow) => {
+        const originalRow = originalSnapshot.find((s) => s.id === row.id);
+        return (
+          <TimesheetDaysColumn
+            timesheetDays={row.timesheet_days}
+            originalDays={originalRow?.timesheet_days}
+            periodDays={periodDays}
+            period={period}
+            onDayClick={(dateStr, markerCode) => onDayClick(row, dateStr, markerCode)}
+            isPublicHoliday={isPublicHoliday}
+            isLocked={row.isLocked}
+          />
+        );
+      },
     },
     {
       header: "Toplam",
       width: "60px",
-      // Çalışanın o ayki toplam fiili çalışma gün sayısını gösterir
       render: (row: TimesheetUIRow) => (
         <div style={{ textAlign: "center" }}>{row.workDaysCount}</div>
       ),

@@ -4,24 +4,24 @@ WORKDIR /app
 
 # Workspace manifest'leri kopyala (layer cache için kaynak koddan önce)
 COPY package.json package-lock.json ./
-COPY shared/package.json ./shared/
-COPY server/package.json ./server/
-COPY client/package.json ./client/
+COPY apps/management/shared/package.json ./apps/management/shared/
+COPY apps/management/server/package.json ./apps/management/server/
+COPY apps/management/client/package.json ./apps/management/client/
 
 # Tüm workspace bağımlılıklarını yükle
 RUN npm ci
 
 # Kaynak kodları kopyala ve derle
-COPY shared/ ./shared/
-COPY server/ ./server/
+COPY apps/management/shared/ ./apps/management/shared/
+COPY apps/management/server/ ./apps/management/server/
 
 RUN npm run build -w @timesheet/shared
-RUN npm run build -w server
+RUN npm run build -w management-server
 
 # Workspace symlink'ini (node_modules/@timesheet/shared → ../../shared) gerçek
 # içerikle değiştir; COPY ile çalışan katmanlar broken symlink görmez.
 RUN rm -rf node_modules/@timesheet/shared \
-    && cp -r shared node_modules/@timesheet/shared
+    && cp -r apps/management/shared node_modules/@timesheet/shared
 
 # Dev bağımlılıklarını kaldır (image boyutunu küçültmek için)
 RUN npm prune --omit=dev
@@ -39,12 +39,12 @@ WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 
 # Server uygulama dosyaları
-WORKDIR /app/server
-COPY --from=builder /app/server/node_modules ./node_modules
-COPY --from=builder /app/server/dist ./dist
-COPY --from=builder /app/server/database/migrations ./database/migrations
+WORKDIR /app/apps/management/server
+COPY --from=builder /app/apps/management/server/node_modules ./node_modules
+COPY --from=builder /app/apps/management/server/dist ./dist
+COPY --from=builder /app/apps/management/server/database/migrations ./database/migrations
 
-COPY server/docker-entrypoint.sh ./
+COPY apps/management/server/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 EXPOSE 3000

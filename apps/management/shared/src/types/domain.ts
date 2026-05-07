@@ -106,6 +106,8 @@ export interface PeriodItem {
   id: string;
   year: number;
   month: number;
+  startDate: string;
+  endDate: string;
   isLocked: boolean;
   isDeleted: boolean;
   createdAt: string;

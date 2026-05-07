@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { ReactNode } from 'react';
 
 import type { PaginationMeta } from '@timesheet/shared';
@@ -20,6 +21,35 @@ interface DynamicTableProps<T extends { id: string | number }> {
   pagination?: PaginationMeta;
   onPageChange?: (page: number) => void;
 }
+
+// ─── Satır bileşeni (memoized) ────────────────────────────────────────────────
+// row ve columns referansları değişmediği sürece yeniden render edilmez.
+// setTimesheets'in .map() içinde değişmeyen satırlar aynı nesne referansını
+// döndürdüğünden, sadece gerçekten değişen satır yeniden render edilir.
+
+function TableRow<T extends { id: string | number }>({
+  row,
+  columns,
+}: {
+  row: T;
+  columns: Column<T>[];
+}) {
+  return (
+    <tr>
+      {columns.map((col, colIndex) => (
+        <td key={colIndex}>
+          {col.render
+            ? col.render(row)
+            : col.accessor
+              ? (row[col.accessor] as ReactNode)
+              : null}
+        </td>
+      ))}
+    </tr>
+  );
+}
+
+const MemoizedTableRow = memo(TableRow) as typeof TableRow;
 
 // ─── Bileşen ──────────────────────────────────────────────────────────────────
 
@@ -57,17 +87,7 @@ function DynamicTable<T extends { id: string | number }>({
           <tbody>
             {data.length > 0 ? (
               data.map((row, rowIndex) => (
-                <tr key={row.id ?? rowIndex}>
-                  {columns.map((col, colIndex) => (
-                    <td key={colIndex}>
-                      {col.render
-                        ? col.render(row)
-                        : col.accessor
-                          ? (row[col.accessor] as ReactNode)
-                          : null}
-                    </td>
-                  ))}
-                </tr>
+                <MemoizedTableRow key={row.id ?? rowIndex} row={row} columns={columns} />
               ))
             ) : (
               <tr>

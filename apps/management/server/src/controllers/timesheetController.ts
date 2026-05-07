@@ -221,6 +221,21 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
       existingTimesheetMap.set(row.employeeId, row.id);
     }
 
+    // Mevcut tüm puantaj günlerini önceden çek (diff hesabı için)
+    const existingTimesheetIds = [...existingTimesheetMap.values()];
+    const existingDaysRows = existingTimesheetIds.length > 0
+      ? await timesheetRepo.getTimesheetDays(tx, existingTimesheetIds)
+      : [];
+
+    // timesheetId -> Set<"day|markerCode"> şeklinde mevcut gün imzalarını tut
+    const existingDaySignatures = new Map<string, Set<string>>();
+    for (const d of existingDaysRows) {
+      if (!existingDaySignatures.has(d.timesheetId)) {
+        existingDaySignatures.set(d.timesheetId, new Set());
+      }
+      existingDaySignatures.get(d.timesheetId)!.add(`${d.day}|${d.markerCode}`);
+    }
+
     let totalDaysChanged = 0;
     const affectedEmployees: { name: string; daysCount: number }[] = [];
     const allTimesheetIds: string[] = [];
@@ -244,6 +259,7 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
 
       allTimesheetIds.push(timesheetId);
 
+      const newDaySignatures = new Set<string>();
       if (ts.days && ts.days.length > 0) {
         for (const dayEntry of ts.days) {
           allDayRows.push({
@@ -252,14 +268,25 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
             markerCode: dayEntry.markerCode,
             note: dayEntry.note || null,
           });
+          newDaySignatures.add(`${dayEntry.day}|${dayEntry.markerCode}`);
         }
-        totalDaysChanged += ts.days.length;
       }
 
-      affectedEmployees.push({
-        name: emp ? `${emp.firstName} ${emp.lastName}` : ts.employeeId,
-        daysCount: ts.days?.length || 0,
-      });
+      // Gerçek değişim = eklenen + silinen günler
+      const prevSignatures = existingDaySignatures.get(timesheetId) ?? new Set<string>();
+      const added = [...newDaySignatures].filter((s) => !prevSignatures.has(s)).length;
+      const removed = [...prevSignatures].filter((s) => !newDaySignatures.has(s)).length;
+      const daysChanged = added + removed;
+
+      totalDaysChanged += daysChanged;
+
+      // Sadece gerçekten değişim olan çalışanları log'a ekle
+      if (daysChanged > 0) {
+        affectedEmployees.push({
+          name: emp ? `${emp.firstName} ${emp.lastName}` : ts.employeeId,
+          daysCount: daysChanged,
+        });
+      }
     }
 
     // Eski gün kayıtlarını temizle ve yenilerini toplu olarak ekle
@@ -268,22 +295,25 @@ export const createOrUpdateTimesheets = asyncHandler(async (req: Request, res: R
 
     const periodLabel = formatPeriodLabel(period.year, period.month);
     const empCount = affectedEmployees.length;
-    const allChanges = affectedEmployees.map((e) => `${e.name}: ${e.daysCount} gün güncellendi`);
+    const allChanges = affectedEmployees.map((e) => `${e.name}: ${e.daysCount} gün değişti`);
 
-    await createAuditLog(tx, {
-      action: AUDIT_ACTION.TIMESHEET_SAVE,
-      actor: buildActor(req),
-      entityType: AUDIT_ENTITY_TYPE.TIMESHEET,
-      entityId: period.id,
-      summary: `${periodLabel} dönemi — ${empCount} çalışan için toplam ${totalDaysChanged} gün güncellendi.`,
-      changes: truncateChanges(allChanges, 50),
-      metadata: {
-        periodLabel,
-        periodId: period.id,
-        employeeCount: empCount,
-        totalDaysChanged,
-      },
-    });
+    // Hiç değişiklik yoksa log atmıyoruz
+    if (totalDaysChanged > 0) {
+      await createAuditLog(tx, {
+        action: AUDIT_ACTION.TIMESHEET_SAVE,
+        actor: buildActor(req),
+        entityType: AUDIT_ENTITY_TYPE.TIMESHEET,
+        entityId: period.id,
+        summary: `${periodLabel} dönemi — ${empCount} çalışan için toplam ${totalDaysChanged} gün değişti.`,
+        changes: truncateChanges(allChanges, 50),
+        metadata: {
+          periodLabel,
+          periodId: period.id,
+          employeeCount: empCount,
+          totalDaysChanged,
+        },
+      });
+    }
   });
 
   res.json({ success: true, message: 'Puantaj kaydedildi' });

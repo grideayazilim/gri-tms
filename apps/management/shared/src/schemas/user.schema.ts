@@ -17,7 +17,7 @@ export const userEditSchema = z.object({
     locationId: z.string().optional().nullable(),
     unitId: z.string().optional().nullable(),
     // Admin tarafından kullanıcının şifresini sıfırlamak için opsiyonel alan
-    forceNewPassword: z.string().min(6, 'Şifre en az 6 karakter olmalıdır').optional(),
+    forceNewPassword: z.string().min(8, 'Şifre en az 8 karakter olmalıdır').optional(),
 }).superRefine((val, ctx) => {
     // Birim Sorumlusu (RESPONSIBLE) için ek kısıtlamalar:
     // Hesap süresi (expiryDate), Yerleşke ve Birim tanımlı olmalıdır.
@@ -52,9 +52,14 @@ export type UserEditType = z.infer<typeof userEditSchema>;
 // Kullanıcı Profil Güncelleme: Kullanıcı adı ve şifre değişim kontrolleri
 
 export const profileUpdateSchema = z.object({
-    username: z.string().min(3, 'Kullanıcı adı en az 3 karakter olmalıdır').optional(),
-    oldPassword: z.string().optional(),
-    newPassword: z.string().min(3, 'Yeni şifre en az 3 karakter olmalıdır').optional(),
+    username: z
+        .string()
+        .trim()
+        .min(3, 'Kullanıcı adı en az 3 karakter olmalıdır')
+        .regex(/^\S+$/, 'Kullanıcı adında boşluk olamaz')
+        .optional(),
+    oldPassword: z.string().optional(),          // şifreler trim edilmez
+    newPassword: z.string().min(8, 'Yeni şifre en az 8 karakter olmalıdır').optional(),
 }).superRefine((val, ctx) => {
     // Şifre güncelleme mantığı: Eğer eski şifre veya yeni şifre alanlarından biri doluysa,
     // diğeri de dolu olmak zorundadır. Sadece birini doldurmak hata döndürür.

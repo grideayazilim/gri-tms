@@ -4,12 +4,17 @@
    ============================================ */
 import { z } from 'zod';
 
-const timesheetDaySchema = z.object({
-    day: z.string().min(1, 'Tarih gereklidir'),
-    markerCode: z.string().min(1, 'İşaretçi kodu gereklidir'),
+import { MARKER_LIST } from '../constants/markers';
+import type { MarkerCode } from '../constants/markers';
+
+const markerCodeTuple = MARKER_LIST.map(m => m.code) as [MarkerCode, ...MarkerCode[]];
+
+export const timesheetDaySchema = z.object({
+    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Tarih YYYY-MM-DD formatında olmalıdır'),
+    markerCode: z.enum(markerCodeTuple, { message: 'Geçersiz işaretçi kodu' }),
 });
 
-const timesheetRowSchema = z.object({
+export const timesheetRowSchema = z.object({
     employeeId: z.string().min(1, 'Çalışan ID gereklidir'),
     days: z.array(timesheetDaySchema),
 });

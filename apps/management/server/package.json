@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "management-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,7 +9,6 @@
     "build": "tsc -p . && tsc-alias -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "db:init": "tsx database/init-db.ts",
     "db:introspect": "drizzle-kit introspect",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx database/migrator.ts",
@@ -24,7 +23,6 @@
   "dependencies": {
     "@timesheet/shared": "*",
     "bcrypt": "^6.0.0",
-    "winston": "^3.17.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "date-fns": "^4.1.0",
@@ -33,13 +31,15 @@
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "jszip": "^3.10.1",
     "node-cron": "^4.2.1",
     "pg": "^8.18.0",
-    "jszip": "^3.10.1",
+    "winston": "^3.17.0",
     "xlsx-populate": "^1.21.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.4.0",
     "@types/bcrypt": "^5.0.2",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",

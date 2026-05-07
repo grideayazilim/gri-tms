@@ -253,20 +253,6 @@ const TimesheetPage = () => {
   // ─────────────────────────────────────────────────────────────────────────
   // DİRTY STATE
   // ─────────────────────────────────────────────────────────────────────────
-  const isDayCellDirty = useCallback(
-    (rowId: string, dateStr: string) => {
-      const originalRow = originalSnapshot.find((r) => r.id === rowId);
-      if (!originalRow) return false;
-
-      const originalVal = originalRow.timesheet_days?.[dateStr] ?? "";
-      const currentVal =
-        timesheets.find((r) => r.id === rowId)?.timesheet_days?.[dateStr] ?? "";
-
-      return originalVal !== currentVal;
-    },
-    [originalSnapshot, timesheets],
-  );
-
   const hasGlobalChanges = useMemo(
     () =>
       timesheets.some((r) => {
@@ -389,8 +375,8 @@ const TimesheetPage = () => {
   }, [activePeriod, filters.period]);
 
   const columns = useMemo(
-    () => timesheetColumns(periodDays, handleDayClick, isDayCellDirty, filters.period as string, isPublicHoliday),
-    [periodDays, handleDayClick, isDayCellDirty, filters.period, isPublicHoliday],
+    () => timesheetColumns(periodDays, handleDayClick, originalSnapshot, filters.period as string, isPublicHoliday),
+    [periodDays, handleDayClick, originalSnapshot, filters.period, isPublicHoliday],
   );
 
   const userName = user?.username || "Kullanıcı";

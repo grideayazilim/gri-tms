@@ -1,13 +1,14 @@
 /* ========================================================================
    DEMO SEEDER (SUNUM VE TEST VERİLERİ YÜKLEYİCİ)
-   Gerçekçi demo verisi üretir. Çalıştırıldığında önce mevcut demo verilerini
-   temizler (admin kullanıcısına dokunmadan), ardından yeniden oluşturur.
+   Gerçekçi demo verisi üretir. Faker ile 1000 öğrenci, 7 yerleşke,
+   63 birim ve her birime özel sorumlu (şifreleri kullanıcı adı ile aynı) oluşturur.
    ======================================================================== */
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import * as dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
 import { sql } from 'drizzle-orm';
+import { fakerTR as faker } from '@faker-js/faker';
 
 dotenv.config();
 const { Pool } = pg;
@@ -15,16 +16,26 @@ const { Pool } = pg;
 // ─── Demo veri tanımları ──────────────────────────────────────────────────────
 
 const DEMO_LOCATIONS = [
-  { name: 'Kuzey Kampüsü', programNo: 'PRG-001' },
-  { name: 'Güney Kampüsü', programNo: 'PRG-002' },
-  { name: 'Doğu Kampüsü', programNo: 'PRG-003' },
+  { name: 'Kuzey Kampüsü', programNo: 'PRG-KZY', prefix: 'kuzey' },
+  { name: 'Güney Kampüsü', programNo: 'PRG-GNY', prefix: 'guney' },
+  { name: 'Merkez Kampüsü', programNo: 'PRG-MRK', prefix: 'merkez' },
+  { name: 'Doğu Kampüsü', programNo: 'PRG-DGU', prefix: 'dogu' },
+  { name: 'Batı Kampüsü', programNo: 'PRG-BTI', prefix: 'bati' },
+  { name: 'Tıp Fakültesi', programNo: 'PRG-TIP', prefix: 'tip' },
+  { name: 'Teknokent', programNo: 'PRG-TKN', prefix: 'teknokent' },
 ];
 
-const DEMO_UNITS = ['İnşaat', 'Elektrik', 'Mekanik'];
-
-// Kullanıcı adı ön eklerini yerleşke ve birime göre üret
-const locationCodes = ['kuzey', 'guney', 'dogu'];
-const unitCodes = ['ins', 'elk', 'mek'];
+const DEMO_UNITS = [
+  { name: 'İnsan Kaynakları', suffix: 'ik' },
+  { name: 'Bilgi İşlem', suffix: 'bilgiislem' },
+  { name: 'Mali İşler', suffix: 'mali' },
+  { name: 'Öğrenci İşleri', suffix: 'ogrenci' },
+  { name: 'Kütüphane', suffix: 'kutuphane' },
+  { name: 'Temizlik İşleri', suffix: 'temizlik' },
+  { name: 'Güvenlik', suffix: 'guvenlik' },
+  { name: 'Yemekhane', suffix: 'yemekhane' },
+  { name: 'Teknik Servis', suffix: 'teknik' }
+];
 
 // ─── Yardımcı: Dinamik tarih hesaplama ───────────────────────────────────────
 
@@ -50,97 +61,98 @@ const runDemoSeed = async () => {
     throw new Error('MIGRATION_DATABASE_URL .env dosyasında bulunamadı!');
   }
 
-  console.log('🚀 Demo verileri yükleniyor...');
+  console.log('🚀 Devasa demo verileri yükleniyor...');
 
   const seedPool = new Pool({ connectionString, max: 1 });
   const db = drizzle(seedPool);
 
   try {
-    const passwordHash = await bcrypt.hash('1234', 10);
-
     // ── 1. Mevcut demo verilerini temizle (FK sırasına göre) ─────────────────
     console.log('🗑️  Mevcut demo verileri temizleniyor...');
 
-    // Önce RESPONSIBLE kullanıcılar (location/unit FK bağımlılığı)
-    await db.execute(sql`
-      DELETE FROM app.users WHERE role = 'RESPONSIBLE';
-    `);
+    await db.execute(sql`DELETE FROM app.employees;`);
+    await db.execute(sql`DELETE FROM app.users WHERE role = 'RESPONSIBLE';`);
+    await db.execute(sql`DELETE FROM app.units;`);
+    await db.execute(sql`DELETE FROM app.locations;`);
 
-    // Sonra birimler (locations'a FK var, cascade ile çalışacak ama explicit silelim)
-    await db.execute(sql`
-      DELETE FROM app.units;
-    `);
+    // ── 2. Yerleşkeleri ve Birimleri oluştur ─────────────────────────────────
+    console.log(`🏗️  ${DEMO_LOCATIONS.length} Yerleşke, ${DEMO_LOCATIONS.length * DEMO_UNITS.length} Birim ve Sorumluları oluşturuluyor...`);
 
-    // Son olarak yerleşkeler
-    await db.execute(sql`
-      DELETE FROM app.locations;
-    `);
+    const createdUnitIds: string[] = [];
 
-    // ── 2. Yerleşkeleri oluştur ──────────────────────────────────────────────
-    console.log('🏗️  Yerleşkeler oluşturuluyor...');
+    const { startDate, endDate } = calcProgramDates();
+    const expiryDate = new Date(new Date(endDate).getTime() + 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-    const createdLocationIds: string[] = [];
     for (const loc of DEMO_LOCATIONS) {
-      const result = await db.execute(sql`
+      const locResult = await db.execute(sql`
         INSERT INTO app.locations (name, program_no)
         VALUES (${loc.name}, ${loc.programNo})
         RETURNING id;
       `);
-      const row = result.rows[0] as { id: string };
-      createdLocationIds.push(row.id);
-    }
+      const locId = locResult.rows[0]?.id as string;
 
-    // ── 3. Birimleri oluştur ─────────────────────────────────────────────────
-    console.log('🏢  Birimler oluşturuluyor...');
-
-    const createdUnitIds: { locationId: string; unitId: string; locIdx: number; unitIdx: number }[] = [];
-    for (let locIdx = 0; locIdx < createdLocationIds.length; locIdx++) {
-      const locationId = createdLocationIds[locIdx]!;
-      for (let unitIdx = 0; unitIdx < DEMO_UNITS.length; unitIdx++) {
-        const unitName = DEMO_UNITS[unitIdx]!;
-        const result = await db.execute(sql`
+      for (const unit of DEMO_UNITS) {
+        const unitResult = await db.execute(sql`
           INSERT INTO app.units (location_id, name)
-          VALUES (${locationId}, ${unitName})
+          VALUES (${locId}, ${unit.name})
           RETURNING id;
         `);
-        const row = result.rows[0] as { id: string };
-        createdUnitIds.push({ locationId, unitId: row.id, locIdx, unitIdx });
-      }
-    }
+        const unitId = unitResult.rows[0]?.id as string;
+        createdUnitIds.push(unitId);
 
-    // ── 4. Kullanıcıları oluştur (her birim için 20 RESPONSIBLE) ─────────────
-    console.log('👥  Kullanıcılar oluşturuluyor...');
+        // Kullanıcı adı: yerleşke_birim (örn: kuzey_ik)
+        const username = `${loc.prefix}_${unit.suffix}`;
+        // Şifre kullanıcı adıyla aynı olacak
+        const passHash = await bcrypt.hash(username, 10);
 
-    // Program bitiş tarihini expiry_date hesabı için kullan (+20 gün)
-    const { startDate, endDate } = calcProgramDates();
-    const expiryDate = new Date(new Date(endDate).getTime() + 20 * 24 * 60 * 60 * 1000)
-      .toISOString().split('T')[0];
-
-    for (const { locationId, unitId, locIdx, unitIdx } of createdUnitIds) {
-      const locCode = locationCodes[locIdx]!;
-      const unitCode = unitCodes[unitIdx]!;
-
-      for (let userNum = 1; userNum <= 20; userNum++) {
-        const username = `${locCode}_${unitCode}_${String(userNum).padStart(2, '0')}`;
         await db.execute(sql`
           INSERT INTO app.users (username, password_hash, role, status, location_id, unit_id, expiry_date)
-          VALUES (
-            ${username},
-            ${passwordHash},
-            'RESPONSIBLE',
-            'ACTIVE',
-            ${locationId},
-            ${unitId},
-            ${expiryDate}
-          )
-          ON CONFLICT (username) DO UPDATE
-          SET password_hash = ${passwordHash}, status = 'ACTIVE',
-              location_id = ${locationId}, unit_id = ${unitId}, expiry_date = ${expiryDate};
+          VALUES (${username}, ${passHash}, 'RESPONSIBLE', 'ACTIVE', ${locId}, ${unitId}, ${expiryDate});
         `);
       }
     }
 
-    // ── 5. Sistem ayarlarında program tarihlerini güncelle ───────────────────
+    // ── 3. 1000 Gerçekçi Öğrenci/Çalışan Oluştur ─────────────────────────────
+    console.log('👥  1000 Öğrenci (Çalışan) TC, IBAN ve rastgele isimlerle üretiliyor...');
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    const employees = [];
+
+    for (let i = 0; i < 1000; i++) {
+      const unitId = faker.helpers.arrayElement(createdUnitIds);
+      const firstName = faker.person.firstName();
+      const lastName = faker.person.lastName();
+      
+      // TC No: 11 haneli, ilk hanesi sıfır olmayan sayı
+      const firstDigit = faker.number.int({ min: 1, max: 9 }).toString();
+      const tcNo = firstDigit + faker.string.numeric(10);
+      
+      // IBAN: TR + 24 rakam
+      const ibanNo = 'TR' + faker.string.numeric(24);
+
+      employees.push({
+        unitId,
+        tcNo,
+        ibanNo,
+        firstName,
+        lastName,
+        startDate: todayStr
+      });
+    }
+
+    // Insertleri 100'erli gruplar halinde veritabanına basıyoruz (Max parametre sınırına takılmamak için)
+    const CHUNK_SIZE = 100;
+    for (let i = 0; i < employees.length; i += CHUNK_SIZE) {
+      const chunk = employees.slice(i, i + CHUNK_SIZE);
+      const valuesSql = chunk.map(e => `('${e.unitId}', '${e.tcNo}', '${e.ibanNo}', '${e.firstName.replace(/'/g, "''")}', '${e.lastName.replace(/'/g, "''")}', '${e.startDate}')`).join(', ');
+      
+      await db.execute(sql.raw(`
+        INSERT INTO app.employees (unit_id, tc_no, iban_no, first_name, last_name, start_date)
+        VALUES ${valuesSql};
+      `));
+    }
+
+    // ── 4. Sistem ayarlarında program tarihlerini güncelle ───────────────────
     console.log('⚙️  Program tarihleri güncelleniyor...');
 
     await db.execute(sql`
@@ -150,11 +162,11 @@ const runDemoSeed = async () => {
       SET program_start_date = ${startDate}, program_end_date = ${endDate};
     `);
 
-    const totalUsers = createdUnitIds.length * 20;
-    console.log(`✅ Demo seed tamamlandı.`);
-    console.log(`   - ${DEMO_LOCATIONS.length} yerleşke`);
-    console.log(`   - ${createdUnitIds.length} birim`);
-    console.log(`   - ${totalUsers} kullanıcı (şifre: 1234)`);
+    console.log(`✅ Demo seed harika bir şekilde tamamlandı!`);
+    console.log(`   - 7 Yerleşke`);
+    console.log(`   - 63 Birim`);
+    console.log(`   - 63 Birim Sorumlusu (Şifreler kullanıcı adlarıyla BİREBİR AYNI)`);
+    console.log(`   - 1000 Gerçekçi Öğrenci (İşe Giriş: ${todayStr}, Çıkış: null, Tamamı Aktif)`);
     console.log(`   - Program: ${startDate} → ${endDate}`);
   } catch (error) {
     console.error('❌ Demo seed hatası:', error);

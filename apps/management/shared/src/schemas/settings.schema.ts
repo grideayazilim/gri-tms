@@ -5,9 +5,13 @@
 import { z } from 'zod';
 
 export const loginSettingsSchema = z.object({
-    username: z.string().min(1, 'Kullanıcı adı gereklidir'),
-    currentPassword: z.string().optional().or(z.literal('')),
-    password: z.string().min(3, 'Yeni şifre en az 3 karakter olmalıdır').optional().or(z.literal('')),
+    username: z
+        .string()
+        .trim()
+        .min(1, 'Kullanıcı adı gereklidir')
+        .regex(/^\S+$/, 'Kullanıcı adında boşluk olamaz'),
+    currentPassword: z.string().optional().or(z.literal('')), // şifre → trim edilmez
+    password: z.string().min(8, 'Yeni şifre en az 8 karakter olmalıdır').optional().or(z.literal('')),
 }).superRefine((val, ctx) => {
     // Yeni şifre girilmişse mevcut şifre de zorunludur
     if (val.password && !val.currentPassword) {

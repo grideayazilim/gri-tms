@@ -9,13 +9,14 @@ server/dist/
 
 # Environment files
 .env
-.env.*
-!.env.example
+.env.prod
+.env.test
+.env.local
 
-# Docker / Server specific secrets
-server/.env
-server/.env.test
-server/.env.prod
+# Example dosyaları hariç
+!.env.example
+!.env.prod.example
+!.env.test.example
 
 # Logs and OS files
 *.log

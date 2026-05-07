@@ -17,10 +17,8 @@ interface UserEditModalProps {
 const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
   const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
 
-  // Şifre sıfırlama bölümü için yerel state
+  // Şifre sıfırlama bölümü için yerel state (sadece checkbox kontrolü)
   const [changePassword, setChangePassword] = useState(false);
-  const [newPasswordValue, setNewPasswordValue] = useState('');
-  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const {
     register,
@@ -29,6 +27,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
     watch,
     formState: { errors, isDirty },
     reset,
+    resetField,
   } = useForm<UserEditType>({
     resolver: zodResolver(userEditSchema),
     defaultValues: {
@@ -59,8 +58,6 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
       });
       // Kullanıcı değiştiğinde şifre alanını sıfırla
       setChangePassword(false);
-      setNewPasswordValue('');
-      setPasswordError(null);
     }
   }, [user, reset]);
 
@@ -68,15 +65,6 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
   const selectedUnitId = watch('unitId');
 
   const onSubmit = (data: UserEditType) => {
-    // Şifre sıfırlama validasyonu
-    if (changePassword) {
-      if (!newPasswordValue || newPasswordValue.length < 6) {
-        setPasswordError('Şifre en az 6 karakter olmalıdır');
-        return;
-      }
-    }
-    setPasswordError(null);
-
     onSave({
       role: data.role,
       // Tarih seçilmemişse veritabanına null gönderiyoruz (Süresiz kullanıcı)
@@ -84,8 +72,8 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
       // Rol ADMIN ise yerleşke/birim null gönderilir
       locationId: data.locationId || null,
       unitId: data.unitId || null,
-      // Checkbox işaretli ve dolu ise şifreyi payload'a ekle
-      ...(changePassword && newPasswordValue ? { forceNewPassword: newPasswordValue } : {}),
+      // Checkbox işaretli ve schema'dan gelen değer varsa ekle
+      ...(changePassword && data.forceNewPassword ? { forceNewPassword: data.forceNewPassword } : {}),
     });
   };
 
@@ -186,8 +174,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
             onChange={(e) => {
               setChangePassword(e.target.checked);
               if (!e.target.checked) {
-                setNewPasswordValue('');
-                setPasswordError(null);
+                resetField('forceNewPassword');
               }
             }}
           />
@@ -199,19 +186,15 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
             <input
               type="password"
               id="forceNewPassword"
-              className={`input ${passwordError ? 'input--error' : ''}`}
+              className={`input ${errors.forceNewPassword ? 'input--error' : ''}`}
               placeholder=" "
-              value={newPasswordValue}
-              onChange={(e) => {
-                setNewPasswordValue(e.target.value);
-                if (passwordError) setPasswordError(null);
-              }}
+              {...register('forceNewPassword')}
             />
             <label htmlFor="forceNewPassword" className="floating-group__label">
-              Yeni şifre (en az 6 karakter)
+              Yeni şifre (en az 8 karakter)
             </label>
-            {passwordError && (
-              <span className="input-error-message">{passwordError}</span>
+            {errors.forceNewPassword && (
+              <span className="input-error-message">{errors.forceNewPassword.message}</span>
             )}
           </div>
         )}

@@ -1,0 +1,30 @@
+# ============================================================================
+# docker-compose.yml — LOCAL DEV ORTAMI (Sadece PostgreSQL)
+#
+# Kullanım:
+#   docker compose up -d          # DB'yi başlat
+#   docker compose down           # DB'yi durdur
+#   docker compose down -v        # DB'yi SİL (tüm veriyi temizle, sıfırdan başla)
+#   docker compose logs -f db     # DB loglarını izle
+# ============================================================================
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: tms_db_dev
+    restart: unless-stopped
+    env_file:
+      - ./apps/management/server/.env
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./docker/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_dev_data:

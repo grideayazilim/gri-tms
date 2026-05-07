@@ -59,10 +59,8 @@ const mapPeriod = (p: PeriodItem): UIPeriod => ({
   id: p.id,
   value: `${p.year}-${String(p.month).padStart(2, '0')}`,
   label: `${p.year} ${TURKISH_MONTHS[p.month - 1] ?? ''}`,
-  // Not: API'deki period objesinde startDate ve endDate olmayabilir (şu anki tipe göre).
-  // TS hatasını önlemek için güvenli erişim:
-  startDate: `${p.year}-${String(p.month).padStart(2, '0')}-01`,
-  endDate: new Date(p.year, p.month, 0).toISOString().split('T')[0] ?? '',
+  startDate: p.startDate,
+  endDate: p.endDate,
   isLocked: p.isLocked,
 });
 

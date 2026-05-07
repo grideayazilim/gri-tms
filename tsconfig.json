@@ -1,8 +1,14 @@
 {
   "files": [],
   "references": [
-    { "path": "./apps/management/shared/tsconfig.build.json" },
-    { "path": "./apps/management/server" },
-    { "path": "./apps/management/client/tsconfig.build.json" }
+    {
+      "path": "./apps/management/shared/tsconfig.build.json"
+    },
+    {
+      "path": "./apps/management/server"
+    },
+    {
+      "path": "./apps/management/client/tsconfig.build.json"
+    }
   ]
 }

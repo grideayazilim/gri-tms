@@ -3,6 +3,8 @@
 import { LiaPowerOffSolid } from "react-icons/lia";
 // Mobile pop
 import { VscArrowUp } from "react-icons/vsc";
+// Bot icon
+import { RiRobot2Line } from "react-icons/ri";
 
 // =================== CORE IMPORTLAR
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -174,6 +176,18 @@ function Navbar() {
               <p className="nav__link-text">{route.name}</p>
             </NavLink>
           ))}
+          {isAdmin && (
+            <a
+              href={import.meta.env.DEV ? 'http://localhost:3005' : '/bot/'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="nav__link"
+              onClick={() => setPopManagementBar(false)}
+            >
+              <RiRobot2Line />
+              <p className="nav__link-text">Bot Sistemine Git</p>
+            </a>
+          )}
         </div>
       </div>
       {/* Nav bottom */}

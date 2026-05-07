@@ -4,7 +4,7 @@
    ============================================ */
 import { z } from 'zod';
 
-import { USER_ROLE_LIST, USER_ROLE } from '../constants/userConstants';
+import { USER_ROLE_LIST, USER_ROLE, USER_STATUS_LIST } from '../constants/userConstants';
 
 // Admin Panelinden Kullanıcı Güncelleme: Rol, Tarih ve Yerleşke/Birim kontrolleri
 
@@ -12,12 +12,14 @@ export const userEditSchema = z.object({
     role: z.enum(USER_ROLE_LIST, {
         message: 'Rol seçimi zorunludur',
     }).optional(),
-    status: z.string().optional(),
+    // #16: USER_STATUS_LIST enum'u kullanıldı — herhangi bir string artık geçmiyor
+    status: z.enum(USER_STATUS_LIST).optional(),
     expiryDate: z.string().optional().nullable(),
     locationId: z.string().optional().nullable(),
     unitId: z.string().optional().nullable(),
     // Admin tarafından kullanıcının şifresini sıfırlamak için opsiyonel alan
-    forceNewPassword: z.string().min(8, 'Şifre en az 8 karakter olmalıdır').optional(),
+    // #17: max(128) eklendi — bcrypt DoS koruması
+    forceNewPassword: z.string().min(8, 'Şifre en az 8 karakter olmalıdır').max(128, 'Şifre en fazla 128 karakter olabilir').optional(),
 }).superRefine((val, ctx) => {
     // Birim Sorumlusu (RESPONSIBLE) için ek kısıtlamalar:
     // Hesap süresi (expiryDate), Yerleşke ve Birim tanımlı olmalıdır.

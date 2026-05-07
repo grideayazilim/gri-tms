@@ -24,12 +24,14 @@ export const signUpSchema = z.object({
         .trim()
         .min(3, 'Kullanıcı adı en az 3 karakter olmalıdır')
         .regex(/^\S+$/, 'Kullanıcı adında boşluk olamaz'),
-    password: z.string().min(8, 'Şifre en az 8 karakter olmalıdır'),
+    // #14: Çok uzun şifre bcrypt DoS vektörü olabilir — max 128 karakter
+    password: z.string().min(8, 'Şifre en az 8 karakter olmalıdır').max(128, 'Şifre en fazla 128 karakter olabilir'),
     role: z.enum(USER_ROLE_LIST, {
         message: 'Kullanıcı türü seçimi zorunludur',
     }),
-    locationId: z.string().optional().nullable(),
-    unitId: z.string().optional().nullable(),
+    // #15: UUID format validasyonu — boş string geçişini engeller
+    locationId: z.string().uuid('Geçersiz yerleşke ID formatı').optional().nullable(),
+    unitId: z.string().uuid('Geçersiz birim ID formatı').optional().nullable(),
 }).superRefine((val, ctx) => {
     // Sorumlu (RESPONSIBLE) rolü için Yerleşke ve Birim seçimi zorunludur.
     // ADMIN rolünde bu alanlar boş (null) bırakılabilir.

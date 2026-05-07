@@ -1,6 +1,12 @@
 /* ========================================================================
    API TİP TANIMLARI
    Uygulama genelinde kullanılan API yanıt zarfları ve yardımcı tipler
+
+   Kullanım rehberi (#29):
+   - ApiResponse<T>  → HTTP endpoint'lerinin dönüş tipi (server → client JSON zarfı).
+                        success discriminator ile data veya hata mesajını taşır.
+   - Result<T, E>    → Servis/use-case katmanı içi dönüş tipi (client-side hook'lar vb.).
+                        HTTP'ye bağlı değil; error alanı string veya özel hata tipi olabilir.
    ======================================================================== */
 
 export interface ApiSuccess<T> {
@@ -12,7 +18,8 @@ export interface ApiSuccess<T> {
 export interface ApiFailure {
   success: false;
   message: string;
-  errors?: unknown;
+  // #28: unknown yerine Zod fieldErrors formatı — consumer tarafta tip daraltmaya gerek kalmaz
+  errors?: Record<string, string[]>;
 }
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiFailure;

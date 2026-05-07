@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
-import { MARKER_LIST, MARKERS } from "@timesheet/shared";
+import { MARKER_LIST, MARKERS, type MarkerCode } from "@timesheet/shared";
 import "./TimesheetDaysColumn.scss";
 
 // ─── Yardımcı Fonksiyonlar ───────────────────────────────────────────────────
@@ -26,11 +26,11 @@ const OTHER_MARKERS = MARKER_LIST.filter((m) => m.code !== MARKERS.X.code);
 
 interface TimesheetDaysColumnProps {
   period?: string;
-  timesheetDays: Record<string, string>;
-  originalDays?: Record<string, string>;
+  timesheetDays: Record<string, MarkerCode>;
+  originalDays?: Record<string, MarkerCode> | undefined;
   periodDays: string[];
-  onDayClick: (dateStr: string, markerCode: string) => void;
-  isPublicHoliday?: (dateStr: string) => boolean;
+  onDayClick: (dateStr: string, markerCode: MarkerCode) => void;
+  isPublicHoliday?: ((dateStr: string) => boolean) | undefined;
   isLocked?: boolean;
 }
 

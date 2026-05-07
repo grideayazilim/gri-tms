@@ -4,7 +4,7 @@
    ======================================================================== */
 import TimesheetDaysColumn from "./TimesheetDaysColumn/TimesheetDaysColumn";
 import type { Column } from "../../components/DynamicTable/DynamicTable";
-import type { TimesheetUIRow } from "../../hooks/data/useTimesheets";
+import type { MarkerCode, TimesheetUIRow } from "../../hooks/data/useTimesheets";
 
 export type { TimesheetUIRow };
 
@@ -18,7 +18,7 @@ export type { TimesheetUIRow };
 
 export const timesheetColumns = (
   periodDays: string[],
-  onDayClick: (row: TimesheetUIRow, dateStr: string, markerCode: string) => void,
+  onDayClick: (row: TimesheetUIRow, dateStr: string, markerCode: MarkerCode) => void,
   originalSnapshot: TimesheetUIRow[],
   period: string,
   isPublicHoliday: ((dateStr: string) => boolean) | undefined,

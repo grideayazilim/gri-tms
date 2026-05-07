@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-import type { PaginationMeta, PeriodItem, Result, TimesheetListItem } from '@timesheet/shared';
+import type { MarkerCode, PaginationMeta, PeriodItem, Result, TimesheetListItem } from '@timesheet/shared';
 
 import { timesheetService } from '../../api';
 import { TURKISH_MONTHS } from '../../utils/dateUtils';
@@ -9,6 +9,8 @@ import { getErrorMessage } from '../../utils/getErrorMessage';
 // ─────────────────────────────────────────────────────────────────
 // TİPLER (TYPES)
 // ─────────────────────────────────────────────────────────────────
+
+export type { MarkerCode };
 
 export interface UIPeriod {
   value: string;
@@ -31,7 +33,7 @@ export interface TimesheetUIRow {
   locationId: string | null;
   periodId: string;
   isLocked: boolean;
-  timesheet_days: Record<string, string>;
+  timesheet_days: Record<string, MarkerCode>;
   workDaysCount?: number;
 }
 
@@ -67,7 +69,7 @@ const mapPeriod = (p: PeriodItem): UIPeriod => ({
 // API'den gelen iç içe geçmiş (nested) puantaj verisini UI tablosunun hızlıca
 // okuyabileceği düz (flat) bir objeye dönüştürür.
 const mapTimesheetToUI = (ts: TimesheetListItem): TimesheetUIRow => {
-  const timesheet_days: Record<string, string> = {};
+  const timesheet_days: Record<string, MarkerCode> = {};
   
   // Günleri 'YYYY-MM-DD': 'X' şeklinde bir Map objesine çeviriyoruz (O(1) erişim için)
   (ts.timesheet.days || []).forEach(({ day, markerCode }) => {

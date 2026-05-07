@@ -6,6 +6,7 @@
 
 import type { UserRole, UserStatus } from '../constants/userConstants';
 import type { AuditAction, AuditEntityType } from '../constants/auditEventTypes';
+import type { MarkerCode } from '../constants/markers';
 
 // ─── Location & Unit ──────────────────────────────────────────────────────────
 
@@ -55,6 +56,8 @@ export type PendingUserItem = Omit<UserListItem, 'expiryDate'>;
 
 export interface EmployeeListItem {
   id: string;
+  // Not: DB'de nullable olduğundan DTO'da da nullable. employeeSchema'da required —
+  // schema yeni kayıt için zorlarken DTO mevcut DB verisini yansıtır.
   tcNo: string | null;
   firstName: string;
   lastName: string;
@@ -70,7 +73,8 @@ export interface EmployeeListItem {
 
 export interface TimesheetDay {
   day: string;
-  markerCode: string;
+  // #19: plain string yerine MarkerCode union tipi — tip güvenliği uygulama genelinde korunur
+  markerCode: MarkerCode;
 }
 
 export interface TimesheetEntry {
@@ -81,16 +85,11 @@ export interface TimesheetEntry {
 }
 
 export interface TimesheetListItem {
-  employee: {
-    id: string;
-    tcNo: string | null;
-    firstName: string;
-    lastName: string;
-    ibanNo: string | null;
-    isActive: boolean;
-    startDate: string | null;
-    endDate: string | null;
-  };
+  // #21: EmployeeListItem'ın ilgili alanları Pick ile alındı — bağımsız drift riski azaltıldı
+  employee: Pick<
+    EmployeeListItem,
+    'id' | 'tcNo' | 'firstName' | 'lastName' | 'ibanNo' | 'isActive' | 'startDate' | 'endDate'
+  >;
   unit: { id: string; name: string } | null;
   location: { id: string; name: string } | null;
   period?: { isLocked: boolean };
@@ -132,7 +131,8 @@ export interface AuditLogItem {
   entityId: string | null;
   entityLabel?: string;
   actorUsername: string;
-  actorRole: string | null;
+  // #20: plain string yerine UserRole union tipi + SYSTEM sabit aktörü
+  actorRole: UserRole | 'SYSTEM' | null;
   summary: string | null;
   changes: string[] | null;
   metadata: Record<string, unknown> | null;

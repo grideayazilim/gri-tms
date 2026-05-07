@@ -21,7 +21,7 @@ import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
 import { useAnnouncements } from "../../hooks/data/useAnnouncements";
 import { useToast } from "../../components/ToastBar/useToast";
 import { getTimesheetFilterConfig } from "./timesheetFilters";
-import { PAID_CODES } from "@timesheet/shared";
+import { PAID_CODES, type MarkerCode } from "@timesheet/shared";
 import "../../styles/inputs.scss";
 import "./TimesheetPage.scss";
 
@@ -207,7 +207,7 @@ const TimesheetPage = () => {
   // HÜCRE TIKLAMA
   // ─────────────────────────────────────────────────────────────────────────
   const handleDayClick = useCallback(
-    (row: TimesheetUIRow, dateStr: string, markerCode: string) => {
+    (row: TimesheetUIRow, dateStr: string, markerCode: MarkerCode) => {
       if (isPublicHoliday(dateStr)) {
         const holidayName = getHolidayName(dateStr) || "Resmi tatil";
         toast({
@@ -239,7 +239,7 @@ const TimesheetPage = () => {
 
           // Güncel fiili çalışma gün sayısını anlık hesapla (PAID_CODES üzerinden)
           const workDaysCount = Object.values(newDays).filter((v) =>
-            PAID_CODES.has(v),
+            PAID_CODES.has(v as MarkerCode),
           ).length;
 
           return { ...r, timesheet_days: newDays, workDaysCount };
@@ -283,7 +283,7 @@ const TimesheetPage = () => {
   // KAYDET
   // ─────────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
-    const periodId = timesheets.find((r) => r.periodId)?.periodId;
+    const periodId = activePeriod?.id;
 
     if (!periodId) {
       toast({ type: "error", message: "Dönem bilgisi bulunamadı." });
@@ -316,7 +316,7 @@ const TimesheetPage = () => {
   // DÖNEM KİLİTLEME / AÇMA (sadece ADMIN)
   // ─────────────────────────────────────────────────────────────────────────
   const handleToggleLock = async () => {
-    const periodId = timesheets.find((r) => r.periodId)?.periodId;
+    const periodId = activePeriod?.id;
     if (!periodId) return;
 
     const result = await toggleLockPeriod(periodId);

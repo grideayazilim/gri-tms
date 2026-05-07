@@ -70,7 +70,8 @@ export type AuditEntityType = typeof AUDIT_ENTITY_TYPE[keyof typeof AUDIT_ENTITY
 
 // Genel Kategoriler: Arayüzdeki renkler, etiketler ve filtreleme grupları için
 
-export const AUDIT_CATEGORIES = {
+// #26: Object.freeze eklendi — AUDIT_ACTION ve AUDIT_ENTITY_TYPE ile tutarlı hale getirildi
+export const AUDIT_CATEGORIES = Object.freeze({
   AUTH: { code: 'AUTH', label: 'Kimlik Doğrulama', bg: 'rgba(139,92,246,0.12)', color: '#7c3aed' },
   USER: { code: 'USER', label: 'Kullanıcı', bg: 'rgba(59,130,246,0.12)', color: '#2563eb' },
   EMPLOYEE: { code: 'EMPLOYEE', label: 'Çalışan', bg: 'rgba(34,197,94,0.12)', color: '#16a34a' },
@@ -80,7 +81,7 @@ export const AUDIT_CATEGORIES = {
   SETTINGS: { code: 'SETTINGS', label: 'Ayarlar', bg: 'rgba(107,114,128,0.12)', color: '#4b5563' },
   EXCEL_IMPORT: { code: 'EXCEL_IMPORT', label: 'Excel İçe Aktarma', bg: 'rgba(124,179,66,0.15)', color: '#7cb342' },
   EXCEL_EXPORT: { code: 'EXCEL_EXPORT', label: 'Excel Dışa Aktarma', bg: 'rgba(30,126,52,0.12)', color: '#1e7e34' },
-} as const;
+} as const);
 
 export type AuditCategory = keyof typeof AUDIT_CATEGORIES;
 
@@ -136,10 +137,16 @@ export const AUDIT_ACTION_LIST = Object.entries(AUDIT_ACTION_META).map(([code, m
   ...meta,
 }));
 
-export const getAuditActionMeta = (action: AuditAction) => AUDIT_ACTION_META[action];
+// #27: Shared library olduğu için explicit return type'lar eklendi — IDE deneyimi ve refactoring güvenliği
+export const getAuditActionMeta = (action: AuditAction): { category: AuditCategory; label: string } =>
+  AUDIT_ACTION_META[action];
 
-export const getAuditCategoryConfig = (category: AuditCategory) => AUDIT_CATEGORIES[category];
+export const getAuditCategoryConfig = (
+  category: AuditCategory,
+): (typeof AUDIT_CATEGORIES)[AuditCategory] => AUDIT_CATEGORIES[category];
 
 /** Action'dan doğrudan kategori display config'i — pill için */
-export const getAuditActionCategoryConfig = (action: AuditAction) =>
+export const getAuditActionCategoryConfig = (
+  action: AuditAction,
+): (typeof AUDIT_CATEGORIES)[AuditCategory] =>
   getAuditCategoryConfig(getAuditActionMeta(action).category);

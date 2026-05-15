@@ -26,6 +26,13 @@ const runMigration = async () => {
     console.log('🚧 Migrasyonlar çalıştırılıyor...');
     // database/migrations klasöründeki SQL dosyalarını sırayla uygular
     await migrate(db, { migrationsFolder: './database/migrations' });
+    
+    console.log('🔒 Şema izinleri ayarlanıyor...');
+    const appUser = process.env.DB_APP_USER || 'app_user';
+    await migrationPool.query(`GRANT USAGE ON SCHEMA "app" TO "${appUser}"`);
+    await migrationPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "app" TO "${appUser}"`);
+    await migrationPool.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "app" TO "${appUser}"`);
+    
     console.log('✅ Migrasyonlar başarıyla tamamlandı.');
   } catch (error) {
     console.error('❌ Migrasyon hatası:', error);

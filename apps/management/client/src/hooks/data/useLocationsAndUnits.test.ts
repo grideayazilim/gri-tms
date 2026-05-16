@@ -121,4 +121,13 @@ describe('useLocationsAndUnits hook', () => {
       expect(result.current.units).toEqual([]); // onError sayesinde units temizlenir
     });
   });
+
+  it('fetchLocations — HTTP 200 success:false döndüğünde boş liste dönmeli', async () => {
+    server.use(
+      http.get('*/api/locationAndUnits/locations', () => HttpResponse.json({ success: false }))
+    );
+    const { result } = renderHook(() => useLocationsAndUnits());
+    await act(async () => { await result.current.fetchLocations(); });
+    expect(result.current.locations).toEqual([]);
+  });
 });

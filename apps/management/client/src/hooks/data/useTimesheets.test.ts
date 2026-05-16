@@ -235,4 +235,38 @@ describe('useTimesheets hook', () => {
       expect(result.current.isLocking).toBe(false);
     });
   });
+
+  // ─── success:false (HTTP 200) branches ──────────────────────────────────────
+
+  it('fetchTimesheets — HTTP 200 success:false döndüğünde boş liste dönmeli', async () => {
+    server.use(
+      http.get('*/api/timesheets', () => HttpResponse.json({ success: false }))
+    );
+    const { result } = renderHook(() => useTimesheets());
+    let response: any;
+    await act(async () => { response = await result.current.fetchTimesheets(); });
+    expect(response?.success).toBe(true);
+    expect(result.current.timesheets).toEqual([]);
+  });
+
+  it('saveTimesheets — HTTP 200 success:false döndüğünde else kolu çalışmalı', async () => {
+    server.use(
+      http.post('*/api/timesheets', () => HttpResponse.json({ success: false, message: 'Kayıt reddedildi' }))
+    );
+    const { result } = renderHook(() => useTimesheets());
+    const fakeRow = { id: 'r1', periodId: 'p1', employeeId: 'e1', timesheet_days: {}, workDaysCount: 0, isLocked: false } as any;
+    let response: any;
+    await act(async () => { response = await result.current.saveTimesheets('p1', [fakeRow]); });
+    expect(response?.success).toBe(false);
+  });
+
+  it('toggleLockPeriod — HTTP 200 success:false döndüğünde else kolu çalışmalı', async () => {
+    server.use(
+      http.patch('*/api/timesheets/p-1/lock', () => HttpResponse.json({ success: false, message: 'Kilit reddedildi' }))
+    );
+    const { result } = renderHook(() => useTimesheets());
+    let response: any;
+    await act(async () => { response = await result.current.toggleLockPeriod('p-1'); });
+    expect(response?.success).toBe(false);
+  });
 });

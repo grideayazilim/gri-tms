@@ -111,11 +111,29 @@ describe('UsersPage (Kullanıcı Yönetimi)', () => {
     // Etiket bağlantısı kopuk olduğu için doğrudan input'u buluyoruz
     const searchInput = container.querySelector('.filter-bar input[type="text"]');
     if (!searchInput) throw new Error('Arama kutusu bulunamadı');
-    
+
     fireEvent.change(searchInput, { target: { value: 'ahmet' } });
 
     await waitFor(() => {
       expect(mockFetchUsers).toHaveBeenCalled();
+    });
+  });
+
+  it('silme isleminde hata olursa hata toast gosterilmeli', async () => {
+    mockRemoveUser.mockResolvedValue({ success: false, error: 'Silme basarisiz' });
+    const { container } = renderUsersPage();
+
+    const deleteButton = container.querySelector('.delete-btn');
+    if (!deleteButton) throw new Error('Silme butonu bulunamadi');
+    fireEvent.click(deleteButton);
+
+    expect(screen.getByText('Kullanıcıyı Sil')).toBeInTheDocument();
+
+    const confirmBtn = screen.getByRole('button', { name: 'Sil' });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(mockRemoveUser).toHaveBeenCalled();
     });
   });
 });

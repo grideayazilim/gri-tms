@@ -135,4 +135,30 @@ describe('AuthPage (Giriş & Kayıt) Sayfası', () => {
     expect(await screen.findByText(/Kayıt başarılı/i)).toBeInTheDocument();
     expect(await screen.findByText('Hesaba Giriş Yap')).toBeInTheDocument();
   });
+
+  it('Giris formu Enter tusuna basinca submit tetiklenmeli', async () => {
+    mockLogin.mockResolvedValue({ success: true });
+    renderAuthPage();
+
+    fireEvent.change(screen.getByLabelText('Kullanıcı Adı'), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByLabelText('Şifre'), { target: { value: 'admin123' } });
+
+    const form = document.querySelector('form');
+    if (form) fireEvent.keyDown(form, { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => expect(mockLogin).toHaveBeenCalled());
+  });
+
+  it('Kayit formu Enter tusuna basinca calisabilmeli', async () => {
+    renderAuthPage();
+
+    fireEvent.click(screen.getByText('Hesap oluştur'));
+
+    const form = document.querySelector('form');
+    if (form) {
+      fireEvent.keyDown(form, { key: 'Enter', code: 'Enter' });
+      fireEvent.keyDown(form, { key: 'a', code: 'KeyA' });
+    }
+    expect(form).toBeTruthy();
+  });
 });

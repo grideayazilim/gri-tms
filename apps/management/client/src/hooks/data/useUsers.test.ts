@@ -178,4 +178,60 @@ describe('useUsers hook', () => {
       expect(response?.error).toBe('Şifre çok kısa');
     });
   });
+
+  // ─── success:false (HTTP 200) branches ──────────────────────────────────────
+
+  it('fetchUsers — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.get('*/api/users', () => HttpResponse.json({ success: false, message: 'Yetkisiz' }))
+    );
+    const { result } = renderHook(() => useUsers());
+    let response: any;
+    await act(async () => { response = await result.current.fetchUsers(); });
+    expect(response?.success).toBe(false);
+    expect(result.current.error).toBe('Yetkisiz');
+  });
+
+  it('fetchUsers — HTTP 200 success:false ve mesaj yok ise varsayılan mesaj', async () => {
+    server.use(
+      http.get('*/api/users', () => HttpResponse.json({ success: false }))
+    );
+    const { result } = renderHook(() => useUsers());
+    let response: any;
+    await act(async () => { response = await result.current.fetchUsers(); });
+    expect(response?.success).toBe(false);
+  });
+
+  it('editUser — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.put('*/api/users/*', () => HttpResponse.json({ success: false, message: 'Güncelleme reddedildi' }))
+    );
+    const { result } = renderHook(() => useUsers());
+    let response: any;
+    await act(async () => { response = await result.current.editUser('u-1', {} as any); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Güncelleme reddedildi');
+  });
+
+  it('removeUser — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.delete('*/api/users/*', () => HttpResponse.json({ success: false, message: 'Silme reddedildi' }))
+    );
+    const { result } = renderHook(() => useUsers());
+    let response: any;
+    await act(async () => { response = await result.current.removeUser('u-1'); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Silme reddedildi');
+  });
+
+  it('editProfile — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.put('*/api/users/me', () => HttpResponse.json({ success: false, message: 'Profil güncellenemedi' }))
+    );
+    const { result } = renderHook(() => useUsers());
+    let response: any;
+    await act(async () => { response = await result.current.editProfile({} as any); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Profil güncellenemedi');
+  });
 });

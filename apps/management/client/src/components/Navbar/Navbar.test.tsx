@@ -1,8 +1,9 @@
 // React bileşenlerini test etmek için gerekli kütüphaneler
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import Navbar from './Navbar';
+import { useAuth } from '../../context/AuthContext';
 
 /*
   Navbar bileşeni AuthContext, react-router ve framer-motion gibi bağımlılıklar içerir.
@@ -26,13 +27,13 @@ vi.mock('framer-motion', () => ({
 
 // AuthContext'i mock'la — gerçek API çağrısı yapmasın
 vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({
+  useAuth: vi.fn(() => ({
     user: { id: 'u-1', username: 'admin', role: 'ADMIN' },
     isAdmin: true,
     isAuthenticated: true,
     logout: vi.fn().mockResolvedValue(undefined),
     isBooting: false,
-  }),
+  })),
 }));
 
 // Test için render yardımcısı: Navbar'ı MemoryRouter ile sarıp belirli path'e başlatır
@@ -45,17 +46,24 @@ function renderNavbar(initialPath = '/') {
 }
 
 describe('Navbar bileşeni', () => {
+  beforeEach(() => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: 'u-1', username: 'admin', role: 'ADMIN' },
+      isAdmin: true,
+      isAuthenticated: true,
+      logout: vi.fn().mockResolvedValue(undefined),
+      isBooting: false,
+    } as any);
+  });
+
   it('temel navigasyon bağlantıları render edilmeli', () => {
     renderNavbar();
 
-    // Puantaj sayfası tüm kullanıcılara gösterilir
     expect(screen.getByText('Puantaj İşaretleme')).toBeInTheDocument();
-    // Ayarlar linki her zaman gösterilir
     expect(screen.getByText('Ayarlar')).toBeInTheDocument();
   });
 
   it('admin kullanıcı için admin-only sayfaları görünmeli', () => {
-    // isAdmin: true (mock'ta tanımladık)
     renderNavbar();
 
     expect(screen.getByText('Kullanıcılar')).toBeInTheDocument();
@@ -66,33 +74,65 @@ describe('Navbar bileşeni', () => {
 
   it('admin için "Bot Sistemine Git" linki görünmeli', () => {
     renderNavbar();
-
     expect(screen.getByText('Bot Sistemine Git')).toBeInTheDocument();
   });
 
   it('"Çıkış Yap" butonu render edilmeli', () => {
     renderNavbar();
-
     expect(screen.getByText('Çıkış Yap')).toBeInTheDocument();
   });
 
-  it('"Çıkış Yap" butonuna tıklandığında bileşen çökmemeli', () => {
-    // useAuth dosyanın başında mock'landı (logout: vi.fn().mockResolvedValue(undefined))
-    // Sadece tıklamanın hata fırlatmadığını doğruluyoruz
+  it('"Çıkış Yap" butonuna tıklandığında bileşen çökmemeli', async () => {
     renderNavbar();
 
     const logoutBtn = screen.getByText('Çıkış Yap');
     expect(logoutBtn).toBeInTheDocument();
 
-    // Hata fırlatmadan tıklanabilmeli
-    expect(() => fireEvent.click(logoutBtn)).not.toThrow();
+    await expect(async () => {
+      fireEvent.click(logoutBtn);
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }).not.toThrowError();
   });
 
   it('uygulama logosu / başlığı görünmeli', () => {
     renderNavbar();
-
-    // Navbar'daki "griTMS" logo kısmı
     expect(screen.getByText('gri')).toBeInTheDocument();
     expect(screen.getByText('TMS')).toBeInTheDocument();
+  });
+
+  it('non-admin kullanıcı için admin-only sayfaları görünmemeli', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: 'u-2', username: 'sorumlu', role: 'RESPONSIBLE' },
+      isAdmin: false,
+      isAuthenticated: true,
+      logout: vi.fn().mockResolvedValue(undefined),
+      isBooting: false,
+    } as any);
+
+    renderNavbar();
+
+    expect(screen.queryByText('Kullanıcılar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Yerleşke ve Birimler')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bot Sistemine Git')).not.toBeInTheDocument();
+  });
+
+  it('non-admin kullanıcı için Puantaj sayfası görünmeli', () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { id: 'u-2', username: 'sorumlu', role: 'RESPONSIBLE' },
+      isAdmin: false,
+      isAuthenticated: true,
+      logout: vi.fn().mockResolvedValue(undefined),
+      isBooting: false,
+    } as any);
+
+    renderNavbar();
+
+    expect(screen.getByText('Puantaj İşaretleme')).toBeInTheDocument();
+    expect(screen.getByText('Ayarlar')).toBeInTheDocument();
+  });
+
+  it('farklı path\'lerde render edilebilmeli', () => {
+    renderNavbar('/employees');
+    expect(screen.getByText('Çalışanlar')).toBeInTheDocument();
   });
 });

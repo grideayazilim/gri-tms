@@ -100,7 +100,6 @@ describe('EmployeesPage (Personel Yönetimi)', () => {
     const addBtn = screen.getByText('+ Yeni Çalışan Ekle');
     fireEvent.click(addBtn);
 
-    // Modal başlığını kontrol et
     expect(screen.getByText('Yeni Çalışan Ekle')).toBeInTheDocument();
   });
 
@@ -108,13 +107,11 @@ describe('EmployeesPage (Personel Yönetimi)', () => {
     mockRemoveEmployee.mockResolvedValue({ success: true });
     const { container } = renderEmployeesPage();
 
-    // Silme butonunu bul
     const deleteBtn = container.querySelector('.delete-btn');
     if (!deleteBtn) throw new Error('Silme butonu bulunamadı');
-    
+
     fireEvent.click(deleteBtn);
 
-    // Onay modali
     expect(screen.getByText('Çalışanı Sil')).toBeInTheDocument();
 
     const confirmBtn = screen.getByRole('button', { name: 'Sil' });
@@ -127,10 +124,51 @@ describe('EmployeesPage (Personel Yönetimi)', () => {
     expect(await screen.findByText('Çalışan başarıyla silindi')).toBeInTheDocument();
   });
 
-  it('arama kutusuna yazı yazıldığında listeyi güncellemeli', async () => {
+  it('silme onayı reddedilirse removeEmployee çağrılmamalı', async () => {
     const { container } = renderEmployeesPage();
 
-    // Filtre barındaki arama kutusunu bul
+    const deleteBtn = container.querySelector('.delete-btn');
+    if (!deleteBtn) throw new Error('Silme butonu bulunamadı');
+
+    fireEvent.click(deleteBtn);
+    expect(screen.getByText('Çalışanı Sil')).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole('button', { name: 'Vazgeç' });
+    fireEvent.click(cancelBtn);
+
+    expect(mockRemoveEmployee).not.toHaveBeenCalled();
+  });
+
+  it('silme API hatası verince hata toast göstermeli', async () => {
+    mockRemoveEmployee.mockResolvedValue({ success: false, error: 'Silme işlemi başarısız' });
+    const { container } = renderEmployeesPage();
+
+    const deleteBtn = container.querySelector('.delete-btn');
+    if (!deleteBtn) throw new Error('Silme butonu bulunamadı');
+
+    fireEvent.click(deleteBtn);
+    const confirmBtn = screen.getByRole('button', { name: 'Sil' });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Silme işlemi başarısız')).toBeInTheDocument();
+    });
+  });
+
+  it('"Düzenle" butonuna basıldığında modal açılmalı', async () => {
+    const { container } = renderEmployeesPage();
+
+    const editBtn = container.querySelector('.edit-btn');
+    if (!editBtn) throw new Error('Düzenleme butonu bulunamadı');
+
+    fireEvent.click(editBtn);
+
+    expect(screen.getByText('Çalışan Düzenle')).toBeInTheDocument();
+  });
+
+  it('arama kutusuna yazı yazıldığında fetchEmployees çağrılmalı', async () => {
+    const { container } = renderEmployeesPage();
+
     const searchInput = container.querySelector('.filter-bar input[type="text"]');
     if (!searchInput) throw new Error('Arama kutusu bulunamadı');
 
@@ -139,5 +177,15 @@ describe('EmployeesPage (Personel Yönetimi)', () => {
     await waitFor(() => {
       expect(mockFetchEmployees).toHaveBeenCalled();
     });
+  });
+
+  it('mount olduğunda fetchEmployees çağrılmalı', () => {
+    renderEmployeesPage();
+    expect(mockFetchEmployees).toHaveBeenCalled();
+  });
+
+  it('TC kimlik numarası tabloda görünmeli', () => {
+    renderEmployeesPage();
+    expect(screen.getByText('12345678901')).toBeInTheDocument();
   });
 });

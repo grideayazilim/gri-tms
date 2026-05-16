@@ -85,7 +85,6 @@ describe('ToastContainer bileşeni', () => {
 */
 describe('ToastProvider ve useToast hook', () => {
   it('toast() çağrılınca mesaj ekranda görünmeli', () => {
-    // ToastProvider'ı kullanan test bileşeni
     function TestComponent() {
       const toast = useToast();
       return (
@@ -101,11 +100,100 @@ describe('ToastProvider ve useToast hook', () => {
       </ToastProvider>
     );
 
-    // Butona tıklayınca toast tetiklenebilmeli
     act(() => {
       screen.getByRole('button', { name: 'Toast Göster' }).click();
     });
 
     expect(screen.getByText('Merhaba Toast!')).toBeInTheDocument();
+  });
+
+  it('varsayılan type "info" olmalı', () => {
+    function TestComponent() {
+      const toast = useToast();
+      return (
+        <button onClick={() => toast({ message: 'Info Toast' })}>
+          Toast Göster
+        </button>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    );
+
+    act(() => { screen.getByRole('button').click(); });
+
+    const toastEl = screen.getByText('Info Toast').closest('.toast');
+    expect(toastEl).toHaveClass('toast--info');
+  });
+
+  it('birden fazla toast aynı anda gösterilebilmeli', () => {
+    function TestComponent() {
+      const toast = useToast();
+      return (
+        <>
+          <button data-testid="btn1" onClick={() => toast({ type: 'success', message: 'Birinci Bildirim' })}>
+            Göster 1
+          </button>
+          <button data-testid="btn2" onClick={() => toast({ type: 'error', message: 'İkinci Bildirim' })}>
+            Göster 2
+          </button>
+        </>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    );
+
+    act(() => {
+      screen.getByTestId('btn1').click();
+      screen.getByTestId('btn2').click();
+    });
+
+    expect(screen.getByText('Birinci Bildirim')).toBeInTheDocument();
+    expect(screen.getByText('İkinci Bildirim')).toBeInTheDocument();
+  });
+
+  it('duration sonrası toast otomatik kaybolmalı', () => {
+    vi.useFakeTimers();
+
+    function TestComponent() {
+      const toast = useToast();
+      return (
+        <button onClick={() => toast({ type: 'info', message: 'Geçici Toast', duration: 1000 })}>
+          Toast Göster
+        </button>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <TestComponent />
+      </ToastProvider>
+    );
+
+    act(() => { screen.getByRole('button').click(); });
+    expect(screen.getByText('Geçici Toast')).toBeInTheDocument();
+
+    act(() => { vi.advanceTimersByTime(1000); });
+    act(() => { vi.advanceTimersByTime(250); }); // fade-out animation
+
+    expect(screen.queryByText('Geçici Toast')).not.toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('useToast ToastProvider dışında kullanılırsa hata fırlatmalı', () => {
+    function TestComponent() {
+      useToast();
+      return null;
+    }
+
+    expect(() => render(<TestComponent />)).toThrow();
   });
 });

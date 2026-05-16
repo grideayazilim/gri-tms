@@ -178,4 +178,50 @@ describe('useEmployees hook', () => {
       expect(response?.error).toBe('Bu çalışana ait puantaj kayıtları var, silinemez');
     });
   });
+
+  // ─── success:false (HTTP 200) branches ──────────────────────────────────────
+
+  it('fetchEmployees — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.get('*/api/employees', () => HttpResponse.json({ success: false, message: 'Listelenemedi' }))
+    );
+    const { result } = renderHook(() => useEmployees());
+    let response: any;
+    await act(async () => { response = await result.current.fetchEmployees(); });
+    expect(response?.success).toBe(false);
+    expect(result.current.error).toBe('Listelenemedi');
+  });
+
+  it('addEmployee — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.post('*/api/employees', () => HttpResponse.json({ success: false, message: 'TC geçersiz' }))
+    );
+    const { result } = renderHook(() => useEmployees());
+    let response: any;
+    await act(async () => { response = await result.current.addEmployee({} as any); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('TC geçersiz');
+  });
+
+  it('editEmployee — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.put('*/api/employees/*', () => HttpResponse.json({ success: false, message: 'Güncelleme reddedildi' }))
+    );
+    const { result } = renderHook(() => useEmployees());
+    let response: any;
+    await act(async () => { response = await result.current.editEmployee('emp-1', {} as any); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Güncelleme reddedildi');
+  });
+
+  it('removeEmployee — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.delete('*/api/employees/*', () => HttpResponse.json({ success: false, message: 'Silme reddedildi' }))
+    );
+    const { result } = renderHook(() => useEmployees());
+    let response: any;
+    await act(async () => { response = await result.current.removeEmployee('emp-1'); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Silme reddedildi');
+  });
 });

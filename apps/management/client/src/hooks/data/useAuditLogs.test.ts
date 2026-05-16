@@ -161,5 +161,16 @@ describe('useAuditLogs hook', () => {
       expect(result.current.error).toBe('Sunucu çöktü');
       expect(result.current.isLoading).toBe(false);
     });
+
+    it('HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+      server.use(
+        http.get('*/api/audit-logs', () => HttpResponse.json({ success: false, message: 'Kayıtlar alınamadı' }))
+      );
+      const { result } = renderHook(() => useAuditLogs());
+      let response: any;
+      await act(async () => { response = await result.current.fetchAuditLogs(); });
+      expect(response?.success).toBe(false);
+      expect(result.current.error).toBe('Kayıtlar alınamadı');
+    });
   });
 });

@@ -269,4 +269,59 @@ describe('useAnnouncements hook', () => {
       expect(response?.error).toBe('Silinemedi');
     });
   });
+
+  // ─── success:false (HTTP 200) branches ──────────────────────────────────────
+
+  it('markAsRead — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.post('*/api/announcements/a-1/read', () => HttpResponse.json({ success: false, message: 'Okundu işaretlenemedi' }))
+    );
+    const { result } = renderHook(() => useAnnouncements());
+    let response: any;
+    await act(async () => { response = await result.current.markAsRead('a-1'); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Okundu işaretlenemedi');
+  });
+
+  it('addAnnouncement — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.post('*/api/announcements', () => HttpResponse.json({ success: false, message: 'Oluşturulamadı' }))
+    );
+    const { result } = renderHook(() => useAnnouncements());
+    let response: any;
+    await act(async () => { response = await result.current.addAnnouncement('Yeni', 'İçerik'); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Oluşturulamadı');
+  });
+
+  it('editAnnouncement — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.put('*/api/announcements/a-1', () => HttpResponse.json({ success: false, message: 'Güncellenemedi' }))
+    );
+    const { result } = renderHook(() => useAnnouncements());
+    let response: any;
+    await act(async () => { response = await result.current.editAnnouncement('a-1', 'Güncel', 'İçerik'); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Güncellenemedi');
+  });
+
+  it('removeAnnouncement — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.delete('*/api/announcements/a-1', () => HttpResponse.json({ success: false, message: 'Duyuru silinemedi' }))
+    );
+    const { result } = renderHook(() => useAnnouncements());
+    let response: any;
+    await act(async () => { response = await result.current.removeAnnouncement('a-1'); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Duyuru silinemedi');
+  });
+
+  it('fetchUnreadCount — HTTP 200 success:false sessizce yutulmalı', async () => {
+    server.use(
+      http.get('*/api/announcements/unread-count', () => HttpResponse.json({ success: false }))
+    );
+    const { result } = renderHook(() => useAnnouncements());
+    await act(async () => { await result.current.fetchUnreadCount(); });
+    expect(result.current.unreadCount).toBe(0);
+  });
 });

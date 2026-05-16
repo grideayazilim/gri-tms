@@ -242,5 +242,74 @@ describe('useSettings hook', () => {
       expect(response?.success).toBe(false);
       expect(response?.error).toBe('Geçersiz ayar değeri');
     });
+
+    it('HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+      server.use(
+        http.put('*/api/settings/system', () => HttpResponse.json({ success: false, message: 'Ayar güncellenemedi' }))
+      );
+      const { result } = renderHook(() => useSettings());
+      let response: any;
+      await act(async () => { response = await result.current.updateSystemSettings({} as any); });
+      expect(response?.success).toBe(false);
+      expect(response?.error).toBe('Ayar güncellenemedi');
+    });
+
+    it('success:true ancak data.settings yok ise yeniden çekme yapmalı', async () => {
+      server.use(
+        http.put('*/api/settings/system', () => HttpResponse.json({ success: true, data: {} })),
+        http.get('*/api/settings/system', () => HttpResponse.json({
+          success: true,
+          data: { settings: { workHoursPerDay: 8 } }
+        }))
+      );
+      const { result } = renderHook(() => useSettings());
+      let response: any;
+      await act(async () => { response = await result.current.updateSystemSettings({} as any); });
+      expect(response?.success).toBe(true);
+    });
+  });
+
+  // ─── success:false (HTTP 200) branches ──────────────────────────────────────
+
+  it('approveUser — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.post('*/api/settings/pending-users/pu-1/approve', () => HttpResponse.json({ success: false, message: 'Onay reddedildi' }))
+    );
+    const { result } = renderHook(() => useSettings());
+    let response: any;
+    await act(async () => { response = await result.current.approveUser('pu-1'); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Onay reddedildi');
+  });
+
+  it('rejectUser — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.delete('*/api/settings/pending-users/pu-1/reject', () => HttpResponse.json({ success: false, message: 'Red reddedildi' }))
+    );
+    const { result } = renderHook(() => useSettings());
+    let response: any;
+    await act(async () => { response = await result.current.rejectUser('pu-1'); });
+    expect(response?.success).toBe(false);
+    expect(response?.error).toBe('Red reddedildi');
+  });
+
+  it('fetchPendingUsers — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.get('*/api/settings/pending-users', () => HttpResponse.json({ success: false, message: 'Listeleme başarısız' }))
+    );
+    const { result } = renderHook(() => useSettings());
+    let response: any;
+    await act(async () => { response = await result.current.fetchPendingUsers(); });
+    expect(response?.success).toBe(false);
+  });
+
+  it('fetchSystemSettings — HTTP 200 success:false döndüğünde hata kolu çalışmalı', async () => {
+    server.use(
+      http.get('*/api/settings/system', () => HttpResponse.json({ success: false, message: 'Ayarlar alınamadı' }))
+    );
+    const { result } = renderHook(() => useSettings());
+    let response: any;
+    await act(async () => { response = await result.current.fetchSystemSettings(); });
+    expect(response?.success).toBe(false);
   });
 });

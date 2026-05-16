@@ -5,6 +5,7 @@
 import { useState, useCallback } from 'react';
 
 import type { Result } from '@timesheet/shared';
+import { getErrorMessage } from '../utils/getErrorMessage';
 
 interface RunOptions {
   onError?: (e: unknown) => void;
@@ -28,7 +29,7 @@ export function useAsync(): {
       const data = await asyncFn();
       return { success: true, data };
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Bir hata oluştu';
+      const message = getErrorMessage(err, 'Bir hata oluştu');
       setError(message);
       onError?.(err);
       return { success: false, error: message };

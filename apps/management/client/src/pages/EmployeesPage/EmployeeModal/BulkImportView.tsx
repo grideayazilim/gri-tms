@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import * as XLSX from 'xlsx';
+// xlsx (CVE-2023-30533) kaldırıldı; read-excel-file ile değiştirildi
+import readXlsxFile from 'read-excel-file';
 import { FiUploadCloud, FiCheckCircle, FiInfo, FiLoader } from 'react-icons/fi';
 import type { BulkImportResult } from '@timesheet/shared';
 import * as importService from '../../../api/importService';
@@ -36,10 +37,6 @@ function getFieldKey(header: string): string | null {
 function formatExcelDate(val: unknown): string | null {
   if (!val) return null;
   if (val instanceof Date) return val.toISOString().split('T')[0] ?? null;
-  if (typeof val === 'number') {
-    const d = new Date(Math.round((val - 25569) * 86400 * 1000));
-    return d.toISOString().split('T')[0] ?? null;
-  }
   return String(val);
 }
 
@@ -143,13 +140,7 @@ const BulkImportView = ({ onClose, onBusyChange }: BulkImportViewProps) => {
     setImportProgress({ current: 0, total: 0 });
 
     try {
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
-      const firstSheetName = wb.SheetNames[0];
-      if (!firstSheetName) throw new Error('Excel dosyasında sayfa bulunamadı.');
-      const sheet = wb.Sheets[firstSheetName];
-      if (!sheet) throw new Error('Excel sayfası okunamadı.');
-      const rows = XLSX.utils.sheet_to_json<(string | number | null | undefined)[]>(sheet, { header: 1 });
+      const rows = await readXlsxFile(selectedFile);
 
       if (rows.length < 2) throw new Error('Dosya boş veya başlık satırı eksik.');
 

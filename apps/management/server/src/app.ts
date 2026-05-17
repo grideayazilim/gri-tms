@@ -7,6 +7,7 @@ import type { Request, Response, NextFunction } from 'express';
 
 import cors from 'cors';
 import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import { AppError } from './utils/AppError.js';
 import logger from './utils/logger.js';
@@ -27,6 +28,16 @@ import { errorMiddleware } from './middlewares/errorMiddleware.js';
 const app = express();
 
 app.use(helmet());
+
+// Tüm /api/ rotalarına 15 dk pencerede max 300 istek — DoS koruması
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Çok fazla istek gönderildi, lütfen daha sonra tekrar deneyin.' },
+});
+app.use('/api/', globalLimiter);
 
 // CORS Yapılandırması: Cookie bazlı Auth için credentials: true olmalı
 app.use(

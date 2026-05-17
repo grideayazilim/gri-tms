@@ -3,13 +3,19 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Workspace manifest'leri kopyala (layer cache için kaynak koddan önce)
+# Root package.json tüm workspace'leri (management/* + bot/*) tanımladığından
+# bot/* package.json'ları da kopyalanmalı; aksi halde npm install eksik workspace üyesi hatası verir.
 COPY package.json package-lock.json ./
 COPY apps/management/shared/package.json ./apps/management/shared/
 COPY apps/management/server/package.json ./apps/management/server/
 COPY apps/management/client/package.json ./apps/management/client/
+COPY apps/bot/server/package.json ./apps/bot/server/
+COPY apps/bot/client/package.json ./apps/bot/client/
 
 # Tüm workspace bağımlılıklarını yükle
-RUN npm ci
+# package-lock.json macOS'ta üretildiğinden Linux arm64-musl native binary'lerini içermez.
+# Lock file silinerek platform-agnostic fresh install yapılır.
+RUN rm -f package-lock.json && npm install
 
 # Kaynak kodları kopyala ve derle
 COPY apps/management/shared/ ./apps/management/shared/
@@ -18,13 +24,13 @@ COPY apps/management/server/ ./apps/management/server/
 RUN npm run build -w @timesheet/shared
 RUN npm run build -w management-server
 
-# Workspace symlink'ini (node_modules/@timesheet/shared → ../../shared) gerçek
-# içerikle değiştir; COPY ile çalışan katmanlar broken symlink görmez.
-RUN rm -rf node_modules/@timesheet/shared \
-    && cp -r apps/management/shared node_modules/@timesheet/shared
-
 # Dev bağımlılıklarını kaldır (image boyutunu küçültmek için)
 RUN npm prune --omit=dev
+
+# Workspace symlink'ini (node_modules/@timesheet/shared → ../../shared) gerçek
+# içerikle değiştir; prune'dan sonra yapılmalı — aksi halde prune symlink'i siler.
+RUN rm -rf node_modules/@timesheet/shared \
+    && cp -r apps/management/shared node_modules/@timesheet/shared
 
 # ─── Stage 2: Runner ─────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
@@ -46,6 +52,10 @@ COPY --from=builder /app/apps/management/server/database/migrations ./database/m
 
 COPY apps/management/server/docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
+
+# Root yerine kısıtlı kullanıcıyla çalıştır — container privilege escalation önlemi
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
 
 EXPOSE 3000
 ENTRYPOINT ["./docker-entrypoint.sh"]

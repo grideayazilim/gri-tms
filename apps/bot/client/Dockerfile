@@ -10,7 +10,8 @@ COPY . .
 RUN npm run build
 
 # ─── Stage 2: Nginx ──────────────────────────────────────────────────────────
-FROM nginx:1.27-alpine AS runner
+# nginx-unprivileged:1.28 — non-root konteyner + OpenSSL/libxml2 CVE'leri kapatır
+FROM nginxinc/nginx-unprivileged:1.28-alpine AS runner
 
 # Build çıktısını nginx web root'una kopyala
 COPY --from=builder /app/build /usr/share/nginx/html
@@ -19,5 +20,5 @@ COPY --from=builder /app/build /usr/share/nginx/html
 # RUN rm /etc/nginx/conf.d/default.conf
 # COPY nginx.conf /etc/nginx/conf.d
 
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

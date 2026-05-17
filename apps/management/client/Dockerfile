@@ -2,13 +2,16 @@
 FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Workspace manifest'leri kopyala
+# Workspace manifest'leri kopyala (bot/* dahil — root workspace tanımı için gerekli)
 COPY package.json package-lock.json ./
 COPY apps/management/shared/package.json ./apps/management/shared/
 COPY apps/management/client/package.json ./apps/management/client/
 COPY apps/management/server/package.json ./apps/management/server/
+COPY apps/bot/server/package.json ./apps/bot/server/
+COPY apps/bot/client/package.json ./apps/bot/client/
 
-RUN npm ci
+# package-lock.json macOS arm64-darwin'da üretildiğinden Linux arm64-musl native binary içermez.
+RUN rm -f package-lock.json && npm install
 
 COPY apps/management/shared/ ./apps/management/shared/
 COPY apps/management/client/ ./apps/management/client/
@@ -22,7 +25,8 @@ ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build -w management-client
 
 # ─── Stage 2: Nginx ──────────────────────────────────────────────────────────
-FROM nginx:1.27-alpine AS runner
+# nginx-unprivileged:1.28 — non-root konteyner (port 80 için root gerektirmez) + OpenSSL/libxml2 CVE'leri kapatır
+FROM nginxinc/nginx-unprivileged:1.28-alpine AS runner
 
 # Build çıktısını nginx web root'una kopyala
 COPY --from=builder /app/apps/management/client/dist /usr/share/nginx/html
@@ -30,5 +34,5 @@ COPY --from=builder /app/apps/management/client/dist /usr/share/nginx/html
 # Nginx konfigürasyonu (API proxy dahil)
 COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

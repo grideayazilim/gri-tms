@@ -26,7 +26,8 @@ const runSeed = async () => {
 
   try {
     // İlk admin kullanıcısı için şifre oluştur
-    const password = '1234';
+    // Üretim ortamında SEED_ADMIN_PASSWORD env var ile güçlü şifre belirlenmeli
+    const password = process.env.SEED_ADMIN_PASSWORD || '1234';
     const saltRounds = 10;
     const passwordHash = await bcrypt.hash(password, saltRounds);
 

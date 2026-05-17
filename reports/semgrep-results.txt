@@ -1,0 +1,101 @@
+                   
+                   
+┌─────────────────┐
+│ 9 Code Findings │
+└─────────────────┘
+                              
+    apps/bot/client/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD ["nginx", "-g", "daemon off;"]
+           23┆ CMD ["nginx", "-g", "daemon off;"]
+                              
+    apps/bot/server/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD ["npm", "start"]
+           11┆ CMD ["npm", "start"]
+                             
+    apps/bot/server/server.js
+     ❱ javascript.express.security.audit.express-check-csurf-middleware-usage.express-check-csurf-middleware-usage
+          ❰❰ Blocking ❱❱
+          A CSRF middleware was not detected in your express application. Ensure you are either using one such
+          as `csurf` or `csrf` (see rule references) and/or you are properly doing CSRF validation in your    
+          routes with a token or cookies.                                                                     
+          Details: https://sg.run/BxzR                                                                        
+                                                                                                              
+           46┆ const app = express();
+                                     
+    apps/management/client/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD ["nginx", "-g", "daemon off;"]
+           34┆ CMD ["nginx", "-g", "daemon off;"]
+                                     
+    apps/management/server/Dockerfile
+   ❯❯❱ dockerfile.security.missing-user-entrypoint.missing-user-entrypoint
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/k281                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root ENTRYPOINT ["./docker-entrypoint.sh"]
+           51┆ ENTRYPOINT ["./docker-entrypoint.sh"]
+   
+   ❯❯❱ dockerfile.security.missing-user.missing-user
+          ❰❰ Blocking ❱❱
+          By not specifying a USER, a program in the container may run as 'root'. This is a security hazard.
+          If an attacker can control a process running as root, they may have control over the container.   
+          Ensure that the last USER in a Dockerfile is a USER other than 'root'.                            
+          Details: https://sg.run/Gbvn                                                                      
+                                                                                                            
+           ▶▶┆ Autofix ▶ USER non-root CMD ["node", "dist/src/server.js"]
+           52┆ CMD ["node", "dist/src/server.js"]
+                                                                
+    apps/management/server/src/controllers/employeeController.ts
+    ❯❱ javascript.express.security.express-data-exfiltration.express-data-exfiltration
+          ❰❰ Blocking ❱❱
+          Depending on the context, user control data in `Object.assign` can cause web response to include
+          data that it should not have or can lead to a mass assignment vulnerability.                    
+          Details: https://sg.run/pkpL                                                                    
+                                                                                                          
+          149┆ Object.assign(unitLookup, await employeeRepo.lookupUnitNames(tx, ids));
+                                                                       
+    apps/management/server/src/controllers/locationAndUnitController.ts
+    ❯❱ javascript.express.security.express-data-exfiltration.express-data-exfiltration
+          ❰❰ Blocking ❱❱
+          Depending on the context, user control data in `Object.assign` can cause web response to include
+          data that it should not have or can lead to a mass assignment vulnerability.                    
+          Details: https://sg.run/pkpL                                                                    
+                                                                                                          
+          203┆ Object.assign(locationLookup, await locationRepo.lookupLocationNames(tx, ids));
+                    
+    nginx/nginx.conf
+    ❯❱ generic.nginx.security.possible-h2c-smuggling.possible-nginx-h2c-smuggling
+          ❰❰ Blocking ❱❱
+          Conditions for Nginx H2C smuggling identified. H2C smuggling allows upgrading HTTP/1.1 connections 
+          to lesser-known HTTP/2 over cleartext (h2c) connections which can allow a bypass of reverse proxy  
+          access controls, and lead to long-lived, unrestricted HTTP traffic directly to back-end servers. To
+          mitigate: WebSocket support required: Allow only the value websocket for HTTP/1.1 upgrade headers  
+          (e.g., Upgrade: websocket). WebSocket support not required: Do not forward Upgrade headers.        
+          Details: https://sg.run/ploZ                                                                       
+                                                                                                             
+           42┆ proxy_http_version 1.1;
+           43┆ proxy_set_header Upgrade $http_upgrade;
+           44┆ proxy_set_header Connection "upgrade";

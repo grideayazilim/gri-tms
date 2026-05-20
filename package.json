@@ -25,9 +25,6 @@
     "db:seed:demo": "npm run db:seed:demo -w management-server",
     "db:generate": "npm run db:generate -w management-server"
   },
-  "optionalDependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.60.4"
-  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",

@@ -29,7 +29,7 @@ describe('Authorization Tests', () => {
         .get('/api/users')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
 
     it('ADMIN → /api/audit-logs endpoint\'ine erişir → 200', async () => {
@@ -39,7 +39,7 @@ describe('Authorization Tests', () => {
         .get('/api/audit-logs')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
 
     it('ADMIN → /api/employees endpoint\'ine erişir → 200', async () => {
@@ -49,7 +49,7 @@ describe('Authorization Tests', () => {
         .get('/api/employees')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
 
     it('RESPONSIBLE → /api/timesheets kendi birimine erişir → 200', async () => {
@@ -61,7 +61,7 @@ describe('Authorization Tests', () => {
         .get('/api/timesheets')
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
 
     it('Token yenileme akışı → refresh token ile yeni access token alınır', async () => {
@@ -74,7 +74,7 @@ describe('Authorization Tests', () => {
         .post('/api/auth/login')
         .send({ username: 'refreshflow', password: 'Test@1234' })
 
-      const cookies = loginRes.headers['set-cookie'] as string[]
+      const cookies = loginRes.get('Set-Cookie') || [];
       const refreshRes = await request(app)
         .post('/api/auth/refresh')
         .set('Cookie', Array.isArray(cookies) ? cookies.join(';') : '')
@@ -98,7 +98,7 @@ describe('Authorization Tests', () => {
 
       for (const endpoint of protectedEndpoints) {
         const res = await request(app)[endpoint.method](endpoint.path)
-        expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+        expect(res.status).toBe(401)
       }
     })
 
@@ -115,7 +115,7 @@ describe('Authorization Tests', () => {
         .get('/api/auth/me')
         .set('Cookie', `accessToken=${expiredToken}`)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
   })
 
@@ -130,7 +130,7 @@ describe('Authorization Tests', () => {
         .get('/api/users')
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
 
     it('RESPONSIBLE user → /api/audit-logs → 403', async () => {
@@ -142,7 +142,7 @@ describe('Authorization Tests', () => {
         .get('/api/audit-logs')
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
 
     it('RESPONSIBLE user → /api/employees (admin-only) → 403', async () => {
@@ -154,7 +154,7 @@ describe('Authorization Tests', () => {
         .get('/api/employees')
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
 
     it('RESPONSIBLE user → /api/settings/system → 403', async () => {
@@ -166,7 +166,7 @@ describe('Authorization Tests', () => {
         .get('/api/settings/system')
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
   })
 
@@ -197,7 +197,7 @@ describe('Authorization Tests', () => {
         .get(`/api/timesheets?unitId=${unit.id}`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
   })
 })

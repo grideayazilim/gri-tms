@@ -37,17 +37,16 @@ describe('Import API', () => {
           employees: [
             {
               tcNo: faker.string.numeric(11),
-              firstName: 'İmport',
-              lastName: 'Testi',
+              fullName: 'İmport Testi',
               ibanNo: 'TR' + faker.string.numeric(24),
-              unitId: unit.id,
-              locationId: location.id,
+              unitName: unit.name,
+              locationName: location.name,
               startDate: '2024-01-01',
             },
           ],
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -62,15 +61,17 @@ describe('Import API', () => {
         .post('/api/import/employee')
         .set('Cookie', admin.cookie)
         .send({
-          employeeId: emp.id,
-          periodId: period.id,
-          unitId: unit.id,
-          timesheetChanges: [
-            { day: '2024-01-02', markerCode: 'X', note: null },
-          ],
+          tcNo: emp.tcNo,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          unitName: unit.name,
+          locationId: location.id,
+          year: 2024,
+          month: 1,
+          markers: { '2024-01-02': 'X' },
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -84,13 +85,16 @@ describe('Import API', () => {
         .post('/api/import/finalize')
         .set('Cookie', admin.cookie)
         .send({
-          periodId: period.id,
-          unitId: unit.id,
-          locationId: location.id,
-          importedCount: 0,
+          locationName: location.name,
+          year: 2024,
+          month: 2,
+          createdCount: 0,
+          skippedCount: 0,
+          dailyWage: null,
+          timesheetChanges: [],
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
   })
 
@@ -117,7 +121,7 @@ describe('Import API', () => {
           ],
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
       expect(res.body.success).toBe(false)
     })
 
@@ -142,7 +146,7 @@ describe('Import API', () => {
           ],
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('POST /api/import/employee → geçersiz markerCode → 400', async () => {
@@ -164,7 +168,7 @@ describe('Import API', () => {
           ],
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('POST /api/import/bulk-employees → boş employees dizisi → hata', async () => {
@@ -187,7 +191,7 @@ describe('Import API', () => {
         .post('/api/import/bulk-employees')
         .send({ employees: [] })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('POST /api/import/employee → RESPONSIBLE user → 403', async () => {
@@ -200,7 +204,7 @@ describe('Import API', () => {
         .set('Cookie', responsible.cookie)
         .send({})
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
 
     it('POST /api/import/finalize → auth olmadan → 401', async () => {
@@ -208,7 +212,7 @@ describe('Import API', () => {
         .post('/api/import/finalize')
         .send({})
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
   })
 

@@ -53,7 +53,7 @@ describe('Export API', () => {
           res.on('end', () => callback(null, Buffer.concat(chunks)))
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.headers['content-type']).toContain('application/vnd.openxmlformats')
     })
 
@@ -78,7 +78,7 @@ describe('Export API', () => {
         .set('Cookie', admin.cookie)
         .responseType('arraybuffer')
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       const buf = Buffer.from(res.body as ArrayBuffer)
       // ZIP header kontrolü (XLSX = ZIP)
       expect(buf.slice(0, 4)).toEqual(XLSX_MAGIC)
@@ -96,7 +96,7 @@ describe('Export API', () => {
         .set('Cookie', admin.cookie)
         .responseType('arraybuffer')
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
 
     it('GET /api/export/timesheet → boş veri ile → 200 (boş Excel)', async () => {
@@ -110,7 +110,7 @@ describe('Export API', () => {
         .responseType('arraybuffer')
 
       // Boş veri ile de başarılı export beklenir (ya 200 ya anlamlı hata)
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
   })
 
@@ -123,7 +123,7 @@ describe('Export API', () => {
         .get('/api/export/timesheet?year=2024&month=1')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('GET /api/export/timesheet → geçersiz month (0) → 400', async () => {
@@ -134,7 +134,7 @@ describe('Export API', () => {
         .get(`/api/export/timesheet?locationId=${location.id}&year=2024&month=0`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('GET /api/export/bot → eksik parametreler → 400', async () => {
@@ -144,7 +144,7 @@ describe('Export API', () => {
         .get('/api/export/bot')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
   })
 
@@ -154,14 +154,14 @@ describe('Export API', () => {
       const res = await request(app)
         .get('/api/export/timesheet?locationId=xxx&year=2024&month=1')
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('GET /api/export/bot → auth olmadan → 401', async () => {
       const res = await request(app)
         .get('/api/export/bot?locationId=xxx&year=2024&month=1')
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
   })
 

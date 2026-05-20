@@ -40,7 +40,7 @@ describe('Employee CRUD API', () => {
           ibanNo: 'TR' + faker.string.numeric(24),
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(201)
       expect(res.body).toBeDefined()
 
 
@@ -60,7 +60,7 @@ describe('Employee CRUD API', () => {
         .get('/api/employees')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
 
@@ -87,7 +87,7 @@ describe('Employee CRUD API', () => {
           tcNo: emp.tcNo,
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
     })
@@ -102,7 +102,7 @@ describe('Employee CRUD API', () => {
         .delete(`/api/employees/${emp.id}`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -119,7 +119,7 @@ describe('Employee CRUD API', () => {
         .get('/api/employees?page=1&limit=2')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
 
     })
   })
@@ -147,7 +147,7 @@ describe('Employee CRUD API', () => {
           ibanNo: 'TR' + faker.string.numeric(24),
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect([409, 500]).toContain(res.status)
       expect(res.body.success).toBe(false)
     })
 
@@ -166,7 +166,7 @@ describe('Employee CRUD API', () => {
           // firstName eksik
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('PUT /api/employees/:id → var olmayan personel → 404', async () => {
@@ -195,12 +195,12 @@ describe('Employee CRUD API', () => {
         .post('/api/employees')
         .send({ firstName: 'Test', lastName: 'User' })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('GET /api/employees → auth olmadan → 401', async () => {
       const res = await request(app).get('/api/employees')
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('DELETE /api/employees/:id → RESPONSIBLE user → 403', async () => {
@@ -213,7 +213,7 @@ describe('Employee CRUD API', () => {
         .delete(`/api/employees/${emp.id}`)
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
   })
 
@@ -235,7 +235,7 @@ describe('Employee CRUD API', () => {
         .get('/api/employees?isActive=true')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       
     })
   })

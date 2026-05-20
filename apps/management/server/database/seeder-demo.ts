@@ -37,6 +37,44 @@ const DEMO_UNITS = [
   { name: 'Teknik Servis', suffix: 'teknik' }
 ];
 
+// ─── Yardımcı: Periyod oluşturma ─────────────────────────────────────────────
+
+async function generatePeriods(db: ReturnType<typeof drizzle>, startDate: string, endDate: string) {
+  const start = new Date(startDate + 'T00:00:00');
+  const end = new Date(endDate + 'T00:00:00');
+
+  await db.execute(sql`
+    UPDATE app.periods
+    SET is_deleted = true
+    WHERE start_date < ${startDate}::date OR end_date > ${endDate}::date;
+  `);
+
+  let current = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endMonthStart = new Date(end.getFullYear(), end.getMonth(), 1);
+
+  while (current <= endMonthStart) {
+    const y = current.getFullYear();
+    const m = current.getMonth() + 1;
+    const mm = String(m).padStart(2, '0');
+
+    const isFirstMonth = y === start.getFullYear() && m === start.getMonth() + 1;
+    const periodStart = isFirstMonth ? startDate : `${y}-${mm}-01`;
+
+    const isLastMonth = y === end.getFullYear() && m === end.getMonth() + 1;
+    const lastDay = String(new Date(y, m, 0).getDate()).padStart(2, '0');
+    const periodEnd = isLastMonth ? endDate : `${y}-${mm}-${lastDay}`;
+
+    await db.execute(sql`
+      INSERT INTO app.periods (id, year, month, start_date, end_date, is_locked, is_deleted)
+      VALUES (gen_random_uuid(), ${y}, ${m}, ${periodStart}, ${periodEnd}, true, false)
+      ON CONFLICT (year, month) DO UPDATE
+      SET start_date = ${periodStart}, end_date = ${periodEnd}, is_deleted = false;
+    `);
+
+    current = new Date(y, m, 1);
+  }
+}
+
 // ─── Yardımcı: Dinamik tarih hesaplama ───────────────────────────────────────
 
 function calcProgramDates(): { startDate: string; endDate: string } {
@@ -163,6 +201,10 @@ const runDemoSeed = async () => {
       ON CONFLICT (id) DO UPDATE
       SET program_start_date = ${startDate}, program_end_date = ${endDate};
     `);
+
+    // ── 5. Program tarihlerine göre periyodları oluştur ──────────────────────
+    console.log('📅  Program periyodları oluşturuluyor...');
+    await generatePeriods(db, startDate, endDate);
 
     console.log(`✅ Demo seed harika bir şekilde tamamlandı!`);
     console.log(`   - 7 Yerleşke`);

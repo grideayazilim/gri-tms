@@ -81,6 +81,10 @@ export function useFilter<F extends ReadonlyArray<FilterField>>(
     [filterConfig],
   );
 
+  const filterConfigRef = useRef(filterConfig);
+  // Always keep ref in sync without triggering effects
+  filterConfigRef.current = filterConfig;
+
   const handleFilterChange = useCallback(
     (key: F[number]['key'], value: string) => {
       setFilters((prev) => {
@@ -89,7 +93,10 @@ export function useFilter<F extends ReadonlyArray<FilterField>>(
         return next;
       });
 
-      if (textFieldKeys.has(key as string)) {
+      const fieldConfig = filterConfigRef.current.find((f) => f.key === key);
+      const isText = fieldConfig ? (fieldConfig.type !== 'select' && fieldConfig.type !== 'date') : true;
+
+      if (isText) {
         // Text alanı: debounce — 400ms sonra debouncedTextValues güncellenir
         clearTimeout(timerRef.current);
         timerRef.current = setTimeout(() => {
@@ -101,7 +108,7 @@ export function useFilter<F extends ReadonlyArray<FilterField>>(
       }
       // Select/date için ek bir şey yapmıyoruz; apiParams zaten filters'tan okur
     },
-    [textFieldKeys],
+    [],
   );
 
   // Select ve date alanlar filters'tan anlık, text alanlar debouncedTextValues'dan okunur.

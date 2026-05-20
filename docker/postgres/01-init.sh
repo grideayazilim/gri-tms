@@ -45,7 +45,7 @@ psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d postgres -c "ALTER DATABASE \"${D
 # 6. Gelecekte oluşturulacak tablolar için otomatik izinleri ayarla
 # Bu sayede migration_user tablo oluşturduğunda, app_user otomatik olarak yetki alır.
 psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "${DB_TO_CREATE}" -c "
-  ALTER DEFAULT PRIVILEGES FOR ROLE \"${DB_MIGRATION_USER}\" GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO \"${DB_APP_USER}\";
+  ALTER DEFAULT PRIVILEGES FOR ROLE \"${DB_MIGRATION_USER}\" GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO \"${DB_APP_USER}\";
   ALTER DEFAULT PRIVILEGES FOR ROLE \"${DB_MIGRATION_USER}\" GRANT USAGE, SELECT ON SEQUENCES TO \"${DB_APP_USER}\";
 "
 

@@ -27,7 +27,7 @@ describe('User CRUD API', () => {
         .get('/api/users')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
       // En az admin kullanıcısı olmalı
@@ -40,14 +40,14 @@ describe('User CRUD API', () => {
       const regRes = await request(app)
         .post('/api/auth/register')
         .send({ username: 'toupdate', password: 'Test@1234', role: 'ADMIN' })
-      const userId = regRes.body.data?.id
+      const userId = regRes.body.data?.user?.id
 
       const res = await request(app)
         .put(`/api/users/${userId}`)
         .set('Cookie', admin.cookie)
         .send({ role: 'ADMIN', status: 'ACTIVE', username: 'toupdate' })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -56,13 +56,13 @@ describe('User CRUD API', () => {
       const regRes = await request(app)
         .post('/api/auth/register')
         .send({ username: 'todelete', password: 'Test@1234', role: 'ADMIN' })
-      const userId = regRes.body.data?.id
+      const userId = regRes.body.data?.user?.id
 
       const res = await request(app)
         .delete(`/api/users/${userId}`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -72,9 +72,9 @@ describe('User CRUD API', () => {
       const res = await request(app)
         .put('/api/users/me')
         .set('Cookie', admin.cookie)
-        .send({ currentPassword: admin.password, newPassword: 'NewPass@5678' })
+        .send({ oldPassword: admin.password, newPassword: 'NewPass@5678' })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -86,7 +86,7 @@ describe('User CRUD API', () => {
       const regRes = await request(app)
         .post('/api/auth/register')
         .send({ username: 'rolechange', password: 'Test@1234', role: 'ADMIN' })
-      const userId = regRes.body.data?.id
+      const userId = regRes.body.data?.user?.id
 
       const res = await request(app)
         .put(`/api/users/${userId}`)
@@ -97,9 +97,10 @@ describe('User CRUD API', () => {
           username: 'rolechange',
           locationId: location.id,
           unitId: unit.id,
+          expiryDate: '2025-12-31',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
 
     })
   })
@@ -108,7 +109,7 @@ describe('User CRUD API', () => {
   describe('Hata senaryoları (validation)', () => {
     it('GET /api/users → auth olmadan → 401', async () => {
       const res = await request(app).get('/api/users')
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('PUT /api/users/:id → var olmayan kullanıcı → 404', async () => {
@@ -119,7 +120,7 @@ describe('User CRUD API', () => {
         .set('Cookie', admin.cookie)
         .send({ role: 'ADMIN', status: 'ACTIVE', username: 'nobody' })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(404)
     })
   })
 
@@ -134,7 +135,7 @@ describe('User CRUD API', () => {
         .get('/api/users')
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
       expect(res.body.success).toBe(false)
     })
 
@@ -149,7 +150,7 @@ describe('User CRUD API', () => {
         .set('Cookie', responsible.cookie)
         .send({ role: 'ADMIN', status: 'ACTIVE', username: admin.username })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
 
     it('DELETE /api/users/:id → RESPONSIBLE user → 403', async () => {
@@ -162,7 +163,7 @@ describe('User CRUD API', () => {
         .delete(`/api/users/${admin.id}`)
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
   })
 
@@ -174,7 +175,7 @@ describe('User CRUD API', () => {
       const res = await request(app)
         .put('/api/users/me')
         .set('Cookie', admin.cookie)
-        .send({ currentPassword: 'WrongPassword!', newPassword: 'NewPass@5678' })
+        .send({ oldPassword: 'WrongPassword!', newPassword: 'NewPass@5678' })
 
 
       expect(res.body.success).toBe(false)

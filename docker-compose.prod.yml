@@ -85,6 +85,8 @@ services:
       dockerfile: Dockerfile
     container_name: timesheet_bot_server
     restart: always
+    environment:
+      - ALLOWED_ORIGIN=${BOT_ALLOWED_ORIGIN:-http://localhost:80}
     expose:
       - "3001"
     networks:

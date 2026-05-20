@@ -36,8 +36,8 @@ beforeEach(() => {
   // URL.createObjectURL / revokeObjectURL
   createObjectURLSpy = vi.fn(() => 'blob:mock-url');
   revokeObjectURLSpy = vi.fn();
-  global.URL.createObjectURL = createObjectURLSpy;
-  global.URL.revokeObjectURL = revokeObjectURLSpy;
+  Object.defineProperty(global.URL, 'createObjectURL', { value: createObjectURLSpy, writable: true });
+  Object.defineProperty(global.URL, 'revokeObjectURL', { value: revokeObjectURLSpy, writable: true });
 
   // document.createElement('a') → click() + download attribute takibi
   clickSpy = vi.fn();

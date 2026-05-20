@@ -32,7 +32,7 @@ describe('Announcement API', () => {
           content: 'Bu bir test duyurusudur ve içerik 10 karakterden uzun.',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(201)
       expect(res.body).toBeDefined()
 
     })
@@ -46,7 +46,7 @@ describe('Announcement API', () => {
         .get('/api/announcements')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
 
@@ -64,7 +64,7 @@ describe('Announcement API', () => {
           content: 'Güncellenmiş içerik, 10 karakterden uzun olmalı.',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
     })
@@ -77,7 +77,7 @@ describe('Announcement API', () => {
         .delete(`/api/announcements/${ann.id}`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -89,7 +89,7 @@ describe('Announcement API', () => {
         .post(`/api/announcements/${ann.id}/read`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -100,7 +100,7 @@ describe('Announcement API', () => {
         .get('/api/announcements/unread-count')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
       
     })
@@ -116,7 +116,7 @@ describe('Announcement API', () => {
         .set('Cookie', admin.cookie)
         .send({ title: 'AB', content: 'Yeterince uzun içerik var.' })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('POST /api/announcements → kısa içerik (< 10 karakter) → 400', async () => {
@@ -127,7 +127,7 @@ describe('Announcement API', () => {
         .set('Cookie', admin.cookie)
         .send({ title: 'Geçerli Başlık', content: 'Kısa' })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('PUT /api/announcements/:id → var olmayan duyuru → 404', async () => {
@@ -160,7 +160,7 @@ describe('Announcement API', () => {
           content: 'Bu duyuruyu ekleyemem çünkü sorumlu kullanıcıyım.',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
       expect(res.body.success).toBe(false)
     })
 
@@ -174,12 +174,12 @@ describe('Announcement API', () => {
         .delete(`/api/announcements/${ann.id}`)
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
 
     it('GET /api/announcements → auth olmadan → 401', async () => {
       const res = await request(app).get('/api/announcements')
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
   })
 
@@ -196,7 +196,7 @@ describe('Announcement API', () => {
         .get('/api/announcements?page=1&limit=2')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
 
     })
 
@@ -213,7 +213,7 @@ describe('Announcement API', () => {
         .post(`/api/announcements/${ann.id}/read`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status) // idempotent veya conflict
+      expect(res.status).toBe(200) // idempotent veya conflict
     })
   })
 })

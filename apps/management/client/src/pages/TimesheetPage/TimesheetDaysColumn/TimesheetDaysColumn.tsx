@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback, memo, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { tr } from "date-fns/locale";
 import { MARKER_LIST, MARKERS, type MarkerCode } from "@timesheet/shared";
+import type { TimesheetUIRow } from "../../../hooks/data/useTimesheets";
 import "./TimesheetDaysColumn.scss";
 
 // ─── Yardımcı Fonksiyonlar ───────────────────────────────────────────────────
@@ -25,15 +26,17 @@ const OTHER_MARKERS = MARKER_LIST.filter((m) => m.code !== MARKERS.X.code);
 // ─── Bileşen ──────────────────────────────────────────────────────────────────
 
 interface TimesheetDaysColumnProps {
+  row: TimesheetUIRow;
   timesheetDays: Record<string, MarkerCode>;
   originalDays?: Record<string, MarkerCode> | undefined;
   periodDays: string[];
-  onDayClick: (dateStr: string, markerCode: MarkerCode) => void;
+  onDayClick: (row: TimesheetUIRow, dateStr: string, markerCode: MarkerCode) => void;
   isPublicHoliday?: ((dateStr: string) => boolean) | undefined;
   isLocked?: boolean;
 }
 
 const TimesheetDaysColumn = memo(({
+  row,
   timesheetDays,
   originalDays,
   periodDays,
@@ -153,7 +156,7 @@ const TimesheetDaysColumn = memo(({
     clearTimeout(hoverCloseTimer.current);
     clearTimeout(hoverTimer.current);
     setHoverDay(null);
-    onDayClick(dateStr, MARKERS.X.code);
+    onDayClick(row, dateStr, MARKERS.X.code);
   };
 
   const handleMouseEnter = (e: React.MouseEvent, dateStr: string) => {
@@ -213,11 +216,9 @@ const TimesheetDaysColumn = memo(({
             <span className={`ts-day-cell__num${value ? " ts-day-cell__num--top" : ""}`}>
               {day}
             </span>
-            {value && (
-              <span className="ts-day-cell__value ts-day-cell__value--active">
-                {value}
-              </span>
-            )}
+            <span className={`ts-day-cell__value${value ? " ts-day-cell__value--active" : ""}`}>
+              {value}
+            </span>
           </button>
         );
       })}
@@ -252,7 +253,7 @@ const TimesheetDaysColumn = memo(({
                 className="marker-tooltip__btn"
                 data-label={m.label}
                 onClick={() => {
-                  onDayClick(contextMenu.day, m.code);
+                  onDayClick(row, contextMenu.day, m.code);
                   setContextMenu(null);
                 }}
               >

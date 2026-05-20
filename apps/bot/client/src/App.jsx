@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
 
-const API_URL = process.env.NODE_ENV === 'production' ? '/bot-api' : 'http://localhost:3001';
+const API_URL = process.env.NODE_ENV === 'production' ? '/bot-api' : '';
 
 const MONTHS = [
   { value: 1, label: 'Ocak' },

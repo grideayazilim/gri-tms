@@ -1,0 +1,2 @@
+# Bütün .sh uzantılı scriptlerin her zaman LF (Unix) satır sonu ile inmesini zorunlu kıl
+*.sh text eol=lf

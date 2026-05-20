@@ -11,7 +11,7 @@ export type { TimesheetUIRow };
 export const timesheetColumns = (
   periodDays: string[],
   onDayClick: (row: TimesheetUIRow, dateStr: string, markerCode: MarkerCode) => void,
-  originalSnapshot: TimesheetUIRow[],
+  originalSnapshot: Map<string, TimesheetUIRow>,
   isPublicHoliday: ((dateStr: string) => boolean) | undefined,
 ): Column<TimesheetUIRow>[] => [
     { header: "TC No", accessor: "tc", width: "120px" },
@@ -19,13 +19,14 @@ export const timesheetColumns = (
     {
       header: <div style={{ textAlign: "center" }}>Çalışma Günleri</div>,
       render: (row: TimesheetUIRow) => {
-        const originalRow = originalSnapshot.find((s) => s.id === row.id);
+        const originalRow = originalSnapshot.get(row.id);
         return (
           <TimesheetDaysColumn
+            row={row}
             timesheetDays={row.timesheet_days}
             originalDays={originalRow?.timesheet_days}
             periodDays={periodDays}
-            onDayClick={(dateStr, markerCode) => onDayClick(row, dateStr, markerCode)}
+            onDayClick={onDayClick}
             isPublicHoliday={isPublicHoliday}
             isLocked={row.isLocked}
           />

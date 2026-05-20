@@ -33,7 +33,7 @@ describe('Location & Unit API', () => {
           programNo: 'PRG001',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(201)
       expect(res.body).toBeDefined()
 
 
@@ -51,7 +51,7 @@ describe('Location & Unit API', () => {
           name: 'Test Birimi',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(201)
       expect(res.body).toBeDefined()
 
     })
@@ -63,7 +63,7 @@ describe('Location & Unit API', () => {
       const res = await request(app)
         .get('/api/locationAndUnits/locations')
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
 
@@ -77,7 +77,7 @@ describe('Location & Unit API', () => {
       const res = await request(app)
         .get(`/api/locationAndUnits/locations/${location.id}/units`)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
 
 
     })
@@ -94,7 +94,7 @@ describe('Location & Unit API', () => {
           programNo: location.programNo,
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
     })
@@ -107,7 +107,7 @@ describe('Location & Unit API', () => {
         .delete(`/api/locationAndUnits/locations/${location.id}`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
   })
@@ -122,7 +122,7 @@ describe('Location & Unit API', () => {
         .set('Cookie', admin.cookie)
         .send({ programNo: 'PRG002' }) // name eksik
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('POST /api/locationAndUnits/units → var olmayan locationId → hata', async () => {
@@ -151,7 +151,7 @@ describe('Location & Unit API', () => {
 
       // Bağlı personel olduğu için silme engellenebilir (cascade veya restrict)
       // Sonuç 200 (cascade) veya 409/400 (restrict) olabilir
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBeGreaterThanOrEqual(400)
     })
 
     it('PUT /api/locationAndUnits/units/:id → var olmayan birim → 404', async () => {
@@ -174,7 +174,7 @@ describe('Location & Unit API', () => {
         .post('/api/locationAndUnits/locations')
         .send({ name: 'Yetkisiz', programNo: 'PRG999' })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('POST /api/locationAndUnits/units → RESPONSIBLE user → 403', async () => {
@@ -187,7 +187,7 @@ describe('Location & Unit API', () => {
         .set('Cookie', responsible.cookie)
         .send({ locationId: location.id, name: 'Yeni Birim' })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
 
     it('DELETE /api/locationAndUnits/locations/:id → RESPONSIBLE user → 403', async () => {
@@ -199,7 +199,7 @@ describe('Location & Unit API', () => {
         .delete(`/api/locationAndUnits/locations/${location.id}`)
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
   })
 
@@ -209,7 +209,7 @@ describe('Location & Unit API', () => {
       // /units endpoint'i auth gerektiriyor
       const res = await request(app).get('/api/locationAndUnits/units')
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('PUT /api/locationAndUnits/locations/:id/sync → lokasyon birimleri senkronize eder', async () => {
@@ -219,10 +219,10 @@ describe('Location & Unit API', () => {
       const res = await request(app)
         .put(`/api/locationAndUnits/locations/${location.id}/sync`)
         .set('Cookie', admin.cookie)
-        .send({ units: [] }) // Boş sync
+        .send({ name: location.name, programNo: location.programNo, units: [] }) // Boş sync
 
       // 200 veya anlamlı yanıt
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
   })
 })

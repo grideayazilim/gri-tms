@@ -365,6 +365,9 @@ export const deleteUnit = asyncHandler<{ unitId: string }>(async (req, res) => {
     const oldUnit = await locationRepo.findUnitById(tx, unitId);
     if (!oldUnit) throw notFound('Birim bulunamadı.');
 
+    const hasEmployees = await locationRepo.unitHasEmployees(tx, unitId);
+    if (hasEmployees) throw badRequest('Bu birim silinemez çünkü içinde kayıtlı çalışanlar var. Lütfen önce çalışanları transfer edin.');
+
     await locationRepo.deleteUnit(tx, unitId);
 
     await createAuditLog(tx, {

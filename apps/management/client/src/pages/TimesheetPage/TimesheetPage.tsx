@@ -2,7 +2,7 @@
    TIMESHEET PAGE (PUANTAJ YÖNETİM SAYFASI)
    Uygulamanın ana işlem merkezi. Veri girişi, filtreleme ve kilit yönetimi.
    ======================================================================== */
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
 import { AiOutlineBell } from "react-icons/ai";
@@ -86,9 +86,14 @@ const TimesheetPage = () => {
   } = useLocationsAndUnits();
 
   // ── Dirty state takibi ──────────────────────────────────────────
-  // Veritabanından gelen ilk hali burada tutulur; tabloda değişiklik 
+  // Veritabanından gelen ilk hali burada tutulur; tabloda değişiklik
   // yapıldığında bu snapshot ile kıyaslanarak "Kaydet" butonu gösterilir.
   const [originalSnapshot, setOriginalSnapshot] = useState<TimesheetUIRow[]>([]);
+
+  // periods ref'te tutulur: fetchTimesheets effect'inin deps'ine girmeden
+  // isLocked fallback için okunabilmesi sağlanır.
+  const periodsRef = useRef(periods);
+  useEffect(() => { periodsRef.current = periods; }, [periods]);
 
 
   // ── Dönem kilit durumu (ADMIN tarafından toggle edilir) ─────────────────
@@ -132,6 +137,13 @@ const TimesheetPage = () => {
 
   // ── Resmi tatiller ──────────────────────────────────────────────────────
   const { isPublicHoliday, getHolidayName } = usePublicHolidays(filters.period || "");
+  // Ref'lere alınmasının sebebi: tatil verisi yüklenince isPublicHoliday referansı
+  // değişir, bu da handleDayClick → columns zincirini bozup tüm satırları yeniden
+  // render ettirir. Ref ile fonksiyon aynı kalır, sadece içi güncellenir.
+  const isPublicHolidayRef = useRef(isPublicHoliday);
+  const getHolidayNameRef = useRef(getHolidayName);
+  useEffect(() => { isPublicHolidayRef.current = isPublicHoliday; }, [isPublicHoliday]);
+  useEffect(() => { getHolidayNameRef.current = getHolidayName; }, [getHolidayName]);
 
   // Birim sorumlusu için yerleşke/birim filtreleri login olduğu bilgilere sabitlenir.
   // Bu sayede sorumlu kişi başka birimin verisine erişemez.
@@ -160,19 +172,12 @@ const TimesheetPage = () => {
     if (periods.length > 0 && !filters.period) {
       const currentPeriod = format(new Date(), "yyyy-MM");
       const match = periods.find((p) => p.value === currentPeriod);
-      setTimeout(() => {
-        setFilters((prev) => ({
-          ...prev,
-          period: match ? match.value : (periods[0]?.value || ""),
-        }));
-      }, 0);
+      setFilters((prev) => ({
+        ...prev,
+        period: match ? match.value : (periods[0]?.value || ""),
+      }));
     }
   }, [periods, setFilters, filters.period]);
-
-  // Filtreler değişince sayfayı başa sar
-  useEffect(() => {
-    setTimeout(() => setPage(1), 0);
-  }, [apiParams]);
 
   // ── Sayfa açılışında yerleşkeleri yükle ──────────────────────────────────
   useEffect(() => {
@@ -189,31 +194,48 @@ const TimesheetPage = () => {
     }
   }, [filters.location, fetchUnitsByLocation, handleFilterChange]);
 
+  // apiParams değişince sayfayı 1'e sıfırla ve veriyi çek.
+  // İki ayrı effect yerine tek effect: eski yapıdaki setTimeout+setPage yaklaşımı
+  // "setPage → yeni render → ikinci fetch" döngüsüne yol açıyordu.
   useEffect(() => {
     if (!apiParams.month) return;
-
-    fetchTimesheets({ ...apiParams, page, limit: PAGE_LIMIT }).then((result) => {
+    setPage(1);
+    fetchTimesheets({ ...apiParams, page: 1, limit: PAGE_LIMIT }).then((result) => {
       if (result.success && result.data?.rows) {
         setOriginalSnapshot(structuredClone(result.data.rows));
-        // Satır yoksa (boş sayfa) rows[0] undefined olur → periods listesinden al
         const locked =
           result.data.rows[0]?.isLocked ??
-          periods.find((p) => p.value === filters.period)?.isLocked ??
+          periodsRef.current.find((p) => p.value === apiParams.month)?.isLocked ??
           false;
         setPeriodIsLocked(locked);
       }
-    }).catch(() => {
-      // fetchTimesheets kendi catch bloğunda hata state'ini set ediyor
-    });
-  }, [fetchTimesheets, apiParams, page, periods, filters.period]);
+    }).catch(() => {});
+  }, [fetchTimesheets, apiParams]);
+
+  // Sayfalama tıklaması: apiParams değişmeden sadece sayfa değişince çek.
+  useEffect(() => {
+    if (!apiParams.month || page === 1) return;
+    fetchTimesheets({ ...apiParams, page, limit: PAGE_LIMIT }).then((result) => {
+      if (result.success && result.data?.rows) {
+        setOriginalSnapshot(structuredClone(result.data.rows));
+        const locked =
+          result.data.rows[0]?.isLocked ??
+          periodsRef.current.find((p) => p.value === apiParams.month)?.isLocked ??
+          false;
+        setPeriodIsLocked(locked);
+      }
+    }).catch(() => {});
+  // page kasıtlı olarak bağımlılığa alındı; apiParams değişince üstteki effect halleder.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // HÜCRE TIKLAMA
   // ─────────────────────────────────────────────────────────────────────────
   const handleDayClick = useCallback(
     (row: TimesheetUIRow, dateStr: string, markerCode: MarkerCode) => {
-      if (isPublicHoliday(dateStr)) {
-        const holidayName = getHolidayName(dateStr) || "Resmi tatil";
+      if (isPublicHolidayRef.current(dateStr)) {
+        const holidayName = getHolidayNameRef.current(dateStr) || "Resmi tatil";
         toast({
           type: "warning",
           message: `${holidayName} — bu gün resmi tatildir, işaretçi girilemez.`,
@@ -251,27 +273,31 @@ const TimesheetPage = () => {
       );
     },
 
-    [setTimesheets, toast, isPublicHoliday, getHolidayName],
+    [setTimesheets, toast],
   );
 
   // ─────────────────────────────────────────────────────────────────────────
   // DİRTY STATE
   // ─────────────────────────────────────────────────────────────────────────
+  const originalSnapshotMap = useMemo(
+    () => new Map(originalSnapshot.map((r) => [r.id, r])),
+    [originalSnapshot],
+  );
+
   const hasGlobalChanges = useMemo(
     () =>
       timesheets.some((r) => {
-        const original = originalSnapshot.find((o) => o.id === r.id);
+        const original = originalSnapshotMap.get(r.id);
         if (!original) return false;
         return (
           JSON.stringify(r.timesheet_days ?? {}) !==
           JSON.stringify(original.timesheet_days ?? {})
         );
       }),
-    [timesheets, originalSnapshot],
+    [timesheets, originalSnapshotMap],
   );
 
-  const handlePageChange = (newPage: number) => {
-    // Sayfa değiştirirken kaydedilmemiş veri kaybını önlemek için bloklama yapıyoruz.
+  const handlePageChange = useCallback((newPage: number) => {
     if (hasGlobalChanges) {
       toast({
         type: "warning",
@@ -280,7 +306,7 @@ const TimesheetPage = () => {
       return;
     }
     setPage(newPage);
-  };
+  }, [hasGlobalChanges, toast]);
 
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -295,7 +321,7 @@ const TimesheetPage = () => {
     }
 
     const dirtyRows = timesheets.filter((r) => {
-      const original = originalSnapshot.find((o) => o.id === r.id);
+      const original = originalSnapshotMap.get(r.id);
       if (!original) return true;
       return (
         JSON.stringify(r.timesheet_days ?? {}) !==
@@ -378,13 +404,13 @@ const TimesheetPage = () => {
   }, [activePeriod, filters.period]);
 
   const columns = useMemo(
-    () => timesheetColumns(periodDays, handleDayClick, originalSnapshot, isPublicHoliday),
-    [periodDays, handleDayClick, originalSnapshot, isPublicHoliday],
+    () => timesheetColumns(periodDays, handleDayClick, originalSnapshotMap, isPublicHoliday),
+    [periodDays, handleDayClick, originalSnapshotMap, isPublicHoliday],
   );
 
   const userName = user?.username || "Kullanıcı";
 
-  const headerActions = (
+  const headerActions = useMemo(() => (
     <AnimatePresence>
       {(hasGlobalChanges || isSaving) && (
         <motion.div
@@ -400,7 +426,7 @@ const TimesheetPage = () => {
         </motion.div>
       )}
     </AnimatePresence>
-  );
+  ), [hasGlobalChanges, isSaving, handleSave]);
 
   return (
     <PageShell

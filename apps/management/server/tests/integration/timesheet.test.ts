@@ -33,7 +33,7 @@ describe('Timesheet API', () => {
         .get('/api/timesheets/periods')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
 
@@ -51,8 +51,7 @@ describe('Timesheet API', () => {
         .set('Cookie', admin.cookie)
         .send({
           periodId: period.id,
-          unitId: unit.id,
-          rows: [
+          timesheets: [
             {
               employeeId: emp.id,
               days: [
@@ -63,7 +62,7 @@ describe('Timesheet API', () => {
           ],
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -76,8 +75,7 @@ describe('Timesheet API', () => {
 
       const payload = {
         periodId: period.id,
-        unitId: unit.id,
-        rows: [{ employeeId: emp.id, days: [{ day: '2024-04-01', markerCode: 'X', note: null }] }],
+          timesheets: [{ employeeId: emp.id, days: [{ day: '2024-04-01', markerCode: 'X', note: null }] }],
       }
 
       await request(app)
@@ -91,10 +89,10 @@ describe('Timesheet API', () => {
         .set('Cookie', admin.cookie)
         .send({
           ...payload,
-          rows: [{ employeeId: emp.id, days: [{ day: '2024-04-01', markerCode: 'R', note: 'güncellendi' }] }],
+          timesheets: [{ employeeId: emp.id, days: [{ day: '2024-04-01', markerCode: 'R', note: 'güncellendi' }] }],
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -110,15 +108,14 @@ describe('Timesheet API', () => {
         .set('Cookie', admin.cookie)
         .send({
           periodId: period.id,
-          unitId: unit.id,
-          rows: [{ employeeId: emp.id, days: [{ day: '2024-05-06', markerCode: 'X', note: null }] }],
+          timesheets: [{ employeeId: emp.id, days: [{ day: '2024-05-06', markerCode: 'X', note: null }] }],
         })
 
       const res = await request(app)
         .get(`/api/timesheets?periodId=${period.id}&unitId=${unit.id}`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
     })
@@ -131,7 +128,7 @@ describe('Timesheet API', () => {
         .patch(`/api/timesheets/${period.id}/lock`)
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
   })
@@ -153,7 +150,7 @@ describe('Timesheet API', () => {
           // periodId eksik
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('POST /api/timesheets → geçersiz tarih formatı → 400', async () => {
@@ -168,11 +165,10 @@ describe('Timesheet API', () => {
         .set('Cookie', admin.cookie)
         .send({
           periodId: period.id,
-          unitId: unit.id,
-          rows: [{ employeeId: emp.id, days: [{ day: '15-01-2024', markerCode: 'X' }] }],
+          timesheets: [{ employeeId: emp.id, days: [{ day: '15-01-2024', markerCode: 'X' }] }],
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('PATCH /api/timesheets/:periodId/lock → var olmayan dönem → 404', async () => {
@@ -190,7 +186,7 @@ describe('Timesheet API', () => {
   describe('Yetkilendirme', () => {
     it('GET /api/timesheets → auth olmadan → 401', async () => {
       const res = await request(app).get('/api/timesheets')
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('PATCH /api/timesheets/:periodId/lock → RESPONSIBLE user → 403', async () => {
@@ -203,12 +199,12 @@ describe('Timesheet API', () => {
         .patch(`/api/timesheets/${period.id}/lock`)
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
 
     it('GET /api/timesheets/periods → auth olmadan → 401', async () => {
       const res = await request(app).get('/api/timesheets/periods')
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
   })
 
@@ -226,8 +222,7 @@ describe('Timesheet API', () => {
         .set('Cookie', admin.cookie)
         .send({
           periodId: period.id,
-          unitId: unit.id,
-          rows: [{ employeeId: emp.id, days: [{ day: '2024-09-02', markerCode: 'X', note: null }] }],
+          timesheets: [{ employeeId: emp.id, days: [{ day: '2024-09-02', markerCode: 'X', note: null }] }],
         })
 
       // Kilitli döneme yazma yasak olmalı

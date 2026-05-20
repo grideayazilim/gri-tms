@@ -29,7 +29,7 @@ describe('Settings API', () => {
         .get('/api/settings/system')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
 
@@ -50,7 +50,7 @@ describe('Settings API', () => {
           programEndDate: '2026-12-31',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
     })
@@ -67,7 +67,7 @@ describe('Settings API', () => {
         .get('/api/settings/pending-users')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
     })
@@ -86,7 +86,7 @@ describe('Settings API', () => {
           .post(`/api/settings/pending-users/${userId}/approve`)
           .set('Cookie', admin.cookie)
 
-        expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status) // Pending olmayabilir
+        expect(res.status).toBe(200) // Pending olmayabilir
       }
     })
   })
@@ -106,7 +106,7 @@ describe('Settings API', () => {
           programEndDate: '2026-12-31',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
       expect(res.body.success).toBe(false)
     })
 
@@ -117,13 +117,13 @@ describe('Settings API', () => {
         .put('/api/settings/system')
         .set('Cookie', admin.cookie)
         .send({
-          dailyWage: 500,
+          dailyWage: 1500,
           maxWeeklyDays: 0,
           programStartDate: '2024-01-01',
-          programEndDate: '2026-12-31',
+          programEndDate: '2024-12-31',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
     })
 
     it('PUT /api/settings/system → programEndDate < programStartDate → 400', async () => {
@@ -155,7 +155,7 @@ describe('Settings API', () => {
           .delete(`/api/settings/pending-users/${userId}/reject`)
           .set('Cookie', admin.cookie)
 
-        expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+        expect(res.status).toBe(200)
       }
     })
   })
@@ -164,7 +164,7 @@ describe('Settings API', () => {
   describe('Yetkilendirme', () => {
     it('GET /api/settings/system → auth olmadan → 401', async () => {
       const res = await request(app).get('/api/settings/system')
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
 
     it('PUT /api/settings/system → RESPONSIBLE user → 403', async () => {
@@ -182,7 +182,7 @@ describe('Settings API', () => {
           programEndDate: '2026-12-31',
         })
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
       expect(res.body.success).toBe(false)
     })
 
@@ -195,7 +195,7 @@ describe('Settings API', () => {
         .get('/api/settings/pending-users')
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(403)
     })
   })
 
@@ -230,7 +230,7 @@ describe('Settings API', () => {
         .get('/api/settings/system')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
 
     })
 
@@ -241,7 +241,7 @@ describe('Settings API', () => {
         .get('/api/settings/system')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       // Settings tablosunda en az 1 kayıt olmalı (beforeEach'te createSettings)
 
     })

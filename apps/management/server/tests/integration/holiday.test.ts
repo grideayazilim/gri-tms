@@ -31,7 +31,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=2024')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
 
     })
@@ -43,7 +43,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=2025')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -56,7 +56,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=2024')
         .set('Cookie', responsible.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
     })
 
@@ -67,7 +67,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=2024')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
       // Tatil alanlarını kontrol et (varsa)
       if (res.body.data.length > 0) {
         const first = res.body.data[0]
@@ -86,7 +86,7 @@ describe('Holiday API', () => {
         .get('/api/holidays')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
       expect(res.body.success).toBe(false)
     })
 
@@ -97,7 +97,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=abcd')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
 
     it('GET /api/holidays → aralık dışı year (1999) → 400', async () => {
@@ -107,7 +107,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=1999')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(400)
     })
   })
 
@@ -117,7 +117,7 @@ describe('Holiday API', () => {
       const res = await request(app)
         .get('/api/holidays?year=2024')
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
       expect(res.body.success).toBe(false)
     })
 
@@ -126,7 +126,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=2024')
         .set('Cookie', 'accessToken=malformed.token')
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(401)
     })
   })
 
@@ -140,7 +140,7 @@ describe('Holiday API', () => {
         .set('Cookie', admin.cookie)
 
       // Schema sınır değerine göre 200 veya 400 kabul edilebilir
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect([200, 400, 500]).toContain(res.status)
     })
 
     it('GET /api/holidays → year=2024 → response body yapısı doğru', async () => {
@@ -150,7 +150,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=2024')
         .set('Cookie', admin.cookie)
 
-      expect([200, 201, 204, 400, 401, 403, 404, 409, 500]).toContain(res.status)
+      expect(res.status).toBe(200)
 
 
     })

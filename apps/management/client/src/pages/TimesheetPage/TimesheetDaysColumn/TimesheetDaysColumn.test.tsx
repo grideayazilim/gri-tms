@@ -3,9 +3,27 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi } from 'vitest';
 import TimesheetDaysColumn from './TimesheetDaysColumn';
 import type { MarkerCode } from '@timesheet/shared';
+import type { TimesheetUIRow } from '../../../hooks/data/useTimesheets';
+
+const mockRow: TimesheetUIRow = {
+  id: 'row-1',
+  timesheetId: null,
+  employeeId: 'emp-1',
+  tc: '12345678901',
+  name: 'Test Kullanıcı',
+  unit: null,
+  unitId: null,
+  location: null,
+  locationId: null,
+  periodId: 'period-1',
+  isLocked: false,
+  timesheet_days: { '2024-05-01': 'X' as MarkerCode },
+  workDaysCount: 1,
+};
 
 describe('TimesheetDaysColumn Bileşeni', () => {
   const defaultProps = {
+    row: mockRow,
     periodDays: ['2024-05-01', '2024-05-02'],
     timesheetDays: {
       '2024-05-01': 'X' as MarkerCode,
@@ -31,7 +49,7 @@ describe('TimesheetDaysColumn Bileşeni', () => {
     // Elementin container button'una tıklayalım
     await userEvent.click(day2);
     
-    expect(mockOnClick).toHaveBeenCalledWith('2024-05-02', 'X');
+    expect(mockOnClick).toHaveBeenCalledWith(mockRow, '2024-05-02', 'X');
   });
 
   it('tatil günleri disable olmalı ve tıklanmamalı', async () => {

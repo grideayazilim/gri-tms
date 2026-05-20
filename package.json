@@ -26,6 +26,7 @@
     "db:generate": "npm run db:generate -w management-server"
   },
   "devDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.60.4",
     "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

@@ -119,6 +119,9 @@ Seed sonrası giriş bilgileri:
 ## Adım 7: Uygulamayı Başlat
 
 ```bash
+# Shared'ı build et
+npm run build:shared
+
 # Sadece Management uygulaması (server + client)
 npm run dev:management
 

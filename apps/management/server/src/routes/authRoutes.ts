@@ -18,6 +18,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Çok fazla istek gönderildi, lütfen 15 dakika sonra tekrar deneyin.' },
+  skip: () => process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true' || process.env.VITE_COVERAGE === 'true',
 });
 
 // Public routes

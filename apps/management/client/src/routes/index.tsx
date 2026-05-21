@@ -103,8 +103,8 @@ export const notFoundRoute: RouteConfig = {
   name: '404',
 };
 
-// Tüm protected routes (managementRoutes + settingsRoute)
-export const protectedRoutes: RouteConfig[] = [...managementRoutes, settingsRoute];
+// Tüm protected routes (sadece adminOnly olmayanlar)
+export const protectedRoutes: RouteConfig[] = [...managementRoutes, settingsRoute].filter(route => !route.adminOnly);
 
 // Admin routes (sadece adminOnly: true olanlar)
 export const adminRoutes: RouteConfig[] = managementRoutes.filter(route => route.adminOnly);

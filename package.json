@@ -23,21 +23,32 @@
     "db:migrate": "npm run db:migrate -w management-server",
     "db:seed": "npm run db:seed -w management-server",
     "db:seed:demo": "npm run db:seed:demo -w management-server",
-    "db:generate": "npm run db:generate -w management-server"
+    "db:generate": "npm run db:generate -w management-server",
+    "test:e2e": "npx playwright test --config=e2e/playwright.config.ts",
+    "test:e2e:ui": "npx playwright test --config=e2e/playwright.config.ts --ui",
+    "test:e2e:report": "npx playwright show-report e2e/playwright-report",
+    "dev:coverage": "cross-env VITE_COVERAGE=true npm run dev:all",
+    "coverage:clean": "node -e \"const fs = require('fs'); fs.rmSync('.nyc_output', { recursive: true, force: true }); fs.rmSync('coverage', { recursive: true, force: true });\"",
+    "coverage:report": "nyc report --reporter=html --reporter=text",
+    "test:e2e:coverage": "npm run coverage:clean && npm run test:e2e && npm run coverage:report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-import-resolver-typescript": "^3.0.0",
     "eslint-plugin-import": "^2.31.0",
+    "nyc": "^18.0.0",
     "prettier": "^3.0.0",
     "tsc-alias": "^1.8.16",
     "tsx": "^4.19.4",
     "type-coverage": "^2.29.7",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vite-plugin-istanbul": "^9.0.0"
   }
 }

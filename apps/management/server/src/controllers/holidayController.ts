@@ -34,7 +34,13 @@ export const getPublicHolidays = asyncHandler(async (req, res) => {
   const response = await fetch(apiUrl);
 
   if (!response.ok) {
-    throw new AppError('Resmi tatil verileri alınamadı', 500);
+    // Dış API 4xx döndürdüyse yıl desteklenmiyor demektir → 400
+    // 5xx döndürdüyse gerçek sunucu hatası → 502
+    const status = response.status >= 400 && response.status < 500 ? 400 : 502;
+    const message = status === 400
+      ? 'Belirtilen yıl için tatil verisi bulunamadı'
+      : 'Tatil verisi servisi şu anda yanıt vermiyor';
+    throw new AppError(message, status);
   }
 
   const rawHolidays = (await response.json()) as Array<{

@@ -149,9 +149,7 @@ describe('Location & Unit API', () => {
         .delete(`/api/locationAndUnits/units/${unit.id}`)
         .set('Cookie', admin.cookie)
 
-      // Bağlı personel olduğu için silme engellenebilir (cascade veya restrict)
-      // Sonuç 200 (cascade) veya 409/400 (restrict) olabilir
-      expect(res.status).toBeGreaterThanOrEqual(400)
+      expect(res.status).toBe(400)
     })
 
     it('PUT /api/locationAndUnits/units/:id → var olmayan birim → 404', async () => {

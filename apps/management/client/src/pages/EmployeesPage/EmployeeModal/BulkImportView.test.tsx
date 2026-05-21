@@ -27,15 +27,10 @@ vi.mock('../../../api/importService', () => ({
   bulkImportEmployees: (...args: unknown[]) => mockBulkImport(...args),
 }));
 
-// XLSX mock: sheet_to_json returns valid rows by default
-const mockSheetToJson = vi.fn();
-const mockRead = vi.fn();
+const mockReadXlsxFile = vi.fn();
 
-vi.mock('xlsx', () => ({
-  read: (...args: unknown[]) => mockRead(...args),
-  utils: {
-    sheet_to_json: (...args: unknown[]) => mockSheetToJson(...args),
-  },
+vi.mock('read-excel-file', () => ({
+  default: (...args: unknown[]) => mockReadXlsxFile(...args),
 }));
 
 const xlsxFile = new File(['dummy'], 'test-data.xlsx', {
@@ -48,8 +43,7 @@ Object.defineProperty(xlsxFile, 'arrayBuffer', {
 });
 
 function validWorkbook() {
-  mockRead.mockReturnValue({ SheetNames: ['Sheet1'], Sheets: { Sheet1: {} } });
-  mockSheetToJson.mockReturnValue([
+  mockReadXlsxFile.mockResolvedValue([
     ['tc', 'ad soyad', 'yerleşke', 'işe giriş', 'iban'],
     ['11111111111', 'Ali Veli', 'Merkez', '2024-01-01', 'TR12 0001 0017 0000 0123 4567 89'],
   ]);
@@ -233,8 +227,7 @@ describe('BulkImportView Bileşeni', () => {
   });
 
   it('zorunlu sütunlar eksikse hata toast\'ı gösterilmeli', async () => {
-    mockRead.mockReturnValue({ SheetNames: ['Sheet1'], Sheets: { Sheet1: {} } });
-    mockSheetToJson.mockReturnValue([
+    mockReadXlsxFile.mockResolvedValue([
       ['bilinmeyen_kolon'],
       ['veri'],
     ]);
@@ -260,8 +253,7 @@ describe('BulkImportView Bileşeni', () => {
   });
 
   it('Excel sayfası yoksa hata toast\'ı gösterilmeli', async () => {
-    mockRead.mockReturnValue({ SheetNames: [], Sheets: {} });
-    mockSheetToJson.mockReturnValue([]);
+    mockReadXlsxFile.mockResolvedValue([]);
 
     render(<BulkImportView onClose={vi.fn()} onBusyChange={vi.fn()} />);
 

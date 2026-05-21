@@ -112,5 +112,96 @@ test.describe('Puantaj İşlemleri', () => {
         await page.waitForTimeout(1000);
       }
     });
+
+    test('6b — Puantaj hücresine veri girilebilmeli ve kaydedilebilmeli', async ({ page }) => {
+      // 1. Sadece timesheets verisini mockla (periods ve diğer endpointleri bozma!)
+      // Hook response.data.timesheets bekliyor ve TimesheetListItem nested formatını kullanıyor
+      await page.route(url => url.pathname === '/api/timesheets', async route => {
+        if (route.request().method() === 'GET') {
+          await route.fulfill({
+            json: {
+              success: true,
+              data: {
+                timesheets: [
+                  {
+                    employee: {
+                      id: 'emp-1',
+                      tcNo: '12345678901',
+                      firstName: 'Mock',
+                      lastName: 'Employee',
+                      ibanNo: null,
+                      isActive: true,
+                      startDate: '2026-01-01',
+                      endDate: null,
+                    },
+                    unit: { id: 'unit-1', name: 'Test Birimi' },
+                    location: { id: 'loc-1', name: 'Test Yerleşkesi' },
+                    period: { isLocked: false }, // Kilitli değil!
+                    totalWorkDays: 0,
+                    timesheet: {
+                      id: 'ts-1',
+                      periodId: 'period-1',
+                      days: [], // Boş = henüz işaretleme yok
+                    },
+                  },
+                ],
+                pagination: { currentPage: 1, totalPages: 1, totalRecords: 1, limit: 10 },
+              },
+            },
+          });
+        } else {
+          await route.continue();
+        }
+      });
+
+      // Tablonun güncellenmesi için sayfayı yenile ve bekle
+      await page.reload();
+      await timesheetPage.waitForTable();
+
+      // ts-day-cell sınıfına sahip, disabled olmayan ilk butonu bul
+      const firstAvailableCell = page.locator('.ts-day-cell:not([disabled])').first();
+      
+      // Şartlı atlama kaldırıldı, direkt bekliyoruz.
+      await expect(firstAvailableCell).toBeVisible({ timeout: 5000 });
+      
+      // İlk hücreye sol tıkla (X koymalı)
+      await firstAvailableCell.click();
+      
+      // Hücrenin "ts-day-cell--dirty" classını veya "X" içeriğini doğrula
+      await expect(firstAvailableCell).toHaveClass(/ts-day-cell--dirty/);
+      await expect(firstAvailableCell.locator('.ts-day-cell__value')).toContainText('X');
+
+      // İkinci açık hücreye sağ tıkla (veya context menu aç)
+      const secondAvailableCell = page.locator('.ts-day-cell:not([disabled])').nth(1);
+      // İkinci gün de mock gereği aktif olacaktır. Bekliyoruz.
+      await expect(secondAvailableCell).toBeVisible();
+      await secondAvailableCell.click({ button: 'right' });
+      
+      // Tooltip açılmasını bekle
+      const tooltip = page.locator('.marker-tooltip');
+      await expect(tooltip).toBeVisible();
+      
+      // "Raporlu" (R) butonunu seç — hasText 'R' ile "RT" de eşleşiyor, data-label kullan
+      await tooltip.locator('button[data-label="Raporlu"]').click();
+      await expect(secondAvailableCell.locator('.ts-day-cell__value')).toContainText('R');
+
+      // Kaydet işlemini mockla
+      await page.route('**/api/timesheets', async route => {
+        if (route.request().method() === 'POST' || route.request().method() === 'PUT') {
+          await route.fulfill({ json: { success: true, message: 'Başarıyla kaydedildi.' } });
+        } else {
+          await route.continue();
+        }
+      });
+
+      // Kaydet butonuna tıkla
+      const saveButton = page.locator('button', { hasText: 'Değişiklikleri Kaydet' }).or(page.locator('button', { hasText: 'Kaydet' })).first();
+      await expect(saveButton).toBeVisible();
+      await expect(saveButton).toBeEnabled();
+      await saveButton.click();
+
+      // Başarı mesajını gör
+      await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
+    });
   });
 });

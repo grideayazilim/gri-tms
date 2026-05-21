@@ -1,6 +1,8 @@
 node_modules
 dist
 coverage
+coverage-unit
+.nyc_output
 .env
 .env.*
 !.env.example

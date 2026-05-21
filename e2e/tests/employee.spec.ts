@@ -108,42 +108,38 @@ test.describe('Personel İşlemleri', () => {
 
   test.describe('Personel düzenleme', () => {
     test('9 — Mevcut çalışan düzenlenebilmeli', async ({ page }) => {
-      // Tabloda en az bir satır olduğunu doğrula
-      const rowCount = await employeesPage.tableRows.count();
+      // Demo seed 1000 çalışan oluşturur; tablo boşsa altyapı sorunudur
+      await expect(employeesPage.tableRows.first()).toBeVisible({ timeout: 5_000 });
 
-      if (rowCount > 0) {
-        // İlk satırın düzenle butonuna tıkla
-        const firstRow = employeesPage.tableRows.first();
-        const editButton = firstRow.locator('.edit-btn');
-        await editButton.click();
+      // İlk satırın düzenle butonuna tıkla
+      const firstRow = employeesPage.tableRows.first();
+      const editButton = firstRow.locator('.edit-btn');
+      await editButton.click();
 
-        // Modal'ın açıldığını doğrula
-        await expect(employeesPage.modal).toBeVisible({ timeout: 3_000 });
+      // Modal'ın açıldığını doğrula
+      await expect(employeesPage.modal).toBeVisible({ timeout: 3_000 });
 
-        // Form alanlarının dolu olduğunu doğrula (mevcut veri yüklendi)
-        const tcValue = await employeesPage.tcNoInput.inputValue();
-        expect(tcValue.length).toBeGreaterThan(0);
+      // Form alanlarının dolu olduğunu doğrula (mevcut veri yüklendi)
+      const tcValue = await employeesPage.tcNoInput.inputValue();
+      expect(tcValue.length).toBeGreaterThan(0);
 
-        const firstNameValue = await employeesPage.firstNameInput.inputValue();
-        expect(firstNameValue.length).toBeGreaterThan(0);
+      const firstNameValue = await employeesPage.firstNameInput.inputValue();
+      expect(firstNameValue.length).toBeGreaterThan(0);
 
-        // Adı değiştir
-        const updatedFirstName = firstNameValue + ' (E2E)';
-        await employeesPage.firstNameInput.clear();
-        await employeesPage.firstNameInput.fill(updatedFirstName);
+      // Adı değiştir
+      const updatedFirstName = firstNameValue + ' (E2E)';
+      await employeesPage.firstNameInput.clear();
+      await employeesPage.firstNameInput.fill(updatedFirstName);
 
-        // Güncelle butonuna tıkla
-        await employeesPage.saveForm();
+      // Güncelle butonuna tıkla
+      await employeesPage.saveForm();
 
-        // Modal'ın kapandığını doğrula
-        await expect(employeesPage.modal).not.toBeVisible({ timeout: 5_000 });
+      // Modal'ın kapandığını doğrula
+      await expect(employeesPage.modal).not.toBeVisible({ timeout: 5_000 });
 
-        // Başarı mesajının göründüğünü doğrula
-        const toastMessage = page.locator('.toast').filter({ hasText: /başarıyla/i });
-        await expect(toastMessage).toBeVisible({ timeout: 5_000 });
-      } else {
-        test.skip(true, 'Tabloda çalışan verisi bulunamadı');
-      }
+      // Başarı mesajının göründüğünü doğrula
+      const toastMessage = page.locator('.toast').filter({ hasText: /başarıyla/i });
+      await expect(toastMessage).toBeVisible({ timeout: 5_000 });
     });
   });
 });

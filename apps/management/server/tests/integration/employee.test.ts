@@ -147,7 +147,7 @@ describe('Employee CRUD API', () => {
           ibanNo: 'TR' + faker.string.numeric(24),
         })
 
-      expect([409, 500]).toContain(res.status)
+      expect(res.status).toBe(409)
       expect(res.body.success).toBe(false)
     })
 

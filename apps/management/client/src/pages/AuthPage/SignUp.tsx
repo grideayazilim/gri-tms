@@ -31,8 +31,8 @@ function SignUp({ onToggle }: SignUpProps) {
       username: "",
       password: "",
       role: "ADMIN",
-      locationId: "",
-      unitId: "",
+      locationId: null,
+      unitId: null,
     },
   });
 
@@ -60,7 +60,7 @@ function SignUp({ onToggle }: SignUpProps) {
       fetchUnitsByLocation(locationId);
     } else {
       // Yerleşke seçimi temizlenirse birim seçimini de sıfırla
-      setValue("unitId", "");
+      setValue("unitId", null);
     }
   }, [locationId, fetchUnitsByLocation, setValue]);
 

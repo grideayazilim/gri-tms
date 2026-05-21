@@ -13,13 +13,13 @@ import { usePublicHolidays } from '../../hooks/data/usePublicHolidays';
 
 // --- MOCKLAR ---
 vi.mock('./TimesheetDaysColumn/TimesheetDaysColumn', () => ({
-  default: ({ onDayClick, periodDays }: { onDayClick: (d: string, m: string) => void, periodDays: string[] }) => (
+  default: ({ onDayClick, periodDays, row }: { onDayClick: (r: any, d: string, m: string) => void, periodDays: string[], row: any }) => (
     <div className="day-grid">
       {periodDays.map((date: string) => (
         <button 
           key={date} 
           className="ts-day-cell" 
-          onClick={() => onDayClick(date, 'X')}
+          onClick={() => onDayClick(row, date, 'X')}
         >
           {date.split('-')[2]}
         </button>

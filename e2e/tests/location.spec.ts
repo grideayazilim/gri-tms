@@ -40,37 +40,33 @@ test.describe('Yerleşke ve Birim İşlemleri', () => {
   });
 
   test('13b — Yerleşkeye birim eklenebilmeli', async ({ page }) => {
-    // Mevcut yerleşke düğümleri
     const locationNodes = page.locator('.location-node');
-    const locationCount = await locationNodes.count();
+    // Demo seed her zaman yerleşke oluşturur; yoksa test altyapı sorunudur
+    await expect(locationNodes.first()).toBeVisible({ timeout: 5_000 });
 
-    if (locationCount > 0) {
-      const firstLocation = locationNodes.first();
+    const firstLocation = locationNodes.first();
 
-      // Yerleşkeyi genişlet (toggle butonu)
-      const toggleButton = firstLocation.locator('.toggle-btn');
-      const isExpanded = await toggleButton.evaluate(el => el.classList.contains('is-expanded'));
-      if (!isExpanded) {
-        await toggleButton.click();
-        await page.waitForTimeout(300);
-      }
-
-      // "Yeni Birim Ekle" butonunu bul ve tıkla
-      const addUnitButton = firstLocation.locator('.add-unit-btn');
-      await expect(addUnitButton).toBeVisible();
-      await addUnitButton.click();
-
-      // Yeni eklenen birim input'unu bul ve doldur
-      const unitNodes = firstLocation.locator('.unit-node');
-      const lastUnit = unitNodes.last();
-      const unitNameInput = lastUnit.locator('input[type="text"]');
-      await unitNameInput.fill(TEST_UNIT.name);
-
-      // "Kaydet" butonunun görünür olduğunu doğrula
-      const saveButton = page.getByRole('button', { name: /Değişiklikleri Kaydet/i });
-      await expect(saveButton).toBeVisible({ timeout: 3_000 });
-    } else {
-      test.skip(true, 'Yerleşke verisi bulunamadı');
+    // Yerleşkeyi genişlet (toggle butonu)
+    const toggleButton = firstLocation.locator('.toggle-btn');
+    const isExpanded = await toggleButton.evaluate(el => el.classList.contains('is-expanded'));
+    if (!isExpanded) {
+      await toggleButton.click();
+      await page.waitForTimeout(300);
     }
+
+    // "Yeni Birim Ekle" butonunu bul ve tıkla
+    const addUnitButton = firstLocation.locator('.add-unit-btn');
+    await expect(addUnitButton).toBeVisible();
+    await addUnitButton.click();
+
+    // Yeni eklenen birim input'unu bul ve doldur
+    const unitNodes = firstLocation.locator('.unit-node');
+    const lastUnit = unitNodes.last();
+    const unitNameInput = lastUnit.locator('input[type="text"]');
+    await unitNameInput.fill(TEST_UNIT.name);
+
+    // "Kaydet" butonunun görünür olduğunu doğrula
+    const saveButton = page.getByRole('button', { name: /Değişiklikleri Kaydet/i });
+    await expect(saveButton).toBeVisible({ timeout: 3_000 });
   });
 });

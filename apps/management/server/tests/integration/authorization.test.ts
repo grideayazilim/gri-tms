@@ -65,23 +65,23 @@ describe('Authorization Tests', () => {
     })
 
     it('Token yenileme akışı → refresh token ile yeni access token alınır', async () => {
-      // Login yap
-      await request(app)
-        .post('/api/auth/register')
-        .send({ username: 'refreshflow', password: 'Test@1234', role: 'ADMIN' })
+      // ACTIVE kullanıcı yarat (register değil, direkt DB insert — PENDING'e takılmaz)
+      const user = await createAdminUser({ username: 'refreshflow', password: 'Test@1234' })
 
+      // Login yap — ACTIVE kullanıcı 200 + httpOnly cookie döner
       const loginRes = await request(app)
         .post('/api/auth/login')
-        .send({ username: 'refreshflow', password: 'Test@1234' })
+        .send({ username: user.username, password: user.password })
 
-      const cookies = loginRes.get('Set-Cookie') || [];
+      expect(loginRes.status).toBe(200)
+
+      const cookies = loginRes.get('Set-Cookie') || []
       const refreshRes = await request(app)
         .post('/api/auth/refresh')
-        .set('Cookie', Array.isArray(cookies) ? cookies.join(';') : '')
+        .set('Cookie', Array.isArray(cookies) ? cookies.join(';') : cookies)
 
-      expect([200, 401, 500]).toContain(refreshRes.status)
-      // Yeni cookie set edilmeli
-
+      expect(refreshRes.status).toBe(200)
+      expect(refreshRes.get('Set-Cookie')).toBeDefined()
     })
   })
 
@@ -179,6 +179,7 @@ describe('Authorization Tests', () => {
       for (let i = 0; i < 22; i++) {
         const res = await request(app)
           .post('/api/auth/login')
+          .set('x-test-rate-limit', 'true')
           .send({ username: `ratelimit_${i}`, password: 'wrong' })
         responses.push(res.status)
       }

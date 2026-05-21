@@ -105,8 +105,7 @@ describe('Auth API', () => {
         .post('/api/auth/register')
         .send({ username: 'duplicate', password: 'Test@5678', role: 'ADMIN' })
 
-      // DB constraint error (500 veya 409 dönebilir, backend mevcut durumda 500 dönüyor)
-      expect([409, 500]).toContain(res.status)
+      expect(res.status).toBe(409)
       expect(res.body.success).toBe(false)
     })
 

@@ -139,8 +139,7 @@ describe('Holiday API', () => {
         .get('/api/holidays?year=2100')
         .set('Cookie', admin.cookie)
 
-      // Schema sınır değerine göre 200 veya 400 kabul edilebilir
-      expect([200, 400, 500]).toContain(res.status)
+      expect([200, 400]).toContain(res.status)
     })
 
     it('GET /api/holidays → year=2024 → response body yapısı doğru', async () => {

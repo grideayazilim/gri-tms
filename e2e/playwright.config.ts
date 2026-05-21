@@ -87,4 +87,12 @@ export default defineConfig({
       dependencies: ['setup'],
     },
   ],
+
+  /* Geliştirici sunucusunu otomatik başlat */
+  webServer: {
+    command: 'npm run dev:coverage',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
 });

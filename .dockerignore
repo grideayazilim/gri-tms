@@ -8,3 +8,9 @@ node_modules
 !server/.env.test.example
 !server/.env.prod.example
 dist
+coverage/
+coverage-unit/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/

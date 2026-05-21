@@ -27,7 +27,7 @@ test.describe('Admin ve Yetki Kontrolleri', () => {
 
       // Admin kullanıcısının listede olduğunu doğrula
       const adminRow = await usersPage.findUser('admin');
-      await expect(adminRow).toBeVisible();
+      await expect(adminRow.first()).toBeVisible();
     });
 
     test('10b — Admin olarak kullanıcı filtrelemesi yapılabilmeli', async ({ page }) => {
@@ -50,6 +50,38 @@ test.describe('Admin ve Yetki Kontrolleri', () => {
         // Tablonun hala görünür olduğunu doğrula
         await expect(usersPage.table).toBeVisible();
       }
+    });
+
+    test('10c — Admin mevcut bir kullanıcıyı düzenleyebilmeli', async ({ page }) => {
+      const usersPage = new UsersPage(page);
+
+      // Kullanıcılar sayfasına git
+      await usersPage.goto();
+      await usersPage.waitForTable();
+
+      // İkinci satırdaki "Düzenle" butonuna tıkla (admin'i bozmamak için)
+      const secondRow = usersPage.tableRows.nth(1);
+      await secondRow.locator('.edit-btn').click();
+
+      // Modalın açıldığını doğrula
+      const modalTitle = page.locator('.modal__title, h3').filter({ hasText: 'Kullanıcıyı Düzenle' });
+      await expect(modalTitle).toBeVisible();
+
+      // Rolü değiştir (isDirty olması için mevcut rolün tersini seçelim)
+      const roleSelect = page.locator('#role');
+      const currentRole = await roleSelect.inputValue();
+      const newRole = currentRole === 'ADMIN' ? 'RESPONSIBLE' : 'ADMIN';
+      await roleSelect.selectOption(newRole);
+      
+      // Veya Geçerlilik Tarihi dolduralım
+      await page.locator('input[type="date"]').fill('2027-01-01');
+
+      // Güncelle butonuna tıkla
+      await page.locator('button', { hasText: 'Güncelle' }).click();
+
+      // Başarı mesajını bekle
+      await expect(page.locator('.toast--success')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('.modal-overlay')).not.toBeVisible();
     });
   });
 

@@ -6,9 +6,18 @@ function isRecordWithCode(err: unknown): err is { code: string } {
   return typeof err === 'object' && err !== null && 'code' in err;
 }
 
+function getPgCode(err: unknown): string | undefined {
+  if (isRecordWithCode(err)) return err.code;
+  // DrizzleQueryError wraps the original pg error in .cause
+  if (err instanceof Error && isRecordWithCode((err as { cause?: unknown }).cause)) {
+    return (err as { cause: { code: string } }).cause.code;
+  }
+  return undefined;
+}
+
 export const errorMiddleware = (err: unknown, req: Request, res: Response, _next: NextFunction): void => {
   // PostgreSQL Unique Violation (23505): çakışan kayıt → 409
-  if (isRecordWithCode(err) && err.code === '23505') {
+  if (getPgCode(err) === '23505') {
     res.status(409).json({ success: false, message: 'Bu kayıt zaten mevcut' });
     return;
   }

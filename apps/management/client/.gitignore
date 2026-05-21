@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 coverage
+coverage-unit
+.nyc_output
 dist
 dist-ssr
 *.local

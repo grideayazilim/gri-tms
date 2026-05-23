@@ -231,7 +231,8 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
         if (unitName && !unitId) throw new Error(`'${locationName}' yerleşkesinde '${unitName}' adında bir birim bulunamadı`);
         if (!unitId) throw new Error('Birim adı zorunludur');
 
-        const nameParts = fullName.trim().split(/\s+/);
+        // Çalışan adı her zaman büyük harfle kaydedilir (resmi belge gereği)
+        const nameParts = fullName.trim().toLocaleUpperCase('tr-TR').split(/\s+/);
         const lastName = nameParts.length > 1 ? nameParts.pop()! : '';
         const firstName = nameParts.join(' ');
 

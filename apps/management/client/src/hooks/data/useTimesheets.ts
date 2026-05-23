@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import type { MarkerCode, PaginationMeta, PeriodItem, Result, TimesheetListItem } from '@timesheet/shared';
 
 import { timesheetService } from '../../api';
-import { TURKISH_MONTHS } from '../../utils/dateUtils';
+import { TURKISH_MONTHS_UPPER } from '../../utils/dateUtils';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 
 // ─────────────────────────────────────────────────────────────────
@@ -60,7 +60,7 @@ export interface UseTimesheetsReturn {
 const mapPeriod = (p: PeriodItem): UIPeriod => ({
   id: p.id,
   value: `${p.year}-${String(p.month).padStart(2, '0')}`,
-  label: `${p.year} ${TURKISH_MONTHS[p.month - 1] ?? ''}`,
+  label: `${p.year} ${TURKISH_MONTHS_UPPER[p.month - 1] ?? ''}`,
   startDate: p.startDate,
   endDate: p.endDate,
   isLocked: p.isLocked,

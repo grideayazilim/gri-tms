@@ -9,8 +9,8 @@ export const employeeSchema = z.object({
         .string()
         .trim()
         .regex(/^\d{11}$/, 'TC No 11 haneli rakamlardan oluşmalıdır'),
-    firstName: z.string().trim().min(1, 'Ad zorunludur'),
-    lastName: z.string().trim().min(1, 'Soyad zorunludur'),
+    firstName: z.string().trim().min(1, 'Ad zorunludur').transform(v => v.toLocaleUpperCase('tr-TR')),
+    lastName: z.string().trim().min(1, 'Soyad zorunludur').transform(v => v.toLocaleUpperCase('tr-TR')),
     locationId: z.string().min(1, 'Yerleşke seçimi zorunludur'),
     unitId: z.string().min(1, 'Birim seçimi zorunludur'),
     startDate: z

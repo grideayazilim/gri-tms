@@ -13,7 +13,7 @@ import { downloadTimesheetExcel, downloadBotExcel } from "../../api/exportServic
 import { useToast } from "../../components/ToastBar/useToast";
 import "./LocationsPage.scss";
 
-import { TURKISH_MONTHS } from "../../utils/dateUtils";
+import { TURKISH_MONTHS_UPPER } from "../../utils/dateUtils";
 import { useOnClickOutside } from "../../hooks/ui/useOnClickOutside";
 import { useLocationSync } from "./useLocationSync";
 import type { LocationData } from "./useLocationSync";
@@ -248,7 +248,7 @@ function LocationsPage() {
                               >
                                 {periods.map((p) => (
                                   <option key={p.id} value={p.id}>
-                                    {TURKISH_MONTHS[p.month - 1]} {p.year}
+                                    {TURKISH_MONTHS_UPPER[p.month - 1]} {p.year}
                                   </option>
                                 ))}
                               </select>

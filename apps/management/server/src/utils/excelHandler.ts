@@ -87,7 +87,7 @@ export async function generateTimesheetExcel(options: TimesheetExcelOptions): Pr
   if (wsp) {
     wsp.cell('C3').value(year);
     wsp.cell('K3').value(new Date(year, month - 1, 1)).style('numberFormat', '[$-041F]MMMM');
-    wsp.cell('Q3').value(`${locationName} YERLEŞKESİ`);
+    wsp.cell('Q3').value(`${locationName.toLocaleUpperCase('tr-TR')} YERLEŞKESİ`);
     wsp.cell('C4').value(programNo || '');
 
     const startDate = parseLocalDate(periodStartDate);
@@ -120,14 +120,77 @@ export async function generateTimesheetExcel(options: TimesheetExcelOptions): Pr
     employees.forEach((emp, idx) => {
       const rowNum = idx + 2;
       wsi.cell(`A${rowNum}`).value(idx + 1);
-      wsi.cell(`B${rowNum}`).value(`${emp.firstName} ${emp.lastName}`);
+      // Ad, soyad ve birim adı Excel'de her zaman büyük harfli yazılır (resmi belge gereği)
+      wsi.cell(`B${rowNum}`).value(`${emp.firstName.toLocaleUpperCase('tr-TR')} ${emp.lastName.toLocaleUpperCase('tr-TR')}`);
       wsi.cell(`D${rowNum}`).value(emp.tcNo || '');
-      wsi.cell(`E${rowNum}`).value(emp.unitName || '');
+      wsi.cell(`E${rowNum}`).value((emp.unitName || '').toLocaleUpperCase('tr-TR'));
       wsi.cell(`F${rowNum}`).value(emp.ibanNo || '');
 
       if (emp.startDate) wsi.cell(`I${rowNum}`).value(formatDateTR(emp.startDate));
       if (emp.endDate) wsi.cell(`J${rowNum}`).value(formatDateTR(emp.endDate));
     });
+  }
+
+  // ── Boş satırları gizle + baskı alanını ayarla ───────────────────────────
+  //
+  // Her sheet'te template'de önceden hazırlanmış ~450 satır var.
+  // Gerçek öğrenci sayısı kadar satır doldurulunca geri kalanlar boş kalır.
+  // Bu satırları hidden=true yaparak yazdırma ve ekran görünümünden kaldırıyoruz.
+  // Footer satırları (HAZIRLAYAN/TOPLAM vb.) her zaman görünür kalır.
+  //
+  // Sheet yapısı (template'den tespit edildi):
+  //   Puantaj        → veri: 9..8+N,  gizle: 9+N..454,  footer: 455-459
+  //   MAAŞ BORDROSU  → veri: 4..3+N,  gizle: 4+N..452,  footer: 453-461
+  //   banka listesi  → veri: 3..2+N,  gizle: 3+N..392,  footer: 393-399
+  //   İşçi Bilgileri → veri: 2..1+N,  gizle: 2+N..670,  footer: yok
+
+  const n = employees.length;
+
+  type SheetHideConfig = {
+    sheetName: string;
+    hideFrom: number;  // gizlenecek ilk satır (dahil)
+    hideTo: number;    // gizlenecek son satır (dahil)
+    printArea: string; // footer dahil sabit ya da dinamik alan
+  };
+
+  const sheetConfigs: SheetHideConfig[] = [
+    {
+      sheetName: 'Puantaj',
+      hideFrom: 9 + n,
+      hideTo: 453,
+      printArea: 'A1:AK459',
+    },
+    {
+      sheetName: 'MAAŞ BORDROSU',
+      hideFrom: 4 + n,
+      hideTo: 452,
+      printArea: 'A1:V461',
+    },
+    {
+      sheetName: 'banka listesi son',
+      hideFrom: 3 + n,
+      hideTo: 392,
+      printArea: 'A1:G399',
+    },
+    {
+      sheetName: 'İşçi Bilgileri',
+      hideFrom: 2 + n,
+      hideTo: 670,
+      printArea: `A1:V${1 + n}`,
+    },
+  ];
+
+  for (const { sheetName, hideFrom, hideTo, printArea } of sheetConfigs) {
+    const ws = workbook.sheet(sheetName);
+    if (!ws) continue;
+
+    // Boş satır bloğunu gizle
+    for (let r = hideFrom; r <= hideTo; r++) {
+      ws.row(r).hidden(true);
+    }
+
+    // Baskı alanını ayarla (footer dahil)
+    workbook.scopedDefinedName(ws, 'Print_Area', ws.range(printArea));
   }
 
   return workbook.outputAsync() as Promise<Buffer>;
@@ -185,7 +248,7 @@ export async function generateBotExcel({ employees, daysMap, year, month }: BotE
     const dataRow = ws.addRow([
       emp.ibanNo || '',
       emp.tcNo || '',
-      `${emp.firstName} ${emp.lastName}`,
+      `${emp.firstName.toLocaleUpperCase('tr-TR')} ${emp.lastName.toLocaleUpperCase('tr-TR')}`,
       ...dayValues,
     ]);
 

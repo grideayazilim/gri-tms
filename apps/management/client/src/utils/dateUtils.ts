@@ -5,9 +5,9 @@
 import { format, parseISO, isValid } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
-import { TURKISH_MONTHS } from '@timesheet/shared';
+import { TURKISH_MONTHS, TURKISH_MONTHS_UPPER } from '@timesheet/shared';
 
-export { TURKISH_MONTHS };
+export { TURKISH_MONTHS, TURKISH_MONTHS_UPPER };
 
 // ─── Formatlama ───────────────────────────────────────────────────────────────
 

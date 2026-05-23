@@ -167,11 +167,12 @@ const BulkImportView = ({ onClose, onBusyChange }: BulkImportViewProps) => {
       for (let i = 1; i < rows.length; i++) {
         const row = rows[i];
         if (!row || !Array.isArray(row) || !row.some((cell) => cell !== null && cell !== '')) continue;
+        // Çalışan adı, yerleşke ve birim adları büyük harfle kaydedilir (resmi belge gereği)
         employeesData.push({
           tcNo: String(row[mapping.tcNo] ?? '').trim(),
-          fullName: String(row[mapping.fullName] ?? '').trim(),
-          locationName: String(row[mapping.locationName] ?? '').trim(),
-          unitName: mapping.unitName !== undefined ? String(row[mapping.unitName] ?? '').trim() || null : null,
+          fullName: String(row[mapping.fullName] ?? '').trim().toLocaleUpperCase('tr-TR'),
+          locationName: String(row[mapping.locationName] ?? '').trim().toLocaleUpperCase('tr-TR'),
+          unitName: mapping.unitName !== undefined ? String(row[mapping.unitName] ?? '').trim().toLocaleUpperCase('tr-TR') || null : null,
           ibanNo: mapping.ibanNo !== undefined ? String(row[mapping.ibanNo] ?? '').trim() || null : null,
           startDate: mapping.startDate !== undefined ? formatExcelDate(row[mapping.startDate]) : null,
           endDate: mapping.endDate !== undefined ? formatExcelDate(row[mapping.endDate]) : null,

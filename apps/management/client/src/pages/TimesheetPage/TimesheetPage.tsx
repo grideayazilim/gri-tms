@@ -134,6 +134,13 @@ const TimesheetPage = () => {
     },
   );
 
+  // Filtre değişince sayfayı 1'e sıfırla. React 18 batching sayesinde
+  // handleFilterChange + setPage(1) tek render'da birleşir → tek fetch.
+  const handleFilterChangeAndReset = useCallback((key: string, value: string) => {
+    handleFilterChange(key, value);
+    setPage(1);
+  }, [handleFilterChange]);
+
 
   // ── Resmi tatiller ──────────────────────────────────────────────────────
   const { isPublicHoliday, getHolidayName } = usePublicHolidays(filters.period || "");
@@ -194,27 +201,11 @@ const TimesheetPage = () => {
     }
   }, [filters.location, fetchUnitsByLocation, handleFilterChange]);
 
-  // apiParams değişince sayfayı 1'e sıfırla ve veriyi çek.
-  // İki ayrı effect yerine tek effect: eski yapıdaki setTimeout+setPage yaklaşımı
-  // "setPage → yeni render → ikinci fetch" döngüsüne yol açıyordu.
+  // Filtre (apiParams) veya sayfa değişince veriyi çek.
+  // handleFilterChangeAndReset ile filtre+page aynı render'da güncellenir →
+  // React 18 batching → tek effect çalışması → tek fetch, çift istek yok.
   useEffect(() => {
     if (!apiParams.month) return;
-    setPage(1);
-    fetchTimesheets({ ...apiParams, page: 1, limit: PAGE_LIMIT }).then((result) => {
-      if (result.success && result.data?.rows) {
-        setOriginalSnapshot(structuredClone(result.data.rows));
-        const locked =
-          result.data.rows[0]?.isLocked ??
-          periodsRef.current.find((p) => p.value === apiParams.month)?.isLocked ??
-          false;
-        setPeriodIsLocked(locked);
-      }
-    }).catch(() => {});
-  }, [fetchTimesheets, apiParams]);
-
-  // Sayfalama tıklaması: apiParams değişmeden sadece sayfa değişince çek.
-  useEffect(() => {
-    if (!apiParams.month || page === 1) return;
     fetchTimesheets({ ...apiParams, page, limit: PAGE_LIMIT }).then((result) => {
       if (result.success && result.data?.rows) {
         setOriginalSnapshot(structuredClone(result.data.rows));
@@ -225,9 +216,7 @@ const TimesheetPage = () => {
         setPeriodIsLocked(locked);
       }
     }).catch(() => {});
-  // page kasıtlı olarak bağımlılığa alındı; apiParams değişince üstteki effect halleder.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [fetchTimesheets, apiParams, page]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // HÜCRE TIKLAMA
@@ -483,7 +472,7 @@ const TimesheetPage = () => {
       <FilterBar
         config={filterConfig}
         filters={filters}
-        onFilterChange={handleFilterChange}
+        onFilterChange={handleFilterChangeAndReset}
       />
 
       {/* Dönem kilitleme — sadece ADMIN görür */}

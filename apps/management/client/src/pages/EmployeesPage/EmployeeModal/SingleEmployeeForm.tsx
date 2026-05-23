@@ -103,7 +103,11 @@ const SingleEmployeeForm = ({ employee, onClose, onSave }: SingleEmployeeFormPro
             id="firstName"
             className={`input ${errors.firstName ? 'input--error' : ''}`}
             placeholder=" "
-            {...register('firstName')}
+            {...register('firstName', {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                e.target.value = e.target.value.toLocaleUpperCase('tr-TR');
+              },
+            })}
           />
           <label htmlFor="firstName" className="floating-group__label">Ad</label>
           {errors.firstName && <span className="input-error-message">{errors.firstName.message}</span>}
@@ -114,7 +118,11 @@ const SingleEmployeeForm = ({ employee, onClose, onSave }: SingleEmployeeFormPro
             id="lastName"
             className={`input ${errors.lastName ? 'input--error' : ''}`}
             placeholder=" "
-            {...register('lastName')}
+            {...register('lastName', {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                e.target.value = e.target.value.toLocaleUpperCase('tr-TR');
+              },
+            })}
           />
           <label htmlFor="lastName" className="floating-group__label">Soyad</label>
           {errors.lastName && <span className="input-error-message">{errors.lastName.message}</span>}

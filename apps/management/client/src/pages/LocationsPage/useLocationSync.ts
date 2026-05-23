@@ -75,8 +75,10 @@ export function useLocationSync() {
   };
 
   const handleLocationChange = (id: number | string, field: keyof LocationData, value: string) => {
+    // Yerleşke adı her zaman büyük harfli kaydedilir (resmi belge gereği)
+    const normalizedValue = field === 'name' ? value.toLocaleUpperCase('tr-TR') : value;
     setLocations((prev) =>
-      prev.map((loc) => (loc.id === id ? { ...loc, [field]: value } : loc)),
+      prev.map((loc) => (loc.id === id ? { ...loc, [field]: normalizedValue } : loc)),
     );
   };
 
@@ -101,13 +103,15 @@ export function useLocationSync() {
   };
 
   const handleUnitChange = (locId: number | string, unitId: number | string, value: string) => {
+    // Birim adı her zaman büyük harfli kaydedilir (resmi belge gereği)
+    const upperValue = value.toLocaleUpperCase('tr-TR');
     setLocations((prev) =>
       prev.map((loc) => {
         if (loc.id !== locId) return loc;
         return {
           ...loc,
           units: loc.units.map((unit) =>
-            unit.id === unitId ? { ...unit, name: value } : unit,
+            unit.id === unitId ? { ...unit, name: upperValue } : unit,
           ),
         };
       }),

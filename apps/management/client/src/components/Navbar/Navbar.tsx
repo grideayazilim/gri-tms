@@ -53,6 +53,38 @@ function Navbar() {
   const isManagementRouteActive = !!activeManagementRoute;
 
   // ========== USEEFFECT KISMI
+  // Navbar hover/leave anında scroll-bar'ları geçici olarak kilitle.
+  // Sebep: hover sırasında navbar (ve dolayısıyla content area) animate olur;
+  // tarayıcı bu 400ms boyunca her frame'de layout hesabı yapar. Table-wrapper
+  // ve .app-content__main'de subpixel rounding kaynaklı scroll-x/scroll-y
+  // flicker oluşur. Transition penceresinde overflow:hidden uygulayarak
+  // scrollbar render'ını fiziksel olarak engelliyoruz.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const LOCK_MS = 450;
+
+    const lock = () => {
+      document.body.classList.add("scroll-lock");
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        document.body.classList.remove("scroll-lock");
+      }, LOCK_MS);
+    };
+
+    nav.addEventListener("mouseenter", lock);
+    nav.addEventListener("mouseleave", lock);
+
+    return () => {
+      nav.removeEventListener("mouseenter", lock);
+      nav.removeEventListener("mouseleave", lock);
+      if (timer) clearTimeout(timer);
+      document.body.classList.remove("scroll-lock");
+    };
+  }, []);
+
   // Indicator movement
   useEffect(() => {
     const nav = navRef.current;

@@ -15,3 +15,14 @@
   overflow-y: auto;
   overflow-x: hidden;
 }
+
+// Navbar hover / route change anında scroll-bar render'ını engelle.
+body.scroll-lock {
+  .app-content__main {
+    overflow: hidden !important;
+  }
+
+  .table-wrapper {
+    overflow: hidden !important;
+  }
+}

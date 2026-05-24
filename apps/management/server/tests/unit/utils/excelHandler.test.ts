@@ -14,8 +14,16 @@ const {
   const mockCellFn = vi.fn().mockReturnThis()
   const mockCell = { value: mockCellFn, style: vi.fn().mockReturnThis(), formula: vi.fn().mockReturnThis() }
   const mockSheetCell = vi.fn(() => mockCell)
-  const mockSheet = { cell: mockSheetCell, row: vi.fn(() => ({ cell: vi.fn(() => mockCell) })) }
-  const mockXlsxWorkbook = { sheet: vi.fn(() => mockSheet), outputAsync: mockOutputAsync }
+  const mockSheet = {
+    cell: mockSheetCell,
+    row: vi.fn(() => ({ cell: vi.fn(() => mockCell), hidden: vi.fn().mockReturnThis() })),
+    range: vi.fn(() => ({ address: vi.fn().mockReturnValue('A1:C1') })),
+  }
+  const mockXlsxWorkbook = {
+    sheet: vi.fn(() => mockSheet),
+    outputAsync: mockOutputAsync,
+    scopedDefinedName: vi.fn().mockReturnThis(),
+  }
   const MockXlsxPopulate = { fromFileAsync: vi.fn().mockResolvedValue(mockXlsxWorkbook) }
 
   const mockWriteBuffer = vi.fn().mockResolvedValue(Buffer.from('mock-bot-excel'))

@@ -11,15 +11,16 @@ export const userColumns = (
 ): Column<UserListItem>[] => [
   { header: 'Kullanıcı Adı', accessor: 'username', width: '150px' },
   {
-    header: 'Yerleşke',
-    width: '150px',
-    render: (row) => row.unit?.location?.name || '-',
-  },
-  {
-    header: 'Birim',
-    accessor: 'unit',
-    width: '150px',
-    render: (row) => row.unit?.name || '-',
+    header: 'Çalışma Yeri',
+    width: '220px',
+    render: (row) => {
+      const locationName = row.unit?.location?.name;
+      const unitName = row.unit?.name;
+      if (locationName && unitName) {
+        return `${locationName} / ${unitName}`;
+      }
+      return locationName || unitName || '-';
+    },
   },
   {
     header: 'Rol',

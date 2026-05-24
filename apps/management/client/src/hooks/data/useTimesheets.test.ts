@@ -123,7 +123,7 @@ describe('useTimesheets hook', () => {
       });
 
       expect(result.current.periods).toHaveLength(1);
-      expect(result.current.periods[0]?.label).toBe('2026 Mayıs');
+      expect(result.current.periods[0]?.label).toBe('2026 MAYIS');
     });
 
     it('dönem çekerken hata olursa çökmemeli (periods boş kalmalı)', async () => {

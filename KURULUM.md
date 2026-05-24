@@ -34,8 +34,12 @@ timesheet-management-system/
 │       ├── client/           #   React frontend (Vite, port 3005)
 │       └── server/           #   Express backend (port 3001)
 ├── docker/
-│   └── postgres/
-│       └── 01-init.sh        # DB ilk kurulum scripti (otomatik çalışır)
+│   ├── postgres/
+│   │   └── 01-init.sh        # DB ilk kurulum scripti (otomatik çalışır)
+│   └── backup/
+│       ├── backup.sh         # Otomatik yedekleme (cron ile çalışır)
+│       ├── restore.sh        # Yedekten geri yükleme (acil durum)
+│       └── list-backups.sh   # Mevcut yedekleri listele
 ├── nginx/
 │   └── nginx.conf            # Prod/test reverse proxy konfigürasyonu
 ├── docker-compose.yml        # DEV: Sadece PostgreSQL
@@ -390,13 +394,8 @@ Migration otomatik çalışacaktır — yeni bir migration varsa server başlark
 
 ### Veritabanı Yedeği Alma
 
-```bash
-# Yedek al
-docker compose -f <DOSYA> exec postgres pg_dump -U postgres timesheet_management_db > backup_$(date +%Y%m%d_%H%M%S).sql
-
-# Yedeği geri yükle (DİKKAT: mevcut veriyi siler!)
-docker compose -f <DOSYA> exec -T postgres psql -U postgres -d timesheet_management_db < backup_dosya.sql
-```
+Otomatik yedekleme için `docker/backup/` klasöründeki scriptleri kullan.  
+Detaylı yedekleme ve geri yükleme rehberi için **Bölüm 3**'e bak.
 
 ### Acil Durum: Her Şeyi Sıfırla
 
@@ -454,4 +453,146 @@ npm run db:migrate
 Server konteyneri henüz başlamamış olabilir. Logları kontrol et:
 ```bash
 docker compose -f docker-compose.prod.yml logs -f server
+```
+
+---
+
+# 💾 BÖLÜM 3: Otomatik Yedekleme ve Geri Yükleme
+
+> **Konsept:** Her gece otomatik yedek alınır, eski yedekler silinir (30 gün). Bir sorun olursa tek komutla geri dönülür.
+
+## Script'ler
+
+| Dosya | Açıklama |
+|---|---|
+| `docker/backup/backup.sh` | Yedek al (her gece cron ile çalışır) |
+| `docker/backup/restore.sh` | Yedekten geri yükle (acil durumda) |
+| `docker/backup/list-backups.sh` | Mevcut yedekleri listele |
+
+## Kurulum (Sunucuda Bir Kez)
+
+### 1. Script'lere çalıştırma izni ver
+
+```bash
+chmod +x docker/backup/backup.sh
+chmod +x docker/backup/restore.sh
+chmod +x docker/backup/list-backups.sh
+```
+
+### 2. Yedek klasörünü oluştur
+
+```bash
+sudo mkdir -p /var/backups/timesheet
+sudo chown $USER:$USER /var/backups/timesheet
+```
+
+### 3. Cron job'ı kur (her gece 03:00)
+
+```bash
+crontab -e
+```
+
+Açılan editöre şunu ekle (yolu kendi sunucuna göre ayarla):
+
+```
+0 3 * * * /home/ubuntu/timesheet-management-system/docker/backup/backup.sh >> /var/log/timesheet-backup.log 2>&1
+```
+
+### 4. Test et (hemen bir yedek al)
+
+```bash
+./docker/backup/backup.sh
+```
+
+Çıktıda şunu görmelisin:
+```
+[BACKUP 2026-05-24 03:00:00] Yedekleme başladı → /var/backups/timesheet/timesheet_2026-05-24_03-00.sql.gz
+[BACKUP 2026-05-24 03:00:01] Yedekleme başarılı. Boyut: 2.1 MB
+[BACKUP 2026-05-24 03:00:01] Toplam 1 backup mevcut.
+```
+
+---
+
+## Yedekleri Listeleme
+
+```bash
+./docker/backup/list-backups.sh
+```
+
+```
+════════════════════════════════════════════════════════
+  Mevcut Backuplar
+════════════════════════════════════════════════════════
+
+  Dosya Adı                                   Boyut   Tarih
+  ─────────────────────────────────────────   ──────  ───────────────────
+  timesheet_2026-05-24_03-00.sql.gz           2.1 MB  2026-05-24 03:00
+  timesheet_2026-05-23_03-00.sql.gz           2.0 MB  2026-05-23 03:00
+
+  Toplam: 2 backup, 4.1 MB disk alanı
+════════════════════════════════════════════════════════
+```
+
+---
+
+## ⚠️ Geri Yükleme (Disaster Recovery)
+
+> **DİKKAT:** Bu işlem mevcut veritabanını **tamamen silip** yedeği geri yükler. Geri dönüşü yoktur.
+
+### Adım 1: Mevcut yedekleri gör
+
+```bash
+./docker/backup/list-backups.sh
+```
+
+### Adım 2: İstediğin yedeği geri yükle
+
+```bash
+./docker/backup/restore.sh timesheet_2026-05-23_03-00.sql.gz
+```
+
+Script senden **"evet"** yazmanı isteyecek, sonra:
+1. Uygulama sunucusunu durdurur
+2. Veritabanını siler ve yeniden oluşturur
+3. Yedeği içe aktarır
+4. Uygulama sunucusunu yeniden başlatır
+
+```
+════════════════════════════════════════════════════════
+  ✅ Geri yükleme tamamlandı!
+  Geri yüklenen backup: timesheet_2026-05-23_03-00.sql.gz
+  Sistem tekrar kullanıma hazır.
+════════════════════════════════════════════════════════
+```
+
+---
+
+## Özelleştirme
+
+Script'lerin davranışını env variable ile değiştirebilirsin:
+
+```bash
+# Farklı klasöre yedekle
+BACKUP_DIR=/mnt/nas/backups ./docker/backup/backup.sh
+
+# Daha uzun süre sakla (60 gün)
+RETENTION_DAYS=60 ./docker/backup/backup.sh
+```
+
+Kalıcı değiştirmek için crontab satırına ekle:
+
+```
+0 3 * * * BACKUP_DIR=/mnt/nas/backups RETENTION_DAYS=60 /home/ubuntu/timesheet-management-system/docker/backup/backup.sh >> /var/log/timesheet-backup.log 2>&1
+```
+
+---
+
+## Cron Log İzleme
+
+```bash
+# Backup loglarını izle
+tail -f /var/log/timesheet-backup.log
+
+# Son backup başarılı mıydı?
+tail -5 /var/log/timesheet-backup.log
 ```

@@ -343,7 +343,7 @@ const runDemoSeed = async () => {
       INSERT INTO app.settings (id, daily_wage, max_weekly_days, program_start_date, program_end_date)
       VALUES (1, 1080.50, 3, ${startDate}, ${endDate})
       ON CONFLICT (id) DO UPDATE
-      SET program_start_date = ${startDate}, program_end_date = ${endDate};
+      SET program_start_date = ${startDate}, program_end_date = ${endDate}, max_weekly_days = 3;
     `);
 
     // ── 5. Program tarihlerine göre periyodları oluştur ──────────────────────

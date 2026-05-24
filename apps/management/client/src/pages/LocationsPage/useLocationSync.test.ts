@@ -108,7 +108,7 @@ describe('useLocationSync hook', () => {
       result.current.handleLocationChange(1, 'name', 'Yeni İsim');
     });
 
-    expect(result.current.locations[0]!.name).toBe('Yeni İsim');
+    expect(result.current.locations[0]!.name).toBe('YENİ İSİM');
   });
 
   it('handleLocationChange programNo\'yu güncellemeli', async () => {
@@ -181,7 +181,7 @@ describe('useLocationSync hook', () => {
 
     act(() => { result.current.handleUnitChange(1, 10, 'Yeni Birim Adı'); });
 
-    expect(result.current.locations[0]!.units[0]!.name).toBe('Yeni Birim Adı');
+    expect(result.current.locations[0]!.units[0]!.name).toBe('YENİ BİRİM ADI');
   });
 
   it('removeUnit (mevcut) silinmiş olarak işaretlenmeli', async () => {

@@ -20,7 +20,7 @@ describe('locationSchema', () => {
   it('ad trim edilir', () => {
     const result = locationSchema.safeParse({ name: '  Merkez  ', programNo: 'MRZ001' })
     expect(result.success).toBe(true)
-    if (result.success) expect(result.data.name).toBe('Merkez')
+    if (result.success) expect(result.data.name).toBe('MERKEZ')
   })
 
   it('eksik alanlar ile reddeder', () => {
@@ -48,7 +48,7 @@ describe('unitSchema', () => {
   it('birim adı trim edilir', () => {
     const result = unitSchema.safeParse({ locationId: 'loc-1', name: '  Bilgi İşlem  ' })
     expect(result.success).toBe(true)
-    if (result.success) expect(result.data.name).toBe('Bilgi İşlem')
+    if (result.success) expect(result.data.name).toBe('BİLGİ İŞLEM')
   })
 })
 

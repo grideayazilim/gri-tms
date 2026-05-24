@@ -19,12 +19,15 @@ export const employeeColumns = (
         render: (row) => `${row.firstName} ${row.lastName}`,
     },
     {
-        header: 'Yerleşke',
-        render: (row) => row.unit?.location?.name || '-',
-    },
-    {
-        header: 'Birim',
-        render: (row) => row.unit?.name || '-',
+        header: 'Çalışma Yeri',
+        render: (row) => {
+            const locationName = row.unit?.location?.name;
+            const unitName = row.unit?.name;
+            if (locationName && unitName) {
+                return `${locationName} / ${unitName}`;
+            }
+            return locationName || unitName || '-';
+        },
     },
     {
         header: 'IBAN',

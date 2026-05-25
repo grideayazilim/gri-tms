@@ -67,6 +67,10 @@ function Navbar() {
     const LOCK_MS = 450;
 
     const lock = () => {
+      // Sadece sayfada tablo (table-wrapper) varsa scroll kilitlenecek
+      const hasTable = document.querySelector(".table-wrapper");
+      if (!hasTable) return;
+
       document.body.classList.add("scroll-lock");
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {

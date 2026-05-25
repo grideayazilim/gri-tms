@@ -12,11 +12,11 @@ import ProtectedRoute from './ProtectedRoute';
   - adminOnly route + admin → children render edilmeli
 */
 
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../../context/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 const mockUseAuth = vi.mocked(useAuth);
 

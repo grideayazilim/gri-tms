@@ -1,0 +1,37 @@
+// ─── Aksiyon butonları (edit / delete) ────────────────────────────────────────
+// columns tsx'lerindeki düzenle/sil buton çiftleri için.
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.action-btn {
+  padding: 8px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+
+  &.edit-btn {
+    background-color: #e6f5ff;
+    color: #0369a1;
+
+    &:hover {
+      background-color: #e0f2fe;
+    }
+  }
+
+  &.delete-btn {
+    background-color: #fef2f2;
+    color: #b91c1c;
+
+    &:hover {
+      background-color: #fee2e2;
+    }
+  }
+}

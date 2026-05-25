@@ -1,0 +1,26 @@
+// ─── IbanCell ─────────────────────────────────────────────────────────────────
+
+.iban-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iban-cell__copy-btn {
+  padding: 6px;
+  border-radius: 5px;
+  border: 1px solid var(--border-color-strong);
+  background-color: var(--surface-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  line-height: 1;
+
+  &:hover {
+    background-color: var(--surface-alt);
+    color: var(--text-dark);
+  }
+}

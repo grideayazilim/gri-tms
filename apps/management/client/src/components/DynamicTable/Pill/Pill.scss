@@ -1,0 +1,11 @@
+// ─── Pill (durum etiketi) ──────────────────────────────────────────────────────
+// bg ve color prop'ları ile dinamik renk, geri kalan stiller burada.
+
+.pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}

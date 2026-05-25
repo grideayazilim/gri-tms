@@ -37,3 +37,9 @@ img {
   max-width: 100%;
   display: block;
 }
+
+// ─── Utility sınıfları ────────────────────────────────────────────────────────
+
+.cell-value--empty {
+  color: var(--text-muted);
+}

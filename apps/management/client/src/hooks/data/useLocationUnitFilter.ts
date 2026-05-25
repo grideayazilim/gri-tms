@@ -38,10 +38,9 @@ export function useLocationUnitFilter(
   }, [fetchLocations]);
 
   useEffect(() => {
+    handleFilterChange('unitId', '');
     if (locationIdFilter) {
       void fetchUnitsByLocation(locationIdFilter);
-    } else {
-      handleFilterChange('unitId', '');
     }
   }, [locationIdFilter, fetchUnitsByLocation, handleFilterChange]);
 

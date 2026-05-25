@@ -8,7 +8,7 @@ import { api } from './httpClient';
 
 // ─── Servis ───────────────────────────────────────────────────────────────────
 
-export const getAnnouncements = (page = 1, limit = 20) =>
+export const getAnnouncements = (page = 1, limit = 100) =>
   api.get<ApiResponse<{ announcements: AnnouncementItem[]; pagination: PaginationMeta }>>(
     '/announcements',
     { params: { page, limit } },

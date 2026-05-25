@@ -2,7 +2,7 @@
    TIMESHEET COLUMNS (PUANTAJ TABLO SÜTUNLARI)
    DataTable bileşenine verilecek olan sütun tanımlamaları.
    ======================================================================== */
-import TimesheetDaysColumn from "./TimesheetDaysColumn/TimesheetDaysColumn";
+import TimesheetDaysColumn from "../../components/DynamicTable/TimesheetDaysColumn/TimesheetDaysColumn";
 import type { Column } from "../../components/DynamicTable/DynamicTable";
 import type { MarkerCode, TimesheetUIRow } from "../../hooks/data/useTimesheets";
 
@@ -17,7 +17,7 @@ export const timesheetColumns = (
     { header: "TC No", accessor: "tc", width: "120px" },
     { header: "Ad Soyad", accessor: "name", width: "150px" },
     {
-      header: <div style={{ textAlign: "center" }}>Çalışma Günleri</div>,
+      header: <div className="ts-col-center">Çalışma Günleri</div>,
       render: (row: TimesheetUIRow) => {
         const originalRow = originalSnapshot.get(row.id);
         return (
@@ -37,8 +37,7 @@ export const timesheetColumns = (
       header: "Toplam",
       width: "60px",
       render: (row: TimesheetUIRow) => (
-        <div style={{ textAlign: "center" }}>{row.workDaysCount}</div>
+        <div className="ts-col-center">{row.workDaysCount}</div>
       ),
     },
   ];
-

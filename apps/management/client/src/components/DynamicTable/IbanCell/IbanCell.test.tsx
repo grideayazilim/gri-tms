@@ -12,7 +12,7 @@ describe('IbanCell Bileşeni', () => {
         writeText: vi.fn().mockResolvedValue(undefined),
       },
     });
-    
+
     // getBoundingClientRect mock'laması (Tooltip konumu için)
     Element.prototype.getBoundingClientRect = vi.fn(() => ({
       width: 100,
@@ -27,18 +27,18 @@ describe('IbanCell Bileşeni', () => {
     }));
   });
 
-  it('IBAN numarasını maskeleyerek render etmeli (ilk 6 karakter + ...)', () => {
+  it('IBAN numarasını maskeleyerek render etmeli (ilk 14 karakter + ...)', () => {
     render(<IbanCell iban={mockIban} />);
-    
-    // TR1234... şeklinde görünmeli
-    expect(screen.getByText('TR1234...')).toBeInTheDocument();
+
+    // TR12345678901... şeklinde görünmeli
+    expect(screen.getByText(`${mockIban.slice(0, 14)}...`)).toBeInTheDocument();
   });
 
   it('fare butona geldiğinde tam IBAN tooltip içinde görünmeli', async () => {
     render(<IbanCell iban={mockIban} />);
-    
+
     const copyBtn = screen.getByRole('button');
-    
+
     fireEvent.mouseEnter(copyBtn);
 
     // Tooltip içindeki tam IBAN'ı kontrol et
@@ -47,14 +47,14 @@ describe('IbanCell Bileşeni', () => {
 
   it('butona tıklandığında panoya kopyalamalı ve mesajı değiştirmeli', async () => {
     vi.useFakeTimers(); // setTimeout'ları kontrol etmek için
-    
+
     render(<IbanCell iban={mockIban} />);
-    
+
     const copyBtn = screen.getByRole('button');
-    
+
     // Önce tooltip'i aç (mesajın değiştiğini görmek için)
     fireEvent.mouseEnter(copyBtn);
-    
+
     // Tıkla
     fireEvent.click(copyBtn);
 
@@ -70,7 +70,7 @@ describe('IbanCell Bileşeni', () => {
     });
 
     expect(screen.getByText(mockIban)).toBeInTheDocument();
-    
+
     vi.useRealTimers();
   });
 });

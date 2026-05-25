@@ -7,11 +7,11 @@ Bu belge projeyi sıfırdan ayağa kaldırmak için gereken **her adımı** içe
 
 ## Ön Gereksinimler (Herkeste Olması Gerekenler)
 
-| Araç        | Minimum Versiyon | Kurulum                                                                                                                  |
-| ----------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **Node.js** | v22+             | [nodejs.org](https://nodejs.org) veya `brew install node`                                                                |
-| **Docker**  | v24+             | [Docker Desktop](https://docker.com/products/docker-desktop/) veya [OrbStack](https://orbstack.dev/) (Mac için önerilir) |
-| **Git**     | herhangi         | `brew install git`                                                                                                       |
+| Araç        | Min. Versiyon | macOS                                            | Linux                                 | Windows                                      |
+| ----------- | ------------- | ------------------------------------------------ | ------------------------------------- | -------------------------------------------- |
+| **Node.js** | v22+          | `brew install node` veya [nodejs.org](https://nodejs.org) | `nvm install 22` veya [nodejs.org](https://nodejs.org) | [nodejs.org](https://nodejs.org) veya `winget install OpenJS.NodeJS.LTS` |
+| **Docker**  | v24+          | [Docker Desktop](https://docker.com/products/docker-desktop/) veya [OrbStack](https://orbstack.dev/) | `sudo apt install docker.io docker-compose-plugin` | [Docker Desktop](https://docker.com/products/docker-desktop/) (**WSL 2 backend önerilir**) |
+| **Git + Git Bash** | herhangi | `brew install git`                          | `sudo apt install git`                | [git-scm.com](https://git-scm.com) — kurulum sırasında **"Git Bash"** seçeneğini işaretli bırak |
 
 > **Not:** Bilgisayarınıza PostgreSQL kurmanıza **GEREK YOKTUR**. Veritabanı Docker'da çalışır.
 
@@ -37,9 +37,9 @@ timesheet-management-system/
 │   ├── postgres/
 │   │   └── 01-init.sh        # DB ilk kurulum scripti (otomatik çalışır)
 │   └── backup/
-│       ├── backup.sh         # Otomatik yedekleme (cron ile çalışır)
-│       ├── restore.sh        # Yedekten geri yükleme (acil durum)
-│       └── list-backups.sh   # Mevcut yedekleri listele
+│       ├── backup.sh         # Otomatik yedekleme (macOS, Linux, Git Bash)
+│       ├── restore.sh        # Yedekten geri yükleme (macOS, Linux, Git Bash)
+│       └── list-backups.sh   # Mevcut yedekleri listele (macOS, Linux, Git Bash)
 ├── nginx/
 │   └── nginx.conf            # Prod/test reverse proxy konfigürasyonu
 ├── docker-compose.yml        # DEV: Sadece PostgreSQL
@@ -68,10 +68,23 @@ npm install
 
 Bu komut tüm workspace'lerdeki (`management/client`, `management/server`, `management/shared`, `bot/client`, `bot/server`) bağımlılıkları otomatik kurar.
 
+> **Windows Notu:** Tüm `npm run` komutları Windows'ta da aynı şekilde çalışır (cmd.exe veya PowerShell). Ekstra bir shell kurmana gerek yok.
+
 ## Adım 3: Ortam Değişkenlerini Ayarla
 
+**macOS / Linux:**
 ```bash
 cp apps/management/server/.env.example apps/management/server/.env
+```
+
+**Windows (Command Prompt):**
+```cmd
+copy apps\management\server\.env.example apps\management\server\.env
+```
+
+**Windows (PowerShell):**
+```powershell
+Copy-Item apps\management\server\.env.example apps\management\server\.env
 ```
 
 `.env` dosyası hazır varsayılan değerlerle gelir — **hiçbir şeyi değiştirmeden kullanabilirsin.** İstersen şifreleri değiştirebilirsin ama değiştirmesen de çalışır.
@@ -246,14 +259,25 @@ cd timesheet-management-system
 
 ### Adım 2: Ortam Değişkenlerini Ayarla
 
+**macOS / Linux:**
 ```bash
 cp apps/management/server/.env.prod.example apps/management/server/.env.prod
+```
+
+**Windows (PowerShell):**
+```powershell
+Copy-Item apps\management\server\.env.prod.example apps\management\server\.env.prod
 ```
 
 **`.env.prod` dosyasını aç ve TÜM şifreleri güçlü şifrelerle değiştir:**
 
 ```bash
+# macOS / Linux:
 nano apps/management/server/.env.prod
+
+# Windows — herhangi bir metin editörüyle aç (VS Code, Notepad++ vb.):
+# code apps\management\server\.env.prod
+# notepad apps\management\server\.env.prod
 ```
 
 Değiştirilmesi **ZORUNLU** olan satırlar:
@@ -314,10 +338,16 @@ Test ortamı production ile neredeyse aynı, sadece farklı env dosyası ve comp
 
 ### Adım 1: Ortam Değişkenlerini Ayarla
 
+**macOS / Linux:**
 ```bash
 cp apps/management/server/.env.test.example apps/management/server/.env.test
-nano apps/management/server/.env.test
-# Şifreleri güncelle (prod ile aynı mantık)
+nano apps/management/server/.env.test   # Şifreleri güncelle (prod ile aynı mantık)
+```
+
+**Windows (PowerShell):**
+```powershell
+Copy-Item apps\management\server\.env.test.example apps\management\server\.env.test
+notepad apps\management\server\.env.test   # veya: code apps\management\server\.env.test
 ```
 
 ### Adım 2: Deploy Et
@@ -425,8 +455,23 @@ docker compose -f <DOSYA> exec server node dist/database/seeder.js
 ### "Port 5432 zaten kullanılıyor"
 Bilgisayarında yerel PostgreSQL yüklü olabilir. Kapat veya kaldır:
 ```bash
-# macOS'ta brew ile kurulmuşsa
+# macOS'ta brew ile kurulmuşsa:
 brew services stop postgresql
+
+# Linux'ta systemd ile:
+sudo systemctl stop postgresql
+
+# Windows'ta (PowerShell — Yönetici olarak):
+Stop-Service -Name postgresql*
+```
+
+Hangi sürecin portu kullandığını görmek için:
+```bash
+# macOS / Linux:
+lsof -i :5432
+
+# Windows (PowerShell):
+netstat -ano | findstr :5432
 ```
 
 ### "Docker compose up çalışmıyor"
@@ -469,6 +514,8 @@ docker compose -f docker-compose.prod.yml logs -f server
 | `docker/backup/restore.sh` | Yedekten geri yükle (acil durumda) |
 | `docker/backup/list-backups.sh` | Mevcut yedekleri listele |
 
+> **Windows Notu:** Bu `.sh` scriptleri macOS, Linux ve **Git Bash** (Windows) üzerinde çalışır. Git Bash, Git for Windows ile birlikte gelir — Git kuruluysa zaten mevcuttur. Komutları Git Bash terminalinde çalıştır, Windows CMD veya PowerShell'de çalışmaz.
+
 ## Kurulum (Sunucuda Bir Kez)
 
 ### 1. Script'lere çalıştırma izni ver
@@ -482,12 +529,17 @@ chmod +x docker/backup/list-backups.sh
 ### 2. Yedek klasörünü oluştur
 
 ```bash
+# macOS / Linux:
 sudo mkdir -p /var/backups/timesheet
 sudo chown $USER:$USER /var/backups/timesheet
+
+# Windows (Git Bash) — kullanıcı dizininde oluştur:
+mkdir -p ~/timesheet-backups
 ```
 
 ### 3. Cron job'ı kur (her gece 03:00)
 
+**macOS / Linux:**
 ```bash
 crontab -e
 ```
@@ -498,17 +550,15 @@ Açılan editöre şunu ekle (yolu kendi sunucuna göre ayarla):
 0 3 * * * /home/ubuntu/timesheet-management-system/docker/backup/backup.sh >> /var/log/timesheet-backup.log 2>&1
 ```
 
+**Windows (Git Bash):** Windows Görev Zamanlayıcı'yı (Task Scheduler) kullan:
+- Eylem: `"C:\Program Files\Git\bin\bash.exe"` 
+- Argüman: `-c "/c/yol/docker/backup/backup.sh >> ~/timesheet-backups/backup.log 2>&1"`
+- Tetikleyici: Her gece 03:00
+
 ### 4. Test et (hemen bir yedek al)
 
 ```bash
 ./docker/backup/backup.sh
-```
-
-Çıktıda şunu görmelisin:
-```
-[BACKUP 2026-05-24 03:00:00] Yedekleme başladı → /var/backups/timesheet/timesheet_2026-05-24_03-00.sql.gz
-[BACKUP 2026-05-24 03:00:01] Yedekleme başarılı. Boyut: 2.1 MB
-[BACKUP 2026-05-24 03:00:01] Toplam 1 backup mevcut.
 ```
 
 ---
@@ -575,6 +625,9 @@ Script'lerin davranışını env variable ile değiştirebilirsin:
 # Farklı klasöre yedekle
 BACKUP_DIR=/mnt/nas/backups ./docker/backup/backup.sh
 
+# Windows (Git Bash) — farklı klasör:
+BACKUP_DIR=~/nas-backups ./docker/backup/backup.sh
+
 # Daha uzun süre sakla (60 gün)
 RETENTION_DAYS=60 ./docker/backup/backup.sh
 ```
@@ -587,7 +640,7 @@ Kalıcı değiştirmek için crontab satırına ekle:
 
 ---
 
-## Cron Log İzleme
+## Log İzleme
 
 ```bash
 # Backup loglarını izle

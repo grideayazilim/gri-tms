@@ -12,8 +12,9 @@ import { useLocationUnitFilter } from '../../hooks/data/useLocationUnitFilter';
 import { useToast } from '../../components/ToastBar/useToast';
 import '../../styles/inputs.scss';
 import type { EmployeeType } from '@timesheet/shared';
+import { DEFAULT_PAGINATION } from '../../constants/pagination';
 
-const PAGE_LIMIT = 10;
+const PAGE_LIMIT = DEFAULT_PAGINATION.limit;
 
 const EmployeesPage = () => {
   const {

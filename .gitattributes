@@ -1,2 +1,43 @@
-# Bütün .sh uzantılı scriptlerin her zaman LF (Unix) satır sonu ile inmesini zorunlu kıl
+# =============================================================================
+# .gitattributes — Satır Sonu (Line Ending) Politikası
+#
+# Windows'ta git'in core.autocrlf=true ayarıyla CRLF'e çevirmesini engeller.
+# Docker container'larına kopyalanan her dosya LF ile gitmeli; aksi halde
+# shell script ve nginx config dosyaları Linux'ta çalışmaz.
+# =============================================================================
+
+# ── Varsayılan: tüm metin dosyaları LF (Unix) satır sonu ─────────────────────
+* text=auto eol=lf
+
+# ── Shell scriptler — kesinlikle LF olmalı ───────────────────────────────────
 *.sh text eol=lf
+
+# ── Nginx / Docker config dosyaları — Docker image içinde LF gerekli ─────────
+*.conf text eol=lf
+Dockerfile text eol=lf
+.dockerignore text eol=lf
+docker-compose*.yml text eol=lf
+
+# ── Kaynak kodlar ─────────────────────────────────────────────────────────────
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.scss text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.env text eol=lf
+*.env.* text eol=lf
+*.sql text eol=lf
+
+# ── Binary dosyalar — satır sonu dönüşümüne dokunma ──────────────────────────
+*.xlsm binary
+*.xlsx binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary

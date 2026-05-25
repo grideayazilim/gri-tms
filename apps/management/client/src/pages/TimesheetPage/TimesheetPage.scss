@@ -18,6 +18,7 @@
     color: var(--text-muted);
     font-size: 28px;
     position: relative;
+    overflow: visible;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -94,7 +95,8 @@
 .unread-tooltip {
   position: absolute;
   top: calc(100% + 8px);
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
   background-color: var(--surface-color);
   border: 1px solid var(--border-color-strong);
   border-radius: var(--radius-md);
@@ -104,16 +106,21 @@
   font-weight: 600;
   color: var(--text-dark);
   white-space: nowrap;
-  animation: tooltip-fade-in 0.3s ease;
+  animation: tooltip-fade-in 0.3s ease forwards;
   pointer-events: none;
   z-index: 100;
 
-  // Üstteki ok işareti
+  &--closing {
+    animation: tooltip-fade-out 0.25s ease forwards;
+  }
+
+  // Üstteki ok işareti — zil ikonunun tam ortasında
   &::before {
     content: "";
     position: absolute;
     top: -6px;
-    right: 14px;
+    left: 50%;
+    margin-left: -5px;
     width: 10px;
     height: 10px;
     background-color: var(--surface-color);
@@ -126,12 +133,24 @@
 @keyframes tooltip-fade-in {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: translateX(-50%) translateY(-4px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes tooltip-fade-out {
+  from {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
   }
 }
 
@@ -158,6 +177,21 @@
       cursor: pointer;
     }
   }
+}
+
+// ─── Sütun orta hizalama (timesheetColumns) ──────────────────────────────────
+.ts-col-center {
+  text-align: center;
+}
+
+// ─── Hata mesajı ─────────────────────────────────────────────────────────────
+.ts-error {
+  color: #dc2626;
+  font-size: 13px;
+  padding: 8px 12px;
+  background: rgba(239, 68, 68, 0.08);
+  border-radius: 6px;
+  margin-bottom: 8px;
 }
 
 @media (max-width: $bp-sm) {

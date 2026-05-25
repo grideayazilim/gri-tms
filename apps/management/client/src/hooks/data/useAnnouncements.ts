@@ -37,7 +37,7 @@ export const useAnnouncements = (): UseAnnouncementsReturn => {
     }
   }, []);
 
-  const fetchAnnouncements = useCallback((page = 1, limit = 20) => run(async () => {
+  const fetchAnnouncements = useCallback((page = 1, limit = 100) => run(async () => {
     const response = await announcementService.getAnnouncements(page, limit);
     if (response.success && response.data) {
       setAnnouncements(response.data.announcements || []);

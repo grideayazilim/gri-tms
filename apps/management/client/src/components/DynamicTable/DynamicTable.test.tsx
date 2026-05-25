@@ -32,14 +32,14 @@ const mockData: TestRow[] = [
 ];
 
 describe('DynamicTable bileşeni', () => {
-  it('loading prop u verildiğinde "Yükleniyor..." mesajı göstermeli', () => {
+  it('loading prop u verildiğinde "Yükleniyor..." mesajı göstermeli ve tablo gövdesinde render edilmeli', () => {
     render(
       <DynamicTable columns={mockColumns} data={[]} loading={true} />
     );
 
     expect(screen.getByText('Yükleniyor...')).toBeInTheDocument();
-    // Tablo render edilmemeli
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    // Tablo yapısı görünür kalmalı
+    expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
   it('data geldiğinde kolon başlıklarını (header) render etmeli', () => {
@@ -52,36 +52,37 @@ describe('DynamicTable bileşeni', () => {
     expect(screen.getByText('Aksiyon')).toBeInTheDocument();
   });
 
-  it('data geldiğinde satırları doğru render etmeli', () => {
+  it('data geldiğinde satırları doğru render etmeli', async () => {
     render(
       <DynamicTable columns={mockColumns} data={mockData} />
     );
 
-    expect(screen.getByText('Mustafa Bulut')).toBeInTheDocument();
+    // Gecikmeli render'ı bekliyoruz
+    expect(await screen.findByText('Mustafa Bulut')).toBeInTheDocument();
     expect(screen.getByText('Admin')).toBeInTheDocument();
     expect(screen.getByText('Enes Yıldız')).toBeInTheDocument();
     expect(screen.getByText('Yönetici')).toBeInTheDocument();
   });
 
-  it('render fonksiyonu olan kolonda özel içerik render edilmeli', () => {
+  it('render fonksiyonu olan kolonda özel içerik render edilmeli', async () => {
     render(
       <DynamicTable columns={mockColumns} data={mockData} />
     );
 
-    // render: (row) => <button>Düzenle: {row.name}</button> kontrolü
-    expect(screen.getByText('Düzenle: Mustafa Bulut')).toBeInTheDocument();
+    // Gecikmeli render'ı bekliyoruz
+    expect(await screen.findByText('Düzenle: Mustafa Bulut')).toBeInTheDocument();
     expect(screen.getByText('Düzenle: Enes Yıldız')).toBeInTheDocument();
   });
 
-  it('data boş geldiğinde "Veri bulunamadı." mesajı göstermeli', () => {
+  it('data boş geldiğinde "Veri bulunamadı." mesajı göstermeli', async () => {
     render(
       <DynamicTable columns={mockColumns} data={[]} />
     );
 
-    expect(screen.getByText('Veri bulunamadı.')).toBeInTheDocument();
+    expect(await screen.findByText('Veri bulunamadı.')).toBeInTheDocument();
   });
 
-  it('pagination ve onPageChange verildiğinde kayıt bilgisi ve butonlar render edilmeli', () => {
+  it('pagination ve onPageChange verildiğinde kayıt bilgisi ve butonlar render edilmeli', async () => {
     const onPageChange = vi.fn();
 
     render(
@@ -92,6 +93,9 @@ describe('DynamicTable bileşeni', () => {
         onPageChange={onPageChange}
       />
     );
+
+    // Gecikmeli render'ı bekliyoruz
+    await screen.findByText('Mustafa Bulut');
 
     // Kayıt sayısı göstergesi: "1–10 / 25"
     expect(screen.getByText('1–10 / 25')).toBeInTheDocument();
@@ -102,7 +106,7 @@ describe('DynamicTable bileşeni', () => {
     expect(nextBtn).not.toBeDisabled();
   });
 
-  it('ilk sayfada geri butonu disabled olmalı', () => {
+  it('ilk sayfada geri butonu disabled olmalı', async () => {
     const onPageChange = vi.fn();
 
     render(
@@ -114,12 +118,15 @@ describe('DynamicTable bileşeni', () => {
       />
     );
 
+    // Gecikmeli render'ı bekliyoruz
+    await screen.findByText('Mustafa Bulut');
+
     const buttons = screen.getAllByRole('button');
     const prevBtn = buttons.find(b => b.textContent === '<');
     expect(prevBtn).toBeDisabled();
   });
 
-  it('son sayfada ileri butonu disabled olmalı', () => {
+  it('son sayfada ileri butonu disabled olmalı', async () => {
     const onPageChange = vi.fn();
 
     render(
@@ -131,12 +138,15 @@ describe('DynamicTable bileşeni', () => {
       />
     );
 
+    // Gecikmeli render'ı bekliyoruz
+    await screen.findByText('Mustafa Bulut');
+
     const buttons = screen.getAllByRole('button');
     const nextBtn = buttons.find(b => b.textContent === '>');
     expect(nextBtn).toBeDisabled();
   });
 
-  it('ileri butona tıklayınca onPageChange doğru sayfa numarasıyla çağrılmalı', () => {
+  it('ileri butona tıklayınca onPageChange doğru sayfa numarasıyla çağrılmalı', async () => {
     const onPageChange = vi.fn();
 
     render(
@@ -148,6 +158,9 @@ describe('DynamicTable bileşeni', () => {
       />
     );
 
+    // Gecikmeli render'ı bekliyoruz
+    await screen.findByText('Mustafa Bulut');
+
     const buttons = screen.getAllByRole('button');
     const nextBtn = buttons.find(b => b.textContent === '>')!;
     fireEvent.click(nextBtn);
@@ -156,7 +169,7 @@ describe('DynamicTable bileşeni', () => {
     expect(onPageChange).toHaveBeenCalledWith(3);
   });
 
-  it('data boş ve totalRecords 0 iken "Kayıt yok" metni göstermeli', () => {
+  it('data boş ve totalRecords 0 iken "Kayıt yok" metni göstermeli', async () => {
     render(
       <DynamicTable
         columns={mockColumns}
@@ -166,6 +179,7 @@ describe('DynamicTable bileşeni', () => {
       />
     );
 
-    expect(screen.getByText('Kayıt yok')).toBeInTheDocument();
+    // Gecikmeli render'ı bekliyoruz
+    expect(await screen.findByText('Kayıt yok')).toBeInTheDocument();
   });
 });

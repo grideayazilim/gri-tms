@@ -164,6 +164,7 @@
   resize: vertical;
   font-family: var(--font-family-base);
   line-height: 1.6;
+  padding-top: var(--space-xs) !important;
 }
 
 .announcement-form__actions {

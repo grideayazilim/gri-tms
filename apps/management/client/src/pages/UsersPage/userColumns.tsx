@@ -1,7 +1,7 @@
 import { getRoleConfig, getUserStatusConfig } from '../../constants/users';
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import { formatDate } from '../../utils/dateUtils';
-import Pill from '../../components/Pill/Pill';
+import Pill from '../../components/DynamicTable/Pill/Pill';
+import ActionButtons from '../../components/DynamicTable/ActionButtons/ActionButtons';
 import type { UserListItem } from '@timesheet/shared';
 import type { Column } from '../../components/DynamicTable/DynamicTable';
 
@@ -9,10 +9,9 @@ export const userColumns = (
   handleEdit: (id: string) => void,
   handleDelete: (id: string) => void
 ): Column<UserListItem>[] => [
-  { header: 'Kullanıcı Adı', accessor: 'username', width: '150px' },
+  { header: 'Kullanıcı Adı', accessor: 'username' },
   {
     header: 'Çalışma Yeri',
-    width: '220px',
     render: (row) => {
       const locationName = row.unit?.location?.name;
       const unitName = row.unit?.name;
@@ -24,31 +23,24 @@ export const userColumns = (
   },
   {
     header: 'Rol',
-    width: '140px',
     render: (row) => <Pill cfg={getRoleConfig(row.role)} />,
   },
   {
     header: 'Durum',
-    width: '140px',
     render: (row) => <Pill cfg={getUserStatusConfig(row.status, row.expiryDate)} />,
   },
   {
     header: 'Geçerlilik Tarihi',
-    width: '150px',
     render: (row) => row.expiryDate ? formatDate(row.expiryDate) : '-',
   },
   {
     header: 'İşlemler',
     width: '100px',
     render: (row) => (
-      <div style={{ display: 'flex', gap: '4px' }}>
-        <button className="action-btn edit-btn" onClick={() => handleEdit(row.id)}>
-          <FiEdit2 size={13} />
-        </button>
-        <button className="action-btn delete-btn" onClick={() => handleDelete(row.id)}>
-          <FiTrash2 size={13} />
-        </button>
-      </div>
+      <ActionButtons
+        onEdit={() => handleEdit(row.id)}
+        onDelete={() => handleDelete(row.id)}
+      />
     ),
   },
 ];

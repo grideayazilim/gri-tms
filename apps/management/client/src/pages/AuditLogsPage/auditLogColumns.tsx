@@ -1,9 +1,10 @@
 import { getAuditActionCategoryConfig, getAuditActionMeta } from '@timesheet/shared';
 import PopUpColumn from './PopUpColumn/PopUpColumn';
-import Pill from '../../components/Pill/Pill';
+import Pill from '../../components/DynamicTable/Pill/Pill';
 import { formatDate } from '../../utils/dateUtils';
 import type { AuditLogItem } from '@timesheet/shared';
 import type { Column } from '../../components/DynamicTable/DynamicTable';
+import './AuditLogsPage.scss';
 
 export const auditLogColumns: Column<AuditLogItem>[] = [
   {
@@ -12,9 +13,9 @@ export const auditLogColumns: Column<AuditLogItem>[] = [
       const cfg = getAuditActionCategoryConfig(row.action);
       const actionLabel = getAuditActionMeta(row.action).label;
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+        <span className="audit-action-type">
           <Pill cfg={cfg} />
-          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{actionLabel}</span>
+          <span className="audit-action-label">{actionLabel}</span>
         </span>
       );
     },
@@ -22,16 +23,12 @@ export const auditLogColumns: Column<AuditLogItem>[] = [
   {
     header: 'İşlemi Yapan',
     render: (row) => {
-      // Not: API'den dönen tipte `actorUsername` var. Mevcut kodda `row.actor?.username` deniyordu. 
-      // Bunu Domain Tipine (AuditLogItem) uygun şekilde düzeltiyoruz.
       const username = row.actorUsername || '-';
       const role = row.actorRole || 'Sistem';
       return (
         <span>
           <strong>{username}</strong>
-          <span style={{ fontSize: '11px', color: 'var(--text-secondary)', marginLeft: '4px' }}>
-            ({role})
-          </span>
+          <span className="audit-actor-role">({role})</span>
         </span>
       );
     },

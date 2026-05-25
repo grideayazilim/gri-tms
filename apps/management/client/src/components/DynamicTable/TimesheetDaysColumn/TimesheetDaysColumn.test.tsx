@@ -33,7 +33,7 @@ describe('TimesheetDaysColumn Bileşeni', () => {
 
   it('verilen günleri buton olarak render etmeli', () => {
     render(<TimesheetDaysColumn {...defaultProps} />);
-    
+
     // 01 ve 02 günleri ekranda görünmeli
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
@@ -42,13 +42,13 @@ describe('TimesheetDaysColumn Bileşeni', () => {
   it('tıklanan günde onDayClick "X" değeriyle tetiklenmeli', async () => {
     const mockOnClick = vi.fn();
     render(<TimesheetDaysColumn {...defaultProps} onDayClick={mockOnClick} />);
-    
+
     // İçinde '2' yazan elementi bul (2. gün)
     const day2 = screen.getByText('2');
-    
+
     // Elementin container button'una tıklayalım
     await userEvent.click(day2);
-    
+
     expect(mockOnClick).toHaveBeenCalledWith(mockRow, '2024-05-02', 'X');
   });
 
@@ -63,7 +63,7 @@ describe('TimesheetDaysColumn Bileşeni', () => {
         isPublicHoliday={isPublicHolidayMock}
       />
     );
-    
+
     const day1Btn = screen.getByText('1').closest('button');
     expect(day1Btn).toBeDisabled();
 
@@ -73,7 +73,7 @@ describe('TimesheetDaysColumn Bileşeni', () => {
 
   it('sağ tık (context menu) açılabilmeli', () => {
     render(<TimesheetDaysColumn {...defaultProps} />);
-    
+
     const day2Btn = screen.getByText('2').closest('button');
     if (day2Btn) {
       fireEvent.contextMenu(day2Btn);

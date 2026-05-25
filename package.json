@@ -19,7 +19,7 @@
     "build:bot": "npm run build -w bot-client",
     "build:all": "npm run build:management && npm run build:bot",
     "typecheck": "npm run typecheck -w @timesheet/shared && npm run typecheck -w management-server && npm run typecheck -w management-client",
-    "lint": "npm run lint -w management-server; npm run lint -w management-client",
+    "lint": "npm run lint -w management-server && npm run lint -w management-client",
     "db:migrate": "npm run db:migrate -w management-server",
     "db:seed": "npm run db:seed -w management-server",
     "db:seed:demo": "npm run db:seed:demo -w management-server",

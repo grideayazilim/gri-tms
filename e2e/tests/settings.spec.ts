@@ -129,9 +129,9 @@ test.describe('Ayarlar İşlemleri', () => {
     // Sistemi güncelleme API'sini mocklayıp hata döndürelim
     await page.route('**/api/settings/system', async route => {
       if (route.request().method() === 'PUT') {
-        await route.fulfill({ 
+        await route.fulfill({
           status: 400,
-          json: { success: false, message: 'Mock validation error' } 
+          json: { success: false, message: 'Mock validation error' }
         });
       } else {
         await route.continue();
@@ -139,7 +139,9 @@ test.describe('Ayarlar İşlemleri', () => {
     });
 
     const dailyWageInput = page.locator('#dailyWage');
-    await expect(dailyWageInput).toBeVisible();
+    // Form verilerinin yüklenmesini bekle — yoksa GET dönünce resetSystem() formu
+    // sıfırlar, isDirty false olur ve submit butonu disabled kalır.
+    await expect(dailyWageInput).not.toHaveValue('', { timeout: 10_000 });
     await dailyWageInput.fill('1234');
     await page.locator('button', { hasText: 'Sistem Ayarlarını Güncelle' }).click();
 

@@ -2,13 +2,17 @@
 @use "../../styles/mixins.scss" as *;
 
 .nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 100;
   height: 100vh;
   background: var(--surface-color);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   border-right: 2px solid var(--border-color);
-  padding: var(--space-lg) var(--space-sm);
+  padding: var(--space-lg) var(--space-md);
 
   // Aktif nav linki (NavLink'ten otomatik geliyor)
   .active {
@@ -135,7 +139,6 @@
   // Sadece geniş ekranlarda (min-width: 1025px) çalışmasını garantiye alıyoruz
   @media (min-width: 1025px) and (hover: hover) and (pointer: fine) {
     &:hover {
-
       // 'gri' yazısını göster
       .nav__title {
         .prefix {
@@ -147,7 +150,7 @@
       // Linklere özel padding ver
       // (Normal halde kare görünüm için block ve inline padding eşitti)
       .nav__link {
-        padding: var(--space-sm) var(--space-md);
+        padding: var(--space-sm) var(--space-xl) var(--space-sm) var(--space-sm);
       }
 
       // Linklerin yazılarını göster (Navbar'ın uzama sebebi)

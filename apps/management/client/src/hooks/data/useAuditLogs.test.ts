@@ -1,10 +1,10 @@
-// Hook'ları test etmek için gerekli kütüphaneler
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 // MSW (Sahte Sunucu)
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../vitest.setup';
 import { useAuditLogs } from './useAuditLogs';
+import { DEFAULT_PAGINATION } from '../../constants/pagination';
 
 /*
   useAuditLogs hook'u denetim kayıtlarını (kim ne yaptı) listeler.
@@ -16,7 +16,7 @@ describe('useAuditLogs hook', () => {
     const { result } = renderHook(() => useAuditLogs());
 
     expect(result.current.auditLogs).toEqual([]);
-    expect(result.current.pagination).toEqual({ totalRecords: 0, totalPages: 0, currentPage: 1, limit: 10 });
+    expect(result.current.pagination).toEqual({ totalRecords: 0, totalPages: 0, currentPage: 1, limit: DEFAULT_PAGINATION.limit });
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
   });
@@ -31,7 +31,7 @@ describe('useAuditLogs hook', () => {
               { id: 'log-1', action: 'LOGIN', actorName: 'admin', createdAt: '2026-05-16T10:00:00Z' },
               { id: 'log-2', action: 'EMPLOYEE_CREATE', actorName: 'admin', createdAt: '2026-05-16T11:00:00Z' }
             ],
-            pagination: { totalRecords: 2, totalPages: 1, currentPage: 1, limit: 10 }
+            pagination: { totalRecords: 2, totalPages: 1, currentPage: 1, limit: 40 }
           }
         }))
       );
@@ -60,7 +60,7 @@ describe('useAuditLogs hook', () => {
               success: true,
               data: {
                 auditLogs: [{ id: 'log-1', action: 'LOGIN', actorName: 'admin' }],
-                pagination: { totalRecords: 1, totalPages: 1, currentPage: 1, limit: 10 }
+                pagination: { totalRecords: 1, totalPages: 1, currentPage: 1, limit: 40 }
               }
             });
           }
@@ -90,7 +90,7 @@ describe('useAuditLogs hook', () => {
             success: true,
             data: {
               auditLogs: [{ id: `log-page-${page}`, action: 'UPDATE', actorName: 'admin' }],
-              pagination: { totalRecords: 25, totalPages: 3, currentPage: Number(page), limit: 10 }
+              pagination: { totalRecords: 25, totalPages: 3, currentPage: Number(page), limit: 40 }
             }
           });
         })
@@ -112,7 +112,7 @@ describe('useAuditLogs hook', () => {
           success: true,
           data: {
             auditLogs: [],
-            pagination: { totalRecords: 0, totalPages: 0, currentPage: 1, limit: 10 }
+            pagination: { totalRecords: 0, totalPages: 0, currentPage: 1, limit: 40 }
           }
         }))
       );

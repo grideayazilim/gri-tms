@@ -23,8 +23,6 @@ const isWeekendDay = (dateStr: string) => {
 
 const OTHER_MARKERS = MARKER_LIST.filter((m) => m.code !== MARKERS.X.code);
 
-// ─── Bileşen ──────────────────────────────────────────────────────────────────
-
 interface TimesheetDaysColumnProps {
   row: TimesheetUIRow;
   timesheetDays: Record<string, MarkerCode>;
@@ -35,6 +33,75 @@ interface TimesheetDaysColumnProps {
   isLocked?: boolean;
 }
 
+// ─── Alt Hücre Bileşeni (Memoized) ─────────────────────────────────────────────
+// Tek bir hücrenin değeri veya dirty durumu değişmedikçe o hücrenin yeniden render
+// edilmesini tamamen önler.
+interface TimesheetDayCellProps {
+  dateStr: string;
+  day: number;
+  isWeekend: boolean;
+  isHoliday: boolean;
+  value: string;
+  originalValue: string;
+  isLocked: boolean;
+  onMouseEnter: (e: React.MouseEvent, dateStr: string) => void;
+  onMouseLeave: () => void;
+  onClick: (dateStr: string) => void;
+  onContextMenu: (e: React.MouseEvent, dateStr: string, isHoliday: boolean) => void;
+  onTouchStart: (e: React.TouchEvent, dateStr: string, isHoliday: boolean) => void;
+  onTouchEnd: () => void;
+  onTouchMove: () => void;
+}
+
+const TimesheetDayCell = memo(({
+  dateStr,
+  day,
+  isWeekend,
+  isHoliday,
+  value,
+  originalValue,
+  isLocked,
+  onMouseEnter,
+  onMouseLeave,
+  onClick,
+  onContextMenu,
+  onTouchStart,
+  onTouchEnd,
+  onTouchMove,
+}: TimesheetDayCellProps) => {
+  const dirty = value !== originalValue;
+
+  return (
+    <button
+      type="button"
+      className={[
+        "ts-day-cell",
+        value ? "ts-day-cell--marked" : "",
+        isWeekend ? "ts-day-cell--weekend" : "",
+        dirty ? "ts-day-cell--dirty" : "",
+      ].filter(Boolean).join(" ")}
+      onMouseEnter={(e) => onMouseEnter(e, dateStr)}
+      onMouseLeave={onMouseLeave}
+      onClick={() => onClick(dateStr)}
+      onContextMenu={(e) => onContextMenu(e, dateStr, isHoliday)}
+      onTouchStart={(e) => onTouchStart(e, dateStr, isHoliday)}
+      onTouchEnd={onTouchEnd}
+      onTouchMove={onTouchMove}
+      disabled={isLocked || isHoliday}
+    >
+      <span className={`ts-day-cell__num${value ? " ts-day-cell__num--top" : ""}`}>
+        {day}
+      </span>
+      <span className={`ts-day-cell__value${value ? " ts-day-cell__value--active" : ""}`}>
+        {value}
+      </span>
+    </button>
+  );
+});
+
+TimesheetDayCell.displayName = "TimesheetDayCell";
+
+// ─── Ana Sütun Bileşeni ────────────────────────────────────────────────────────
 const TimesheetDaysColumn = memo(({
   row,
   timesheetDays,
@@ -56,6 +123,18 @@ const TimesheetDaysColumn = memo(({
   const [hoverClosing, setHoverClosing] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const hoverCloseTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  // State'leri useRef üzerinden takip ederek event handler callbacks'lerin
+  // gereksiz yere yeniden oluşturulmasını (ve böylece tüm hücrelerin re-render olmasını) önlüyoruz.
+  const hoverDayRef = useRef<string | null>(null);
+  useEffect(() => {
+    hoverDayRef.current = hoverDay;
+  }, [hoverDay]);
+
+  const hoverClosingRef = useRef(false);
+  useEffect(() => {
+    hoverClosingRef.current = hoverClosing;
+  }, [hoverClosing]);
 
   useEffect(() => {
     return () => {
@@ -99,8 +178,7 @@ const TimesheetDaysColumn = memo(({
     }
   }, []);
 
-  // ─── Periyot Bilgilerini Önceden Hesapla ──────────────────────────────
-  // Bu sayede .map içinde 31 kez parseISO çağrılmasını engelliyoruz
+  // Periyot bilgilerini önceden hesapla
   const dayMetadata = useMemo(() => {
     return periodDays.map(dateStr => ({
       dateStr,
@@ -110,7 +188,7 @@ const TimesheetDaysColumn = memo(({
     }));
   }, [periodDays, isPublicHoliday]);
 
-  const handleContextMenu = (e: React.MouseEvent, dateStr: string, isHoliday: boolean) => {
+  const handleContextMenu = useCallback((e: React.MouseEvent, dateStr: string, isHoliday: boolean) => {
     e.preventDefault();
     if (isLocked || isHoliday) return;
 
@@ -126,9 +204,9 @@ const TimesheetDaysColumn = memo(({
       y: rect.bottom + 8,
       showDate: false,
     });
-  };
+  }, [isLocked]);
 
-  const handleTouchStart = (e: React.TouchEvent, dateStr: string, isHoliday: boolean) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent, dateStr: string, isHoliday: boolean) => {
     longPressTriggered.current = false;
     clearTimeout(hoverCloseTimer.current);
     clearTimeout(hoverTimer.current);
@@ -146,9 +224,9 @@ const TimesheetDaysColumn = memo(({
         showDate: true,
       });
     }, 500);
-  };
+  }, [isLocked]);
 
-  const handleClick = (dateStr: string) => {
+  const handleClick = useCallback((dateStr: string) => {
     if (longPressTriggered.current) {
       longPressTriggered.current = false;
       return;
@@ -157,9 +235,9 @@ const TimesheetDaysColumn = memo(({
     clearTimeout(hoverTimer.current);
     setHoverDay(null);
     onDayClick(row, dateStr, MARKERS.X.code);
-  };
+  }, [onDayClick, row]);
 
-  const handleMouseEnter = (e: React.MouseEvent, dateStr: string) => {
+  const handleMouseEnter = useCallback((e: React.MouseEvent, dateStr: string) => {
     if (longPressTriggered.current) return;
     clearTimeout(hoverCloseTimer.current);
     clearTimeout(hoverTimer.current);
@@ -171,55 +249,54 @@ const TimesheetDaysColumn = memo(({
       y: rect.top,
     });
 
-    hoverTimer.current = setTimeout(() => {
+    if (hoverDayRef.current) {
       setHoverDay(dateStr);
-    }, 400);
-  };
+    } else {
+      hoverTimer.current = setTimeout(() => {
+        setHoverDay(dateStr);
+      }, 400);
+    }
+  }, []);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     clearTimeout(hoverTimer.current);
-    if (hoverDay && !hoverClosing) {
+    if (hoverDayRef.current && !hoverClosingRef.current) {
       setHoverClosing(true);
       hoverCloseTimer.current = setTimeout(() => {
         setHoverDay(null);
         setHoverClosing(false);
       }, 150);
     }
-  };
+  }, []);
+
+  const handleTouchEndOrMove = useCallback(() => {
+    clearTimeout(longPressTimer.current);
+  }, []);
 
   return (
     <div className="day-grid">
       {dayMetadata.map(({ dateStr, day, isWeekend, isHoliday }) => {
         const value = getDayValue(timesheetDays, dateStr);
         const originalValue = originalDays?.[dateStr] || "";
-        const dirty = value !== originalValue;
 
         return (
-          <button
+          <TimesheetDayCell
             key={dateStr}
-            type="button"
-            className={[
-              "ts-day-cell",
-              value ? "ts-day-cell--marked" : "",
-              isWeekend ? "ts-day-cell--weekend" : "",
-              dirty ? "ts-day-cell--dirty" : "",
-            ].filter(Boolean).join(" ")}
-            onMouseEnter={(e) => handleMouseEnter(e, dateStr)}
+            dateStr={dateStr}
+            day={day}
+            isWeekend={isWeekend}
+            isHoliday={isHoliday}
+            value={value}
+            originalValue={originalValue}
+            isLocked={isLocked ?? false}
+            onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            onClick={() => handleClick(dateStr)}
-            onContextMenu={(e) => handleContextMenu(e, dateStr, isHoliday)}
-            onTouchStart={(e) => handleTouchStart(e, dateStr, isHoliday)}
-            onTouchEnd={() => clearTimeout(longPressTimer.current)}
-            onTouchMove={() => clearTimeout(longPressTimer.current)}
-            disabled={isLocked || isHoliday}
-          >
-            <span className={`ts-day-cell__num${value ? " ts-day-cell__num--top" : ""}`}>
-              {day}
-            </span>
-            <span className={`ts-day-cell__value${value ? " ts-day-cell__value--active" : ""}`}>
-              {value}
-            </span>
-          </button>
+            onClick={handleClick}
+            onContextMenu={handleContextMenu}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEndOrMove}
+            onTouchMove={handleTouchEndOrMove}
+          />
         );
       })}
 
@@ -268,4 +345,3 @@ const TimesheetDaysColumn = memo(({
 });
 
 export default TimesheetDaysColumn;
-

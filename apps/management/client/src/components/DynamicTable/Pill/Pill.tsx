@@ -2,6 +2,7 @@
    PILL (DURUM ETİKETİ)
    Renk konfigürasyonu ile küçük durum göstergesi.
    ======================================================================== */
+import './Pill.scss';
 
 interface PillConfig {
   label: string;
@@ -14,7 +15,10 @@ interface PillProps {
 }
 
 const Pill = ({ cfg }: PillProps) => (
-  <span style={{ padding: '2px 8px', borderRadius: '999px', fontSize: '12px', fontWeight: 600, background: cfg.bg, color: cfg.color }}>
+  <span
+    className="pill"
+    style={{ background: cfg.bg, color: cfg.color }}
+  >
     {cfg.label}
   </span>
 );

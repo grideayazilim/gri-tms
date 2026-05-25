@@ -25,21 +25,19 @@ describe('Pill Bileşeni', () => {
     render(<Pill cfg={config} />);
 
     const pillElement = screen.getByText('Hata');
-    
-    // getComputedStyle ile stilleri kontrol ediyoruz
-    expect(pillElement.style.backgroundColor).toBe('red');
+
+    // Dinamik renkler hâlâ inline style olarak uygulanır
+    expect(pillElement.style.background).toBe('red');
     expect(pillElement.style.color).toBe('white');
   });
 
-  it('görsel tasarım özelliklerini (border-radius, font-size vb.) korumalı', () => {
+  it('pill CSS sınıfını taşımalı', () => {
     const config = { label: 'Test', bg: 'blue', color: 'white' };
     render(<Pill cfg={config} />);
 
     const pillElement = screen.getByText('Test');
-    
-    // Satır içi (inline) stilleri kontrol ediyoruz
-    expect(pillElement.style.borderRadius).toBe('999px');
-    expect(pillElement.style.fontSize).toBe('12px');
-    expect(pillElement.style.fontWeight).toBe('600');
+
+    // Statik stiller artık SCSS sınıfı üzerinden gelir
+    expect(pillElement).toHaveClass('pill');
   });
 });

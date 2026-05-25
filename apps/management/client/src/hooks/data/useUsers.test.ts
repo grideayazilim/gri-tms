@@ -1,10 +1,10 @@
-// Hook'ları test etmek için gerekli kütüphaneler
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 // MSW (Sahte Sunucu)
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../vitest.setup';
 import { useUsers } from './useUsers';
+import { DEFAULT_PAGINATION } from '../../constants/pagination';
 
 /*
   useUsers hook'u kullanıcı yönetimi (Admin/Birim Sorumlusu gibi) işlemlerini yapar.
@@ -16,7 +16,7 @@ describe('useUsers hook', () => {
     const { result } = renderHook(() => useUsers());
 
     expect(result.current.users).toEqual([]);
-    expect(result.current.pagination).toEqual({ totalRecords: 0, totalPages: 0, currentPage: 1, limit: 10 });
+    expect(result.current.pagination).toEqual({ totalRecords: 0, totalPages: 0, currentPage: 1, limit: DEFAULT_PAGINATION.limit });
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
   });
@@ -29,7 +29,7 @@ describe('useUsers hook', () => {
           success: true,
           data: {
             users: [{ id: 'u-1', username: 'admin', role: 'admin' }],
-            pagination: { totalRecords: 1, totalPages: 1, currentPage: 1, limit: 10 }
+            pagination: { totalRecords: 1, totalPages: 1, currentPage: 1, limit: 40 }
           }
         }))
       );

@@ -12,7 +12,7 @@ import { usePublicHolidays } from '../../hooks/data/usePublicHolidays';
 */
 
 // --- MOCKLAR ---
-vi.mock('./TimesheetDaysColumn/TimesheetDaysColumn', () => ({
+vi.mock('../../components/DynamicTable/TimesheetDaysColumn/TimesheetDaysColumn', () => ({
   default: ({ onDayClick, periodDays, row }: { onDayClick: (r: any, d: string, m: string) => void, periodDays: string[], row: any }) => (
     <div className="day-grid">
       {periodDays.map((date: string) => (

@@ -22,6 +22,7 @@ import { useAnnouncements } from "../../hooks/data/useAnnouncements";
 import { useToast } from "../../components/ToastBar/useToast";
 import { getTimesheetFilterConfig } from "./timesheetFilters";
 import { PAID_CODES, type MarkerCode } from "@timesheet/shared";
+import { DEFAULT_PAGINATION } from "../../constants/pagination";
 import "../../styles/inputs.scss";
 import "./TimesheetPage.scss";
 
@@ -41,6 +42,7 @@ const TimesheetPage = () => {
 
   // ── Okunmamış duyuru sayacı ve giriş tooltip'i ─────────────────────────
   const [showUnreadTip, setShowUnreadTip] = useState(false);
+  const [unreadTipClosing, setUnreadTipClosing] = useState(false);
 
   useEffect(() => {
     fetchUnreadCount();
@@ -50,7 +52,13 @@ const TimesheetPage = () => {
   useEffect(() => {
     if (unreadCount > 0) {
       const showTimer = setTimeout(() => setShowUnreadTip(true), 0);
-      const hideTimer = setTimeout(() => setShowUnreadTip(false), 4000);
+      const hideTimer = setTimeout(() => {
+        setUnreadTipClosing(true);
+        setTimeout(() => {
+          setShowUnreadTip(false);
+          setUnreadTipClosing(false);
+        }, 250);
+      }, 4000);
       return () => {
         clearTimeout(showTimer);
         clearTimeout(hideTimer);
@@ -58,7 +66,7 @@ const TimesheetPage = () => {
     }
   }, [unreadCount]);
 
-  const PAGE_LIMIT = 10;
+  const PAGE_LIMIT = DEFAULT_PAGINATION.limit;
   const [page, setPage] = useState(1);
 
   // ── Puantaj verisi ve işlemleri ──────────────────────────────────────────
@@ -193,11 +201,9 @@ const TimesheetPage = () => {
 
   // ── Seçili yerleşke değişince birimleri yükle ────────────────────────────
   useEffect(() => {
+    handleFilterChange("unit", "");
     if (filters.location) {
       fetchUnitsByLocation(filters.location);
-    }
-    if (!filters.location) {
-      handleFilterChange("unit", "");
     }
   }, [filters.location, fetchUnitsByLocation, handleFilterChange]);
 
@@ -278,10 +284,14 @@ const TimesheetPage = () => {
       timesheets.some((r) => {
         const original = originalSnapshotMap.get(r.id);
         if (!original) return false;
-        return (
-          JSON.stringify(r.timesheet_days ?? {}) !==
-          JSON.stringify(original.timesheet_days ?? {})
-        );
+        const curr = r.timesheet_days ?? {};
+        const orig = original.timesheet_days ?? {};
+        const currKeys = Object.keys(curr);
+        if (currKeys.length !== Object.keys(orig).length) return true;
+        for (const k of currKeys) {
+          if (curr[k] !== orig[k]) return true;
+        }
+        return false;
       }),
     [timesheets, originalSnapshotMap],
   );
@@ -312,10 +322,14 @@ const TimesheetPage = () => {
     const dirtyRows = timesheets.filter((r) => {
       const original = originalSnapshotMap.get(r.id);
       if (!original) return true;
-      return (
-        JSON.stringify(r.timesheet_days ?? {}) !==
-        JSON.stringify(original.timesheet_days ?? {})
-      );
+      const curr = r.timesheet_days ?? {};
+      const orig = original.timesheet_days ?? {};
+      const currKeys = Object.keys(curr);
+      if (currKeys.length !== Object.keys(orig).length) return true;
+      for (const k of currKeys) {
+        if (curr[k] !== orig[k]) return true;
+      }
+      return false;
     });
 
     const result = await saveTimesheets(periodId, dirtyRows);
@@ -446,24 +460,17 @@ const TimesheetPage = () => {
           {unreadCount > 0 && (
             <span className="announcement-badge">{unreadCount}</span>
           )}
+          {showUnreadTip && (
+            <span className={`unread-tooltip${unreadTipClosing ? " unread-tooltip--closing" : ""}`}>
+              {unreadCount} okunmamış duyurunuz var
+            </span>
+          )}
         </button>
-        {showUnreadTip && (
-          <span className="unread-tooltip">
-            {unreadCount} okunmamış duyurunuz var
-          </span>
-        )}
         <span className="user-info">Kullanıcı: {userName}</span>
       </div>
 
       {error && (
-        <div style={{
-          color: "#dc2626",
-          fontSize: "13px",
-          padding: "8px 12px",
-          background: "rgba(239,68,68,0.08)",
-          borderRadius: "6px",
-          marginBottom: "8px",
-        }}>
+        <div className="ts-error">
           {error}
         </div>
       )}
@@ -496,6 +503,7 @@ const TimesheetPage = () => {
         loading={isLoading}
         {...(pagination != null ? { pagination } : {})}
         onPageChange={handlePageChange}
+        renderDelayMs={50}
       />
     </PageShell>
   );

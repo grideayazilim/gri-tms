@@ -5,24 +5,27 @@
 }
 
 .app-content {
-  display: flex;
   height: 100vh;
   overflow: hidden;
 }
 
 .app-content__main {
-  flex: 1;
+  height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
+// Desktop'ta navbar fixed → main content sol margin ile navbar'ın yanından başlar.
+// Navbar hover ile genişleyince main content layout'u etkilenmez.
+@media (min-width: 1025px) {
+  .app-content__main {
+    margin-left: 78px;
+  }
+}
+
 // Navbar hover / route change anında scroll-bar render'ını engelle.
 body.scroll-lock {
-  .app-content__main {
-    overflow: hidden !important;
-  }
-
   .table-wrapper {
-    overflow: hidden !important;
+    overflow-x: hidden !important;
   }
 }

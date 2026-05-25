@@ -1,17 +1,17 @@
-// Hook'ları test etmek için gerekli kütüphaneler
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
 // MSW (Sahte Sunucu)
 import { http, HttpResponse } from 'msw';
 import { server } from '../../../vitest.setup';
 import { useEmployees } from './useEmployees';
+import { DEFAULT_PAGINATION } from '../../constants/pagination';
 
 describe('useEmployees hook', () => {
   it('başlangıç değerleri (state) doğru olmalı', () => {
     const { result } = renderHook(() => useEmployees());
 
     expect(result.current.employees).toEqual([]);
-    expect(result.current.pagination).toEqual({ totalRecords: 0, totalPages: 0, currentPage: 1, limit: 10 }); // DEFAULT_PAGINATION
+    expect(result.current.pagination).toEqual({ totalRecords: 0, totalPages: 0, currentPage: 1, limit: DEFAULT_PAGINATION.limit }); // DEFAULT_PAGINATION
     expect(result.current.isLoading).toBe(false);
     expect(result.current.error).toBeNull();
   });
@@ -27,7 +27,7 @@ describe('useEmployees hook', () => {
               employees: [
                 { id: 'emp-1', firstName: 'Ayşe', lastName: 'Yılmaz', tcNo: '11111111111' }
               ],
-              pagination: { totalRecords: 1, totalPages: 1, currentPage: 1, limit: 10 }
+              pagination: { totalRecords: 1, totalPages: 1, currentPage: 1, limit: 40 }
             }
           });
         })

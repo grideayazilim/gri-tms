@@ -8,10 +8,11 @@ import './EmployeeModal.scss';
 interface EmployeeModalProps {
   employee?: EmployeeListItem;
   onClose: () => void;
+  onImportSuccess?: () => void;
   onSave: (data: EmployeeType) => Promise<Result<unknown>>;
 }
 
-const EmployeeModal = ({ employee, onClose, onSave }: EmployeeModalProps) => {
+const EmployeeModal = ({ employee, onClose, onImportSuccess, onSave }: EmployeeModalProps) => {
   const [currentMode, setCurrentMode] = useState<'SINGLE' | 'BULK'>('SINGLE');
   const [isBulkBusy, setIsBulkBusy] = useState(false);
 
@@ -43,7 +44,7 @@ const EmployeeModal = ({ employee, onClose, onSave }: EmployeeModalProps) => {
       {currentMode === 'SINGLE' ? (
         <SingleEmployeeForm employee={employee} onClose={onClose} onSave={onSave} />
       ) : (
-        <BulkImportView onClose={onClose} onBusyChange={setIsBulkBusy} />
+        <BulkImportView onClose={onClose} onBusyChange={setIsBulkBusy} onImportSuccess={onImportSuccess} />
       )}
     </div>
   );

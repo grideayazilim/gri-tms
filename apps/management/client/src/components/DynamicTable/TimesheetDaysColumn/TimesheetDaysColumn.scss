@@ -22,11 +22,11 @@
   user-select: none;
   contain: layout paint style;
   -webkit-touch-callout: none;
-  // background-color ve border-color transition'dan çıkarıldı.
-  // Bu iki özellik class değişiminde tüm tablonun paint layer'ını geçersiz kılıyor:
-  // 3100 hücre (100 satır × 31 gün) aynı paint layer'da olduğundan browser her
-  // animasyon frame'inde (~9 frame / 0.15 s) tablonun tamamını yeniden boyuyor → O(N).
-  // box-shadow yalnızca :hover'da kullanılır; class change'de tetiklenmez → güvenli.
+  // background-color, border-color ve box-shadow transition'ları geri getirildi.
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.15s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -34,7 +34,6 @@
   &:hover {
     border-color: var(--brand-color);
     box-shadow: 0 0 0 2px rgba(72, 128, 255, 0.15);
-    transition: box-shadow 0.15s ease;
   }
 
   // ── Seçilemeyen hücre (kilitli dönem + resmi tatil) — tek kırmızı stil ──
@@ -76,7 +75,9 @@
     color: var(--text-faint);
     line-height: 1;
     will-change: transform;
-    transition: transform 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      color 0.2s ease;
 
     // Veri var → üste kay
     &--top {
@@ -103,7 +104,8 @@
     will-change: transform, opacity;
     transition:
       transform 0.2s ease,
-      opacity 0.2s ease;
+      opacity 0.2s ease,
+      color 0.2s ease;
 
     &--active {
       opacity: 1;

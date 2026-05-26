@@ -291,4 +291,24 @@ describe('BulkImportView Bileşeni', () => {
       expect(onBusyChange).toHaveBeenCalledWith(true);
     });
   });
+
+  it('başarılı import durumunda onImportSuccess çağrılmalı', async () => {
+    validWorkbook();
+    mockBulkImport.mockResolvedValue({ success: true, data: { successCount: 1, failures: [] } });
+    const onImportSuccess = vi.fn();
+
+    render(<BulkImportView onClose={vi.fn()} onBusyChange={vi.fn()} onImportSuccess={onImportSuccess} />);
+
+    const input = document.querySelector('#excel-upload') as HTMLInputElement;
+    await userEvent.upload(input, xlsxFile);
+    await waitFor(() => expect(screen.getByText('test-data.xlsx')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('İşlemi Başlat'));
+    });
+
+    await waitFor(() => {
+      expect(onImportSuccess).toHaveBeenCalled();
+    });
+  });
 });

@@ -440,11 +440,13 @@ const TimesheetPage = () => {
         modalTitle: 'Puantaj Nasıl Kullanılır?',
         byRole: {
           ADMIN: [
-            { src: 'https://www.w3schools.com/html/mov_bbb.mp4', title: 'Puantaj - Admin 1' },
-            { src: 'https://www.w3schools.com/html/movie.mp4', title: 'Puantaj - Admin 2' },
+            { src: '/video-guides/puantaj_genel_isaretleme.mp4', title: 'Puantaj Genel İşaretleme' },
+            { src: '/video-guides/puantaj_admin_veri_kitleme.mp4', title: 'Veri Kilitleme (Admin)' },
+            { src: '/video-guides/puantaj_admin_duyuru_paylasma.mp4', title: 'Duyuru Paylaşma (Admin)' },
           ],
           RESPONSIBLE: [
-            { src: 'https://www.w3schools.com/html/mov_bbb.mp4', title: 'Puantaj - Sorumlu' },
+            { src: '/video-guides/puantaj_genel_isaretleme.mp4', title: 'Puantaj Genel İşaretleme' },
+            { src: '/video-guides/puantaj_genel_duyurular.mp4', title: 'Duyuruları Görüntüleme' },
           ],
         },
       }}

@@ -20,6 +20,17 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: any) => children,
 }));
 
+// EmployeeModal mock
+vi.mock('./EmployeeModal/EmployeeModal', () => ({
+  default: ({ onSave, onImportSuccess, onClose }: any) => (
+    <div data-testid="employee-modal-mock">
+      <button data-testid="mock-save-btn" onClick={() => onSave({ tcNo: '11111111111' })}>Mock Save</button>
+      <button data-testid="mock-import-success-btn" onClick={onImportSuccess}>Mock Import Success</button>
+      <button data-testid="mock-close-btn" onClick={onClose}>Mock Close</button>
+    </div>
+  ),
+}));
+
 // useEmployees mock
 const mockFetchEmployees = vi.fn();
 const mockRemoveEmployee = vi.fn();
@@ -187,5 +198,44 @@ describe('EmployeesPage (Personel Yönetimi)', () => {
   it('TC kimlik numarası tabloda görünmeli', () => {
     renderEmployeesPage();
     expect(screen.getByText('12345678901')).toBeInTheDocument();
+  });
+
+  it('yeni çalışan başarıyla eklendiğinde liste 1. sayfaya sıfırlanıp yenilenmeli', async () => {
+    mockAddEmployee.mockResolvedValue({ success: true });
+    renderEmployeesPage();
+
+    // Click add button to open modal
+    fireEvent.click(screen.getByText('+ Yeni Çalışan Ekle'));
+    expect(screen.getByTestId('employee-modal-mock')).toBeInTheDocument();
+
+    // Reset calls count to count only actions during import
+    mockFetchEmployees.mockClear();
+
+    // Click mock save button
+    fireEvent.click(screen.getByTestId('mock-save-btn'));
+
+    await waitFor(() => {
+      expect(mockAddEmployee).toHaveBeenCalled();
+      expect(mockFetchEmployees).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
+    });
+  });
+
+  it('toplu içe aktarma başarılı olduğunda ve modal kapatıldığında liste 1. sayfaya sıfırlanıp yenilenmeli', async () => {
+    renderEmployeesPage();
+
+    // Click add button to open modal
+    fireEvent.click(screen.getByText('+ Yeni Çalışan Ekle'));
+    expect(screen.getByTestId('employee-modal-mock')).toBeInTheDocument();
+
+    // Reset calls count
+    mockFetchEmployees.mockClear();
+
+    // Click mock import success button then close the modal
+    fireEvent.click(screen.getByTestId('mock-import-success-btn'));
+    fireEvent.click(screen.getByTestId('mock-close-btn'));
+
+    await waitFor(() => {
+      expect(mockFetchEmployees).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }));
+    });
   });
 });

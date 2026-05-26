@@ -70,51 +70,91 @@ const ReportModal = ({ report, onRestart, onClose }: {
   report: BulkImportResult;
   onRestart: () => void;
   onClose: () => void;
-}) => (
-  <div className="import-report">
-    <div className="import-report__header">
-      <FiCheckCircle className="success-icon" />
-      <h2>İçe Aktarma Tamamlandı</h2>
-    </div>
-    <div className="import-report__stats">
-      <div className="stat-card success">
-        <span className="stat-value">{report.successCount}</span>
-        <span className="stat-label">Başarıyla Eklendi</span>
+}) => {
+  const MAX_DISPLAY = 30;
+  const successes = report.successes || [];
+  const displaySuccesses = successes.slice(0, MAX_DISPLAY);
+  const truncatedSuccessesCount = successes.length - MAX_DISPLAY;
+
+  const failures = report.failures || [];
+  const displayFailures = failures.slice(0, MAX_DISPLAY);
+  const truncatedFailuresCount = failures.length - MAX_DISPLAY;
+
+  return (
+    <div className="import-report">
+      <div className="import-report__header">
+        <FiCheckCircle className="success-icon" />
+        <h2>İçe Aktarma Tamamlandı</h2>
       </div>
-      <div className="stat-card failure">
-        <span className="stat-value">{report.failures.length}</span>
-        <span className="stat-label">Hatalı Satır</span>
-      </div>
-    </div>
-    {report.failures.length > 0 && (
-      <div className="import-report__errors">
-        <h3>Hata Detayları</h3>
-        <div className="error-list">
-          {report.failures.map((err, i) => (
-            <div key={i} className="error-item">
-              <span className="error-row">Satır {err.row}</span>
-              <span className="error-name">{err.name}</span>
-              <span className="error-msg">{err.error}</span>
-            </div>
-          ))}
+      <div className="import-report__stats">
+        <div className="stat-card success">
+          <span className="stat-value">{report.successCount}</span>
+          <span className="stat-label">Başarıyla Eklendi</span>
+        </div>
+        <div className="stat-card failure">
+          <span className="stat-value">{report.failures.length}</span>
+          <span className="stat-label">Hatalı Satır</span>
         </div>
       </div>
-    )}
-    <div className="import-report__actions">
-      <button className="btn btn--secondary" onClick={onRestart}>Yeni Dosya Yükle</button>
-      <button className="btn btn--secondary" onClick={onClose}>Vazgeç</button>
+
+      <div className="import-report__details">
+        {successes.length > 0 && (
+          <div className="import-report__section import-report__successes">
+            <h3>Eklenen Çalışanlar</h3>
+            <div className="success-list">
+              {displaySuccesses.map((suc, i) => (
+                <div key={i} className="success-item">
+                  <span className="success-row">Satır {suc.row}</span>
+                  <span className="success-name">{suc.name}</span>
+                </div>
+              ))}
+              {truncatedSuccessesCount > 0 && (
+                <div className="truncated-info">
+                  ... ve {truncatedSuccessesCount} diğer çalışan başarıyla eklendi.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {failures.length > 0 && (
+          <div className="import-report__section import-report__errors">
+            <h3>Hata Detayları</h3>
+            <div className="error-list">
+              {displayFailures.map((err, i) => (
+                <div key={i} className="error-item">
+                  <span className="error-row">Satır {err.row}</span>
+                  <span className="error-name">{err.name}</span>
+                  <span className="error-msg">{err.error}</span>
+                </div>
+              ))}
+              {truncatedFailuresCount > 0 && (
+                <div className="truncated-info">
+                  ... ve {truncatedFailuresCount} diğer satırda hata oluştu.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="import-report__actions">
+        <button className="btn btn--secondary" onClick={onRestart}>Yeni Dosya Yükle</button>
+        <button className="btn btn--secondary" onClick={onClose}>Vazgeç</button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // ── Ana Bileşen ──────────────────────────────────────────────────────────────
 
 interface BulkImportViewProps {
   onClose: () => void;
   onBusyChange: (busy: boolean) => void;
+  onImportSuccess?: () => void;
 }
 
-const BulkImportView = ({ onClose, onBusyChange }: BulkImportViewProps) => {
+const BulkImportView = ({ onClose, onBusyChange, onImportSuccess }: BulkImportViewProps) => {
   const toast = useToast();
   const [importStatus, setImportStatus] = useState<'idle' | 'importing' | 'done'>('idle');
   const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
@@ -183,6 +223,7 @@ const BulkImportView = ({ onClose, onBusyChange }: BulkImportViewProps) => {
 
       const CHUNK_SIZE = 200;
       let finalSuccessCount = 0;
+      let finalSuccesses: NonNullable<BulkImportResult['successes']> = [];
       let finalFailures: BulkImportResult['failures'] = [];
 
       for (let i = 0; i < employeesData.length; i += CHUNK_SIZE) {
@@ -191,6 +232,9 @@ const BulkImportView = ({ onClose, onBusyChange }: BulkImportViewProps) => {
         if (res.success && res.data) {
           finalSuccessCount += res.data.successCount;
           finalFailures = [...finalFailures, ...res.data.failures];
+          if (res.data.successes) {
+            finalSuccesses = [...finalSuccesses, ...res.data.successes];
+          }
         }
         setImportProgress((prev) => ({
           ...prev,
@@ -198,8 +242,15 @@ const BulkImportView = ({ onClose, onBusyChange }: BulkImportViewProps) => {
         }));
       }
 
-      setImportReport({ successCount: finalSuccessCount, failures: finalFailures });
+      setImportReport({
+        successCount: finalSuccessCount,
+        successes: finalSuccesses,
+        failures: finalFailures,
+      });
       setStatus('done');
+      if (finalSuccessCount > 0 && onImportSuccess) {
+        onImportSuccess();
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Dosya işlenirken hata oluştu';
       toast({ type: 'error', message });

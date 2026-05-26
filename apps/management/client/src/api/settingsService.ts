@@ -29,7 +29,7 @@ export const updateSystemSettings = (data: SystemSettingsType & { force?: boolea
 
 // Yedekli modda yanıt Blob (zip) döner — backend zip dosyasını stream eder
 export const resetSystemWithBackup = (data: SystemResetType): Promise<Blob> =>
-  httpClient.post<unknown, Blob>('/settings/reset', data, { responseType: 'blob' });
+  httpClient.post<unknown, Blob>('/settings/reset', data, { responseType: 'blob', timeout: 120000 });
 
 // Yedeksiz modda standart JSON başarı yanıtı döner
 export const resetSystemWithoutBackup = (data: SystemResetType) =>

@@ -51,6 +51,7 @@ function LocationsPage() {
     handleSave,
     isLocationDirty,
     isUnitDirty,
+    validationTriggered,
   } = useLocationSync();
 
   const [exportPanel, setExportPanel] = useState<ExportPanelState | null>(null);
@@ -146,7 +147,18 @@ function LocationsPage() {
 
   if (isLoading) {
     return (
-      <PageShell title="Yerleşke ve Birimler">
+      <PageShell
+        title="Yerleşke ve Birimler"
+        infoVideos={{
+          modalTitle: 'Yerleşke Yönetimi Nasıl Kullanılır?',
+          byRole: {
+            ADMIN: [
+              { src: '/video-guides/yerleske_yonetimi.mp4', title: 'Yerleşke Yönetimi' },
+              { src: '/video-guides/yerleske_export_ve_bot.mp4', title: 'Export ve Bot Ayarları' },
+            ],
+          },
+        }}
+      >
         <div className="loading-container">
           <div className="loader">Yükleniyor...</div>
         </div>
@@ -155,7 +167,19 @@ function LocationsPage() {
   }
 
   return (
-    <PageShell title="Yerleşke ve Birimler" headerActions={headerActions}>
+    <PageShell
+      title="Yerleşke ve Birimler"
+      headerActions={headerActions}
+      infoVideos={{
+        modalTitle: 'Yerleşke Yönetimi Nasıl Kullanılır?',
+        byRole: {
+          ADMIN: [
+            { src: '/video-guides/yerleske_yonetimi.mp4', title: 'Yerleşke Yönetimi' },
+            { src: '/video-guides/yerleske_export_ve_bot.mp4', title: 'Export ve Bot Ayarları' },
+          ],
+        },
+      }}
+    >
       <div className="locations-warning">
         <strong>Uyarı:</strong> Bir yerleşke veya birimi sildiğinizde, ilgili oluşuma ait tüm çalışanlar, puantaj verileri ve sistem sorumluları da <strong>kalıcı olarak silinir</strong>.
       </div>
@@ -184,7 +208,7 @@ function LocationsPage() {
                     <input
                       id={`loc-name-${location.id}`}
                       type="text"
-                      className={`input ${deletedLocationIds.includes(location.id) ? 'is-deleted' : (isLocationDirty(location) ? 'is-dirty' : '')}`}
+                      className={`input ${deletedLocationIds.includes(location.id) ? 'is-deleted' : (isLocationDirty(location) ? 'is-dirty' : '')} ${(!location.name.trim() && validationTriggered) ? 'input--error' : ''}`}
                       placeholder=" "
                       value={location.name}
                       onChange={(e) => handleLocationChange(location.id, "name", e.target.value)}
@@ -197,7 +221,7 @@ function LocationsPage() {
                     <input
                       id={`loc-program-${location.id}`}
                       type="text"
-                      className={`location-no-input input ${deletedLocationIds.includes(location.id) ? 'is-deleted' : (isLocationDirty(location) ? 'is-dirty' : '')}`}
+                      className={`location-no-input input ${deletedLocationIds.includes(location.id) ? 'is-deleted' : (isLocationDirty(location) ? 'is-dirty' : '')} ${(!location.programNo.trim() && validationTriggered) ? 'input--error' : ''}`}
                       placeholder=" "
                       value={location.programNo}
                       onChange={(e) => handleLocationChange(location.id, "programNo", e.target.value)}
@@ -314,7 +338,7 @@ function LocationsPage() {
                             <input
                               id={`unit-name-${unit.id}`}
                               type="text"
-                              className={`input ${(deletedLocationIds.includes(location.id) || deletedUnitIds.includes(unit.id)) ? 'is-deleted' : (isUnitDirty(location.id, unit) ? 'is-dirty' : '')}`}
+                              className={`input ${(deletedLocationIds.includes(location.id) || deletedUnitIds.includes(unit.id)) ? 'is-deleted' : (isUnitDirty(location.id, unit) ? 'is-dirty' : '')} ${(!unit.name.trim() && validationTriggered) ? 'input--error' : ''}`}
                               placeholder=" "
                               value={unit.name}
                               onChange={(e) => handleUnitChange(location.id, unit.id, e.target.value)}

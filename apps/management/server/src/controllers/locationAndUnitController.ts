@@ -283,11 +283,6 @@ export const syncLocationWithUnits = asyncHandler<{ locationId: string }, unknow
       const deletedUnitNames: string[] = [];
 
       for (const unitIdToDelete of unitsToDelete) {
-        // Güvenlik Kontrolü: Birimin içinde çalışan varsa silme işlemine izin verilmez
-        const hasEmployees = await locationRepo.unitHasEmployees(tx, unitIdToDelete);
-        if (hasEmployees) {
-          throw badRequest('Bazı birimler silinemedi çünkü içlerinde kayıtlı çalışanlar var. Lütfen önce çalışanları transfer edin.');
-        }
         const oldUnit = oldUnits.find((u) => u.id === unitIdToDelete);
         if (oldUnit) deletedUnitNames.push(oldUnit.name);
         await locationRepo.deleteUnit(tx, unitIdToDelete);
@@ -364,9 +359,6 @@ export const deleteUnit = asyncHandler<{ unitId: string }>(async (req, res) => {
   await withDrizzleTransaction(async (tx) => {
     const oldUnit = await locationRepo.findUnitById(tx, unitId);
     if (!oldUnit) throw notFound('Birim bulunamadı.');
-
-    const hasEmployees = await locationRepo.unitHasEmployees(tx, unitId);
-    if (hasEmployees) throw badRequest('Bu birim silinemez çünkü içinde kayıtlı çalışanlar var. Lütfen önce çalışanları transfer edin.');
 
     await locationRepo.deleteUnit(tx, unitId);
 

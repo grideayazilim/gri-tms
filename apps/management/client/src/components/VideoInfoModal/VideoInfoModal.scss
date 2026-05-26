@@ -64,14 +64,15 @@
   overflow: hidden;
   flex-shrink: 0;
   line-height: 0;
-  background: #000;
+  background: transparent;
 
   video {
     display: block;
     width: 100%;
+    height: 100%;
     margin: 0;
     aspect-ratio: 16 / 9;
-    object-fit: contain;
+    object-fit: cover;
   }
 }
 
@@ -102,12 +103,13 @@
    ========================================== */
 
 .info-trigger-btn {
+  position: relative;
   background: none;
   border: none;
   color: var(--text-muted);
   border-radius: var(--radius-sm);
   padding: 4px;
-  cursor: pointer;
+  cursor: pointer !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -118,6 +120,37 @@
   &:hover {
     background-color: var(--surface-hover-color);
     color: var(--text-primary);
+  }
+
+  svg {
+    pointer-events: none;
+  }
+
+  .info-btn-pulse-ring {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 24px;
+    height: 24px;
+    border: 1.5px solid var(--text-secondary, #979797);
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    animation: info-pulse-ring-anim 2s cubic-bezier(0.25, 0, 0, 1) forwards;
+  }
+}
+
+@keyframes info-pulse-ring-anim {
+  0% {
+    width: 24px;
+    height: 24px;
+    opacity: 0.8;
+  }
+  100% {
+    width: 56px;
+    height: 56px;
+    opacity: 0;
   }
 }
 

@@ -201,6 +201,7 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
 
   const results = {
     successCount: 0,
+    successes: [] as { row: number; name: string }[],
     failures: [] as { row: number; name: string; error: string }[],
   };
 
@@ -251,6 +252,10 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
           throw conflict('Bu TC No zaten sistemde kayıtlı');
         }
 
+        results.successes.push({
+          row: rowNumber,
+          name: fullName,
+        });
         results.successCount++;
       } catch (err: unknown) {
         results.failures.push({
@@ -266,12 +271,11 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
       const failureCount = results.failures.length;
 
       const changes: string[] = [];
-      if (results.successCount > 0) changes.push(`${results.successCount} çalışan başarıyla eklendi`);
-      if (failureCount > 0) {
-        changes.push(`${failureCount} satır hatalı`);
-        for (const f of results.failures) {
-          changes.push(`Satır ${f.row} (${f.name}): ${f.error}`);
-        }
+      for (const s of results.successes) {
+        changes.push(`Satır ${s.row} (${s.name}): Başarılı`);
+      }
+      for (const f of results.failures) {
+        changes.push(`Satır ${f.row} (${f.name}): Hata - ${f.error}`);
       }
 
       await createAuditLog(tx, {
@@ -286,6 +290,7 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
           successCount: results.successCount,
           failureCount,
           failedItems: results.failures.slice(0, 50),
+          successItems: results.successes.slice(0, 50),
         },
       });
     }

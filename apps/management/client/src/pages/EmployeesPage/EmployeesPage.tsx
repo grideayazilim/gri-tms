@@ -103,21 +103,21 @@ const EmployeesPage = () => {
   };
 
   const handleAdd = async () => {
-    // showModal içerisine içeriği (content) bir render function olarak veriyoruz.
-    // closeModal parametresi ile modal'ı içeriden kapatabiliyoruz.
+    let importedAny = false;
     await showModal({
       title: 'Yeni Çalışan Ekle',
       size: 'medium',
       content: (closeModal) => (
         <EmployeeModal
           onClose={() => closeModal(null)}
+          onImportSuccess={() => {
+            importedAny = true;
+          }}
           onSave={async (newData) => {
             const result = await addEmployee(newData);
             if (result.success) {
               toast({ type: 'success', message: 'Çalışan başarıyla eklendi' });
-              // Yeni eklenen en üstte görünsün diye sayfayı 1'e çekiyoruz
-              fetchEmployees({ ...apiParams, page: 1, limit: PAGE_LIMIT });
-              setPage(1);
+              importedAny = true;
               closeModal(newData);
             }
             return result;
@@ -125,6 +125,11 @@ const EmployeesPage = () => {
         />
       ),
     });
+
+    if (importedAny) {
+      fetchEmployees({ ...apiParams, page: 1, limit: PAGE_LIMIT });
+      setPage(1);
+    }
   };
 
   const headerActions = (
@@ -136,7 +141,18 @@ const EmployeesPage = () => {
   );
 
   return (
-    <PageShell title="Çalışanlar" headerActions={headerActions}>
+    <PageShell
+      title="Çalışanlar"
+      headerActions={headerActions}
+      infoVideos={{
+        modalTitle: 'Çalışan Yönetimi Nasıl Kullanılır?',
+        byRole: {
+          ADMIN: [
+            { src: '/video-guides/calisan_yonetimi.mp4', title: 'Çalışan Yönetimi' },
+          ],
+        },
+      }}
+    >
       <FilterBar config={filterConfig} filters={filters} onFilterChange={handleFilterChangeAndReset} />
       <DynamicTable
         columns={employeeColumns(handleEdit, handleDelete)}

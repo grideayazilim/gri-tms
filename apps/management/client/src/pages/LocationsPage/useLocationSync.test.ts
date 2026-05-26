@@ -343,6 +343,7 @@ describe('useLocationSync hook', () => {
 
     act(() => { result.current.addLocation(); });
     act(() => { result.current.handleLocationChange(result.current.locations[2]!.id, 'name', 'Yeni Lokasyon'); });
+    act(() => { result.current.handleLocationChange(result.current.locations[2]!.id, 'programNo', '999'); });
 
     await act(async () => { await result.current.handleSave(); });
 

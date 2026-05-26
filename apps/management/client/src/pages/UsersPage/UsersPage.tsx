@@ -97,7 +97,17 @@ const UsersPage = () => {
   };
 
   return (
-    <PageShell title="Kullanıcılar">
+    <PageShell
+      title="Kullanıcılar"
+      infoVideos={{
+        modalTitle: 'Kullanıcı Yönetimi Nasıl Kullanılır?',
+        byRole: {
+          ADMIN: [
+            { src: '/video-guides/kullanici_yonetimi.mp4', title: 'Kullanıcı Yönetimi' },
+          ],
+        },
+      }}
+    >
       <FilterBar
         config={filterConfig}
         filters={filters}

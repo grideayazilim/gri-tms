@@ -139,7 +139,7 @@ describe('Location & Unit API', () => {
 
     })
 
-    it('DELETE /api/locationAndUnits/units/:id → bağlı personel varken → hata', async () => {
+    it('DELETE /api/locationAndUnits/units/:id → bağlı personel varken → cascade siler ve 200 döner', async () => {
       const admin = await createAdminUser()
       const location = await createLocation()
       const unit = await createUnit(location.id)
@@ -149,7 +149,7 @@ describe('Location & Unit API', () => {
         .delete(`/api/locationAndUnits/units/${unit.id}`)
         .set('Cookie', admin.cookie)
 
-      expect(res.status).toBe(400)
+      expect(res.status).toBe(200)
     })
 
     it('PUT /api/locationAndUnits/units/:id → var olmayan birim → 404', async () => {

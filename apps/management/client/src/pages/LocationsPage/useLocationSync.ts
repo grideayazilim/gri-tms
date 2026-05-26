@@ -27,10 +27,12 @@ export function useLocationSync() {
   const [deletedUnitIds, setDeletedUnitIds] = useState<(number | string)[]>([]);
   const [expandedLocations, setExpandedLocations] = useState<(number | string)[]>([]);
   const [focusElementId, setFocusElementId] = useState<string | null>(null);
+  const [validationTriggered, setValidationTriggered] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setValidationTriggered(false);
       const [locRes, unitRes] = await Promise.all([
         locationService.getLocations(),
         locationService.getUnits(),
@@ -174,6 +176,30 @@ export function useLocationSync() {
   };
 
   const handleSave = async () => {
+    // Client-side validation
+    for (const loc of locations) {
+      if (deletedLocationIds.includes(loc.id)) continue;
+      if (!loc.name.trim()) {
+        setValidationTriggered(true);
+        toast({ type: 'error', message: 'Yerleşke adı boş bırakılamaz.' });
+        return;
+      }
+      if (!loc.programNo.trim()) {
+        setValidationTriggered(true);
+        toast({ type: 'error', message: 'Program numarası boş bırakılamaz.' });
+        return;
+      }
+      const activeUnits = loc.units.filter((u) => !deletedUnitIds.includes(u.id));
+      for (const unit of activeUnits) {
+        if (!unit.name.trim()) {
+          setValidationTriggered(true);
+          toast({ type: 'error', message: 'Birim adı boş bırakılamaz.' });
+          return;
+        }
+      }
+    }
+
+    setValidationTriggered(false);
     setIsSaving(true);
     try {
       const locationsToSync = locations.filter(
@@ -210,8 +236,8 @@ export function useLocationSync() {
       setDeletedLocationIds([]);
       setDeletedUnitIds([]);
       void fetchData();
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Kaydedilirken bir hata oluştu';
+    } catch (error: any) {
+      const msg = error?.message || 'Kaydedilirken bir hata oluştu';
       toast({ type: 'error', message: msg });
     } finally {
       setIsSaving(false);
@@ -243,5 +269,6 @@ export function useLocationSync() {
     handleSave,
     isLocationDirty,
     isUnitDirty,
+    validationTriggered,
   };
 }

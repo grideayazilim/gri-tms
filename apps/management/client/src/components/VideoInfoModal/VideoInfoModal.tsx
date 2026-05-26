@@ -28,7 +28,6 @@ interface VideoInfoModalProps {
   config: InfoVideosConfig;
   videos: VideoItem[];
 }
-
 function VideoInfoModal({ isOpen, onClose, config, videos }: VideoInfoModalProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -83,7 +82,20 @@ function VideoInfoModal({ isOpen, onClose, config, videos }: VideoInfoModalProps
 
           {/* Video */}
           <div className="video-info-video">
-            <video key={currentVideo.src} src={currentVideo.src} autoPlay muted loop />
+            <AnimatePresence mode="wait">
+              <motion.video
+                key={currentVideo.src}
+                src={currentVideo.src}
+                autoPlay
+                muted
+                loop
+                preload="auto"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+              />
+            </AnimatePresence>
           </div>
 
           {/* Navigasyon */}
@@ -121,15 +133,31 @@ interface InfoButtonProps {
 
 export function InfoButton({ config, videos }: InfoButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [showPulse, setShowPulse] = useState(false);
+
+  useEffect(() => {
+    // 2.7 saniye sonra bilgilendirme halkasını tetikle
+    const timer = setTimeout(() => {
+      setShowPulse(true);
+    }, 2700);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleOpen = () => {
+    setIsOpen(true);
+    setShowPulse(false); // Modal açıldığında halkayı kaldır
+  };
 
   return (
     <>
       <button
-        className="info-trigger-btn"
-        onClick={() => setIsOpen(true)}
+        className={`info-trigger-btn ${showPulse ? 'info-trigger-btn--pulse' : ''}`}
+        onClick={handleOpen}
         aria-label="Bilgi videosu"
       >
         <FiInfo />
+        {showPulse && <span className="info-btn-pulse-ring" />}
       </button>
       <VideoInfoModal
         isOpen={isOpen}

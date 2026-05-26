@@ -84,6 +84,12 @@ function SettingsPage() {
   const [resetStartDate, setResetStartDate] = useState('');
   const [resetEndDate, setResetEndDate] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  const [resetErrors, setResetErrors] = useState<{
+    dailyWage?: string;
+    weeklyDays?: string;
+    startDate?: string;
+    endDate?: string;
+  }>({});
 
   useEffect(() => {
     if (isAdmin) {
@@ -173,25 +179,37 @@ function SettingsPage() {
   }, [isAdmin, fetchSystemSettings]);
 
   const handleSystemReset = async () => {
+    const errors: typeof resetErrors = {};
     const dailyWageNum = parseFloat(resetDailyWage);
     const weeklyDaysNum = parseInt(resetWeeklyDays, 10);
 
-    if (!resetDailyWage || isNaN(dailyWageNum) || dailyWageNum <= 0) {
-      toast({ type: "error", message: "Geçerli bir günlük ücret giriniz." });
+    if (!resetDailyWage) {
+      errors.dailyWage = "Geçerli bir günlük ücret giriniz.";
+    } else if (isNaN(dailyWageNum) || dailyWageNum <= 0) {
+      errors.dailyWage = "Günlük ücret sıfırdan büyük bir sayı olmalıdır.";
+    }
+
+    if (!resetWeeklyDays) {
+      errors.weeklyDays = "Geçerli bir haftalık gün sınırı giriniz.";
+    } else if (isNaN(weeklyDaysNum) || weeklyDaysNum <= 0) {
+      errors.weeklyDays = "Haftalık gün sınırı sıfırdan büyük bir sayı olmalıdır.";
+    }
+
+    if (!resetStartDate) {
+      errors.startDate = "Lütfen program başlangıç tarihini giriniz.";
+    }
+
+    if (!resetEndDate) {
+      errors.endDate = "Lütfen program bitiş tarihini giriniz.";
+    } else if (resetStartDate && resetEndDate <= resetStartDate) {
+      errors.endDate = "Bitiş tarihi başlangıç tarihinden sonra olmalıdır.";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setResetErrors(errors);
       return;
     }
-    if (!resetWeeklyDays || isNaN(weeklyDaysNum) || weeklyDaysNum <= 0) {
-      toast({ type: "error", message: "Geçerli bir haftalık gün sınırı giriniz." });
-      return;
-    }
-    if (!resetStartDate || !resetEndDate) {
-      toast({ type: "error", message: "Lütfen program başlangıç ve bitiş tarihlerini giriniz." });
-      return;
-    }
-    if (resetEndDate <= resetStartDate) {
-      toast({ type: "error", message: "Bitiş tarihi başlangıç tarihinden sonra olmalıdır." });
-      return;
-    }
+    setResetErrors({});
 
     const confirmed = await showConfirm({
       title: 'Sistemi Sıfırla',
@@ -253,7 +271,18 @@ function SettingsPage() {
   }, [systemSettings, resetSystem]);
 
   return (
-    <PageShell title="Ayarlar">
+    <PageShell
+      title="Ayarlar"
+      infoVideos={{
+        modalTitle: 'Ayarlar Nasıl Kullanılır?',
+        byRole: {
+          ADMIN: [
+            { src: '/video-guides/ayarlar_kayit_onaylama.mp4', title: 'Kayıt Onaylama' },
+            { src: '/video-guides/ayarlar_sifirlama.mp4', title: 'Şifre Sıfırlama' },
+          ],
+        },
+      }}
+    >
       {isAdmin && (
         <PendingUserList
           pendingUsers={pendingUsers}
@@ -458,7 +487,7 @@ function SettingsPage() {
               <span>Yerleşke ve birimleri de sil</span>
             </label>
             <p className="reset-section__hint" style={{ marginTop: '-8px', marginBottom: '12px' }}>
-              İşaretlenirse tüm lokasyon ve birim verileri de temizlenir.
+              İşaretlenirse tüm yerleşke ve birim verileri de temizlenir.
             </p>
 
             <div className="settings-row">
@@ -467,14 +496,22 @@ function SettingsPage() {
                   type="text"
                   inputMode="decimal"
                   id="resetDailyWage"
-                  className="input"
+                  className={`input ${resetErrors.dailyWage ? 'input--error' : ''}`}
                   placeholder=" "
                   value={resetDailyWage}
-                  onChange={(e) => setResetDailyWage(e.target.value)}
+                  onChange={(e) => {
+                    setResetDailyWage(e.target.value);
+                    if (resetErrors.dailyWage) {
+                      setResetErrors((prev) => ({ ...prev, dailyWage: undefined }));
+                    }
+                  }}
                 />
                 <label htmlFor="resetDailyWage" className="floating-group__label">
                   Günlük Ödenek (₺)
                 </label>
+                {resetErrors.dailyWage && (
+                  <span className="input-error-message">{resetErrors.dailyWage}</span>
+                )}
               </div>
 
               <div className="floating-group">
@@ -482,44 +519,70 @@ function SettingsPage() {
                   type="text"
                   inputMode="numeric"
                   id="resetWeeklyDays"
-                  className="input"
+                  className={`input ${resetErrors.weeklyDays ? 'input--error' : ''}`}
                   placeholder=" "
                   value={resetWeeklyDays}
-                  onChange={(e) => setResetWeeklyDays(e.target.value)}
+                  onChange={(e) => {
+                    setResetWeeklyDays(e.target.value);
+                    if (resetErrors.weeklyDays) {
+                      setResetErrors((prev) => ({ ...prev, weeklyDays: undefined }));
+                    }
+                  }}
                 />
                 <label htmlFor="resetWeeklyDays" className="floating-group__label">
                   Haftalık Çalışma Sınırı (Gün)
                 </label>
+                {resetErrors.weeklyDays && (
+                  <span className="input-error-message">{resetErrors.weeklyDays}</span>
+                )}
               </div>
             </div>
+
+            <div className="mini-gap"></div>
 
             <div className="settings-row">
               <div className="floating-group">
                 <input
                   type="date"
                   id="resetStartDate"
-                  className="input"
+                  className={`input ${resetErrors.startDate ? 'input--error' : ''}`}
                   placeholder=" "
                   value={resetStartDate}
-                  onChange={(e) => setResetStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setResetStartDate(e.target.value);
+                    if (resetErrors.startDate) {
+                      setResetErrors((prev) => ({ ...prev, startDate: undefined }));
+                    }
+                  }}
                 />
                 <label htmlFor="resetStartDate" className="floating-group__label">
                   Yeni Program Başlangıcı
                 </label>
+                {resetErrors.startDate && (
+                  <span className="input-error-message">{resetErrors.startDate}</span>
+                )}
               </div>
 
               <div className="floating-group">
                 <input
                   type="date"
                   id="resetEndDate"
-                  className="input"
+                  className={`input ${resetErrors.endDate ? 'input--error' : ''}`}
                   placeholder=" "
                   value={resetEndDate}
-                  onChange={(e) => setResetEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setResetEndDate(e.target.value);
+                    if (resetErrors.endDate) {
+                      setResetErrors((prev) => ({ ...prev, endDate: undefined }));
+                    }
+                  }}
                 />
                 <label htmlFor="resetEndDate" className="floating-group__label">
                   Yeni Program Bitişi
                 </label>
+                {resetErrors.endDate && (
+                  <span className="input-error-message">{resetErrors.endDate}</span>
+                )}
               </div>
             </div>
           </div>

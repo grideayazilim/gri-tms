@@ -166,6 +166,7 @@ export interface ImportResult {
 
 export interface BulkImportResult {
   successCount: number;
+  successes?: Array<{ row: number; name: string }>;
   failures: Array<{ row: number; name: string; error: string }>;
 }
 

@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="apps/management/client/public/readme-files/splash.png" width="100%" alt="Timesheet Management System Splash" />
-</p>
+<img width="3525" height="597" alt="splash" src="https://github.com/user-attachments/assets/facba98f-9a75-47c8-be79-1f177de4ce69" />
 
 # 📊 griTMS: İŞKUR Gençlik Programı İçin Puantaj Yönetim Sistemi ve E-Şube Botu
 
@@ -18,11 +16,7 @@ Timesheet Management System (TMS); **İŞKUR Gençlik Programı** kapsamında e�
 
 Uygulamanın arayüzünü, kullanım akışını ve genel işleyişini aşağıdaki demo videodan inceleyebilirsiniz:
 
-<p align="center">
-  <video src="apps/management/client/public/readme-files/demo.mp4" width="100%" autoplay loop muted playsinline poster="apps/management/client/public/readme-files/splash.png">
-    Tarayıcınız video etiketini desteklemiyor.
-  </video>
-</p>
+<video src="https://github.com/user-attachments/assets/6a64cd77-59ef-4bce-9428-99993eb9c36f" width="100%" autoplay loop muted playsinline></video>
 
 ---
 
@@ -68,74 +62,17 @@ Sistem genelinde sayfaların üst menülerinde bulunan soru işaretli **Info Box
 
 Rehber videoların kullanım şeklini aşağıdaki önizlemeden inceleyebilirsiniz:
 
-<p align="center">
-  <video src="apps/management/client/public/readme-files/info-box.mp4" width="100%" autoplay loop muted playsinline></video>
-</p>
+<video src="https://github.com/user-attachments/assets/71cd90ed-e40e-4b50-8603-e3e03f4815ee" width="100%" autoplay loop muted playsinline></video>
 
 ---
 
 ## 👥 Katkıda Bulunanlar (Contributors)
 
-<table align="center">
-  <tr>
-    <td align="center" width="90">
-      <a href="https://github.com/Aysenurkislioglu">
-        <img src="https://github.com/Aysenurkislioglu.png" width="80" style="border-radius:50%; border: 2px solid #FF6B6B;" alt="Ayşenur Kışlıoğlu" />
-        <br />
-        <sub><b>Ayşenur Kışlıoğlu</b></sub>
-      </a>
-    </td>
-    <td align="center" width="90">
-      <a href="https://github.com/eneseldes">
-        <img src="https://github.com/eneseldes.png" width="80" style="border-radius:50%; border: 2px solid #FF6B6B;" alt="Enes Eldeş" />
-        <br />
-        <sub><b>Enes Eldeş</b></sub>
-      </a>
-    </td>
-    <td align="center" width="90">
-      <a href="https://github.com/soztalha">
-        <img src="https://github.com/soztalha.png" width="80" style="border-radius:50%; border: 2px solid #FF6B6B;" alt="Talha Söz" />
-        <br />
-        <sub><b>Talha Söz</b></sub>
-      </a>
-    </td>
-    <td align="center" width="90">
-      <a href="https://github.com/elifsuaydos">
-        <img src="https://github.com/elifsuaydos.png" width="80" style="border-radius:50%; border: 2px solid #FF6B6B;" alt="Elif Su Aydos" />
-        <br />
-        <sub><b>Elifsu Aydos</b></sub>
-      </a>
-    </td>
-    <td align="center" width="90">
-      <a href="https://github.com/mustafaBulut1">
-        <img src="https://github.com/mustafaBulut1.png" width="80" style="border-radius:50%; border: 2px solid #FF6B6B;" alt="Mustafa Bulut" />
-        <br />
-        <sub><b>Mustafa Bulut</b></sub>
-      </a>
-    </td>
-    <td align="center" width="90">
-      <a href="https://github.com/elcinkaya">
-        <img src="https://github.com/elcinkaya.png" width="80" style="border-radius:50%; border: 2px solid #FF6B6B;" alt="Elçin Kaya" />
-        <br />
-        <sub><b>Elçin Kaya</b></sub>
-      </a>
-    </td>
-    <td align="center" width="90">
-      <a href="https://github.com/karadumanali">
-        <img src="https://github.com/karadumanali.png" width="80" style="border-radius:50%; border: 2px solid #FF6B6B;" alt="Ali Karaduman" />
-        <br />
-        <sub><b>Ali Karaduman</b></sub>
-      </a>
-    </td>
-    <td align="center" width="90">
-      <a href="https://github.com/grideayazilim">
-        <img src="apps/management/client/public/gridea.png" width="80" style="border-radius:50%; border: 2px solid #4D96FF;" alt="Gridea Yazılım" />
-        <br />
-        <sub><b>Gridea Yazılım</b></sub>
-      </a>
-    </td>
-  </tr>
-</table>
+Bu projeyi geliştirmede emeği geçen herkese teşekkürler 🙏
+
+<a href="https://github.com/grideayazilim/timesheet-management-system/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=grideayazilim/timesheet-management-system" />
+</a>
 
 ---
 

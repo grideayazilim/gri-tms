@@ -1,5 +1,5 @@
 {
-  "name": "timesheet-management-system",
+  "name": "gri-tms",
   "private": true,
   "workspaces": [
     "apps/management/*",

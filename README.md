@@ -70,8 +70,8 @@ Rehber videoların kullanım şeklini aşağıdaki önizlemeden inceleyebilirsin
 
 Bu projeyi geliştirmede emeği geçen herkese teşekkürler 🙏
 
-<a href="https://github.com/grideayazilim/timesheet-management-system/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=grideayazilim/timesheet-management-system" />
+<a href="https://github.com/grideayazilim/gri-tms/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=grideayazilim/gri-tms" />
 </a>
 
 ---
@@ -96,8 +96,8 @@ Sadece veritabanının Docker'da, uygulamaların (client & server) ise yerel ter
 
 ```bash
 # 1. Projeyi klonlayın ve kök dizine geçin
-git clone https://github.com/grideayazilim/timesheet-management-system.git
-cd timesheet-management-system
+git clone https://github.com/grideayazilim/gri-tms.git
+cd gri-tms
 
 # 2. Tüm workspace bağımlılıklarını tek komutla kurun
 npm install
@@ -140,8 +140,8 @@ Sunucu ortamlarında tüm servisler (Backend, Frontend, Veritabanı, Nginx proxy
 #### 🚀 Production Deploy
 ```bash
 # 1. Projeyi sunucuya klonlayın ve dizine geçin
-git clone https://github.com/grideayazilim/timesheet-management-system.git
-cd timesheet-management-system
+git clone https://github.com/grideayazilim/gri-tms.git
+cd gri-tms
 
 # 2. Üretim ortam değişkenlerini kopyalayın ve şifreleri düzenleyin (nano/vim ile)
 cp apps/management/server/.env.prod.example apps/management/server/.env.prod
@@ -177,7 +177,7 @@ mkdir -p /var/backups/timesheet
 # 2. Otomatik yedeklemeyi kurun (Her gece 03:00'te yedek alması için)
 # NOT: Bu adımı aktif etmek için önce terminalde "crontab -e" komutunu çalıştırın,
 # ardından açılan düzenleyicinin en altına aşağıdaki satırı yapıştırıp kaydedin:
-# 0 3 * * * /home/ubuntu/timesheet-management-system/docker/backup/backup.sh >> /var/log/timesheet-backup.log 2>&1
+# 0 3 * * * /home/ubuntu/gri-tms/docker/backup/backup.sh >> /var/log/timesheet-backup.log 2>&1
 
 # 3. Hemen manuel olarak yedek almak isterseniz:
 ./docker/backup/backup.sh

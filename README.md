@@ -1,4 +1,6 @@
-<img width="3525" height="597" alt="splash" src="https://github.com/user-attachments/assets/facba98f-9a75-47c8-be79-1f177de4ce69" />
+<img width="3525" height="597" alt="splash" src="https://github.com/user-attachments/assets/ff01a052-855a-4460-90c1-ef6ebedd537f" />
+
+
 
 # 📊 griTMS: İŞKUR Gençlik Programı İçin Puantaj Yönetim Sistemi ve E-Şube Botu
 
@@ -16,7 +18,7 @@ Timesheet Management System (TMS); **İŞKUR Gençlik Programı** kapsamında e�
 
 Uygulamanın arayüzünü, kullanım akışını ve genel işleyişini aşağıdaki demo videodan inceleyebilirsiniz:
 
-<video src="https://github.com/user-attachments/assets/6a64cd77-59ef-4bce-9428-99993eb9c36f" width="100%" autoplay loop muted playsinline></video>
+<video src="https://github.com/user-attachments/assets/838aabe5-d9a7-4e15-b7de-1ca51e38976b" width="100%" autoplay loop muted playsinline></video>
 
 ---
 
@@ -62,7 +64,7 @@ Sistem genelinde sayfaların üst menülerinde bulunan soru işaretli **Info Box
 
 Rehber videoların kullanım şeklini aşağıdaki önizlemeden inceleyebilirsiniz:
 
-<video src="https://github.com/user-attachments/assets/71cd90ed-e40e-4b50-8603-e3e03f4815ee" width="100%" autoplay loop muted playsinline></video>
+<video src="https://github.com/user-attachments/assets/ce0a75d3-6795-4a9c-b3a2-77934c00be49" width="100%" autoplay loop muted playsinline></video>
 
 ---
 

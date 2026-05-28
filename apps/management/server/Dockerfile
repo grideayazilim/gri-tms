@@ -13,9 +13,8 @@ COPY apps/bot/server/package.json ./apps/bot/server/
 COPY apps/bot/client/package.json ./apps/bot/client/
 
 # Tüm workspace bağımlılıklarını yükle
-# package-lock.json macOS'ta üretildiğinden Linux arm64-musl native binary'lerini içermez.
-# Lock file silinerek platform-agnostic fresh install yapılır.
-RUN rm -f package-lock.json && npm install
+# Lockfile'ı koruyarak temiz kurulum yapıyoruz (indirmeleri hızlandırır ve ağ hatalarını azaltır)
+RUN npm ci
 
 # Kaynak kodları kopyala ve derle
 COPY apps/management/shared/ ./apps/management/shared/

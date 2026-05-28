@@ -10,8 +10,8 @@ COPY apps/management/server/package.json ./apps/management/server/
 COPY apps/bot/server/package.json ./apps/bot/server/
 COPY apps/bot/client/package.json ./apps/bot/client/
 
-# package-lock.json macOS arm64-darwin'da üretildiğinden Linux arm64-musl native binary içermez.
-RUN rm -f package-lock.json && npm install
+# Lockfile'ı koruyarak temiz kurulum yapıyoruz (indirmeleri hızlandırır ve ağ hatalarını azaltır)
+RUN npm ci
 
 COPY apps/management/shared/ ./apps/management/shared/
 COPY apps/management/client/ ./apps/management/client/

@@ -11,7 +11,7 @@ const markerCodeTuple = MARKER_LIST.map(m => m.code) as [MarkerCode, ...MarkerCo
 
 export const timesheetDaySchema = z.object({
     day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Tarih YYYY-MM-DD formatında olmalıdır'),
-    markerCode: z.enum(markerCodeTuple, { message: 'Geçersiz işaretçi kodu' }),
+    markerCode: z.enum(markerCodeTuple, { message: 'Geçersiz işaretçi kodu' }).nullable(),
     note: z.string().nullable().optional(),
 });
 

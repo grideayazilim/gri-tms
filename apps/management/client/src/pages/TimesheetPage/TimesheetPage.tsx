@@ -332,7 +332,7 @@ const TimesheetPage = () => {
       return false;
     });
 
-    const result = await saveTimesheets(periodId, dirtyRows);
+    const result = await saveTimesheets(periodId, dirtyRows, originalSnapshot);
 
     if (result.success) {
       toast({ type: "success", message: "Puantaj başarıyla kaydedildi." });

@@ -48,7 +48,7 @@ export interface UseTimesheetsReturn {
   error: string | null;
   fetchTimesheets: (apiParams?: Record<string, string | number | undefined>) => Promise<Result<{ rows: TimesheetUIRow[] }>>;
   fetchPeriods: () => Promise<void>;
-  saveTimesheets: (periodId: string, changedUIRows: TimesheetUIRow[]) => Promise<Result<Record<string, never>>>;
+  saveTimesheets: (periodId: string, changedUIRows: TimesheetUIRow[], originalSnapshot: TimesheetUIRow[]) => Promise<Result<Record<string, never>>>;
   toggleLockPeriod: (periodId: string) => Promise<Result<{ period: PeriodItem }>>;
 }
 
@@ -97,15 +97,32 @@ const mapTimesheetToUI = (ts: TimesheetListItem): TimesheetUIRow => {
   };
 };
 
-// Tablodaki düz veriyi tekrar API'nin beklediği { employeeId, days: [] } formatına sokar
-const mapUIToSavePayload = (uiRows: TimesheetUIRow[]) =>
-  uiRows.map((row) => ({
-    employeeId: row.employeeId,
-    days: Object.entries(row.timesheet_days ?? {}).map(([day, markerCode]) => ({
-      day,
-      markerCode,
-    })),
-  }));
+// Tablodaki düz veriyi tekrar API'nin beklediği { employeeId, days: [] } formatına sokar (sadece değişen günleri içerir)
+const mapUIToSavePayload = (uiRows: TimesheetUIRow[], originalMap: Map<string, TimesheetUIRow>) =>
+  uiRows.map((row) => {
+    const original = originalMap.get(row.id);
+    const originalDays = original?.timesheet_days ?? {};
+    const currentDays = row.timesheet_days ?? {};
+
+    const daysPayload: { day: string; markerCode: MarkerCode | null }[] = [];
+    const allDays = new Set([...Object.keys(currentDays), ...Object.keys(originalDays)]);
+
+    for (const day of allDays) {
+      const currentCode = currentDays[day];
+      const originalCode = originalDays[day];
+      if (currentCode !== originalCode) {
+        daysPayload.push({
+          day,
+          markerCode: currentCode || null, // null means deleted/cleared
+        });
+      }
+    }
+
+    return {
+      employeeId: row.employeeId,
+      days: daysPayload,
+    };
+  });
 
 // ─────────────────────────────────────────────────────────────────
 // HOOK
@@ -158,14 +175,19 @@ export const useTimesheets = (): UseTimesheetsReturn => {
     }
   }, []);
 
-  const saveTimesheets = useCallback(async (periodId: string, changedUIRows: TimesheetUIRow[]): Promise<Result<Record<string, never>>> => {
+  const saveTimesheets = useCallback(async (
+    periodId: string,
+    changedUIRows: TimesheetUIRow[],
+    originalSnapshot: TimesheetUIRow[]
+  ): Promise<Result<Record<string, never>>> => {
     if (!periodId || !changedUIRows?.length) {
       return { success: false, error: 'Kaydedilecek değişiklik bulunamadı' };
     }
 
     setIsSaving(true);
     try {
-      const payload = mapUIToSavePayload(changedUIRows);
+      const originalMap = new Map(originalSnapshot.map((r) => [r.id, r]));
+      const payload = mapUIToSavePayload(changedUIRows, originalMap);
       const response = await timesheetService.saveTimesheets(periodId, payload);
       
       if (response.success) {

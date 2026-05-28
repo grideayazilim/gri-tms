@@ -96,6 +96,53 @@ describe('Timesheet API', () => {
       expect(res.body).toBeDefined()
     })
 
+    it('POST /api/timesheets → eşzamanlı/ayrı gün değişikliklerinde diğer günler silinmez (diff bazlı)', async () => {
+      const admin = await createAdminUser()
+      const location = await createLocation()
+      const unit = await createUnit(location.id)
+      const emp = await createEmployee(unit.id)
+      const period = await createPeriod(2024, 10)
+
+      // İlk olarak 15. günü kaydet (veritabanında önceden var olan kayıt)
+      await request(app)
+        .post('/api/timesheets')
+        .set('Cookie', admin.cookie)
+        .send({
+          periodId: period.id,
+          timesheets: [{ employeeId: emp.id, days: [{ day: '2024-10-15', markerCode: 'X', note: 'eski' }] }]
+        })
+
+      // Sonra, 17. günü kaydet (sadece 17. günün değiştiği payload gönderiliyor)
+      const res = await request(app)
+        .post('/api/timesheets')
+        .set('Cookie', admin.cookie)
+        .send({
+          periodId: period.id,
+          timesheets: [{ employeeId: emp.id, days: [{ day: '2024-10-17', markerCode: 'R', note: 'yeni' }] }]
+        })
+
+      expect(res.status).toBe(200)
+
+      // Veritabanındaki günleri sorgula, hem 15 hem 17. günün durması gerekir
+      const getRes = await request(app)
+        .get(`/api/timesheets?periodId=${period.id}&unitId=${unit.id}`)
+        .set('Cookie', admin.cookie)
+
+      expect(getRes.status).toBe(200)
+      const row = getRes.body.data.timesheets[0]
+      expect(row).toBeDefined()
+      expect(row.timesheet.days).toHaveLength(2)
+
+      const days = row.timesheet.days
+      const day15 = days.find((d: any) => d.day === '2024-10-15')
+      const day17 = days.find((d: any) => d.day === '2024-10-17')
+
+      expect(day15).toBeDefined()
+      expect(day15.markerCode).toBe('X')
+      expect(day17).toBeDefined()
+      expect(day17.markerCode).toBe('R')
+    })
+
     it('GET /api/timesheets → filtreli sorgu doğru sonuçlar döner → 200', async () => {
       const admin = await createAdminUser()
       const location = await createLocation()

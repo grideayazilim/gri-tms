@@ -129,6 +129,16 @@ interface TimesheetEntry {
   days: { markerCode: MarkerCode; day: string; note?: string }[];
 }
 
+/**
+ * PUANTAJ GÜNLERİNİ DİFF BAZLI (KAYIT SEVİYESİNDE) KAYDEDER VE GÜNCELLER.
+ * 
+ * Eşzamanlı veri girişlerinde veri kaybını önlemek için şu mantığı kullanılır:
+ * 1. UI sadece kullanıcının değiştirdiği (eklediği, değiştirdiği veya null yaparak sildiği) günleri yollar.
+ * 2. Backend, DB'deki mevcut günleri çeker ve gelen değişikliklerle birleştirerek (merge) haftalık çalışma limitini kontrol eder.
+ * 3. Sadece değişen günler için:
+ *    - markerCode değeri null ise veritabanından silinir (deleteSpecificDays).
+ *    - markerCode değeri geçerli bir işaretçi ise veritabanına eklenir veya güncellenir (upsertDays).
+ */
 export const createOrUpdateTimesheets = asyncHandler<Record<string, string>, unknown, TimesheetSaveType>(async (req, res) => {
   const { periodId, timesheets } = req.body;
   const scope = req.scope;
@@ -174,61 +184,47 @@ export const createOrUpdateTimesheets = asyncHandler<Record<string, string>, unk
     }
     periodISOWeeks.sort();
 
-    for (const ts of timesheets) {
-      const weekMap: Record<string, number> = {};
-      for (const dayEntry of ts.days) {
-        if (PAID_CODES.has(dayEntry.markerCode)) {
-          const date = parseLocalDate(dayEntry.day);
-          if (date) {
-            const isoWeek = getISOWeekKey(date);
-            weekMap[isoWeek] = (weekMap[isoWeek] ?? 0) + 1;
-          }
-        }
-      }
-
-      for (const [weekKey, count] of Object.entries(weekMap)) {
-        if (count > maxWeeklyDays) {
-          const emp = employeeMap.get(ts.employeeId);
-          const empName = emp ? `${emp.firstName} ${emp.lastName}` : ts.employeeId;
-          const idx = periodISOWeeks.indexOf(weekKey);
-          const weekLabel = idx !== -1 ? `${idx + 1}. hafta` : weekKey.split('-W')[1] + '. hafta';
-          throw badRequest(`${empName} için seçili dönemin ${weekLabel}sında ${count} ücretli gün girilmiş (maks: ${maxWeeklyDays})`);
-        }
-      }
-    }
-
     const existingRows = await timesheetRepo.getExistingTimesheets(tx, employeeIds, periodId);
     const existingTimesheetMap = new Map<string, string>();
     for (const row of existingRows) {
       existingTimesheetMap.set(row.employeeId, row.id);
     }
 
-    // Mevcut tüm puantaj günlerini önceden çek (diff hesabı için)
+    // Mevcut tüm puantaj günlerini önceden çek (diff ve limit hesabı için)
     const existingTimesheetIds = [...existingTimesheetMap.values()];
     const existingDaysRows = existingTimesheetIds.length > 0
       ? await timesheetRepo.getTimesheetDays(tx, existingTimesheetIds)
       : [];
 
-    // timesheetId -> Set<"day|markerCode"> şeklinde mevcut gün imzalarını tut
-    const existingDaySignatures = new Map<string, Set<string>>();
-    for (const d of existingDaysRows) {
-      if (!existingDaySignatures.has(d.timesheetId)) {
-        existingDaySignatures.set(d.timesheetId, new Set());
-      }
-      existingDaySignatures.get(d.timesheetId)!.add(`${d.day}|${d.markerCode}`);
+    // employeeId -> Map of day -> dayInfo
+    const employeeExistingDays = new Map<string, Map<string, { markerCode: MarkerCode; note: string | null }>>();
+    for (const employeeId of employeeIds) {
+      employeeExistingDays.set(employeeId, new Map());
     }
 
-    let totalDaysChanged = 0;
-    const affectedEmployees: { name: string; daysCount: number }[] = [];
-    const allTimesheetIds: string[] = [];
-    const allDayRows: TimesheetDayInsert[] = [];
+    const timesheetIdToEmployeeId = new Map<string, string>();
+    for (const row of existingRows) {
+      timesheetIdToEmployeeId.set(row.id, row.employeeId);
+    }
 
+    for (const d of existingDaysRows) {
+      const empId = timesheetIdToEmployeeId.get(d.timesheetId);
+      if (empId) {
+        employeeExistingDays.get(empId)!.set(d.day, {
+          markerCode: d.markerCode as MarkerCode,
+          note: d.note,
+        });
+      }
+    }
+
+    const employeeTimesheetIds = new Map<string, string>();
+
+    // 1. Aşama: Timesheet satırlarını oluştur ve haftalık limitleri kontrol et
     for (const ts of timesheets) {
       const emp = employeeMap.get(ts.employeeId);
-      // missingIds kontrolü geçildikten sonra emp kesinlikle mevcuttur
       if (!emp) throw badRequest(`Çalışan bulunamadı: ${ts.employeeId}`);
-      let timesheetId = existingTimesheetMap.get(ts.employeeId);
 
+      let timesheetId = existingTimesheetMap.get(ts.employeeId);
       if (timesheetId) {
         await timesheetRepo.touchTimesheet(tx, timesheetId);
       } else {
@@ -238,42 +234,92 @@ export const createOrUpdateTimesheets = asyncHandler<Record<string, string>, unk
           unitId: emp.unitId,
         });
       }
+      employeeTimesheetIds.set(ts.employeeId, timesheetId);
 
-      allTimesheetIds.push(timesheetId);
-
-      const newDaySignatures = new Set<string>();
-      if (ts.days && ts.days.length > 0) {
-        for (const dayEntry of ts.days) {
-          allDayRows.push({
-            timesheetId: timesheetId,
-            day: dayEntry.day,
+      // Mevcut günleri gelen değişikliklerle birleştir
+      const mergedDays = new Map(employeeExistingDays.get(ts.employeeId));
+      for (const dayEntry of ts.days) {
+        if (dayEntry.markerCode === null) {
+          mergedDays.delete(dayEntry.day);
+        } else {
+          mergedDays.set(dayEntry.day, {
             markerCode: dayEntry.markerCode,
-            note: dayEntry.note || null,
+            note: dayEntry.note ?? null,
           });
-          newDaySignatures.add(`${dayEntry.day}|${dayEntry.markerCode}`);
         }
       }
 
-      // Gerçek değişim = eklenen + silinen günler
-      const prevSignatures = existingDaySignatures.get(timesheetId) ?? new Set<string>();
-      const added = [...newDaySignatures].filter((s) => !prevSignatures.has(s)).length;
-      const removed = [...prevSignatures].filter((s) => !newDaySignatures.has(s)).length;
-      const daysChanged = added + removed;
+      // Haftalık limit kontrolünü birleşik liste üzerinden yap
+      const weekMap: Record<string, number> = {};
+      for (const [day, dayInfo] of mergedDays.entries()) {
+        if (PAID_CODES.has(dayInfo.markerCode)) {
+          const date = parseLocalDate(day);
+          if (date) {
+            const isoWeek = getISOWeekKey(date);
+            weekMap[isoWeek] = (weekMap[isoWeek] ?? 0) + 1;
+          }
+        }
+      }
+
+      for (const [weekKey, count] of Object.entries(weekMap)) {
+        if (count > maxWeeklyDays) {
+          const empName = `${emp.firstName} ${emp.lastName}`;
+          const idx = periodISOWeeks.indexOf(weekKey);
+          const weekLabel = idx !== -1 ? `${idx + 1}. hafta` : weekKey.split('-W')[1] + '. hafta';
+          throw badRequest(`${empName} için seçili dönemin ${weekLabel}sında ${count} ücretli gün girilmiş (maks: ${maxWeeklyDays})`);
+        }
+      }
+    }
+
+    // 2. Aşama: Değişiklikleri uygula (Upsert / Delete)
+    let totalDaysChanged = 0;
+    const affectedEmployees: { name: string; daysCount: number }[] = [];
+    const allUpsertRows: TimesheetDayInsert[] = [];
+
+    for (const ts of timesheets) {
+      const emp = employeeMap.get(ts.employeeId);
+      const timesheetId = employeeTimesheetIds.get(ts.employeeId)!;
+      const existing = employeeExistingDays.get(ts.employeeId) ?? new Map();
+
+      let daysChanged = 0;
+      const deletesForThisTs: string[] = [];
+
+      for (const dayEntry of ts.days) {
+        const prev = existing.get(dayEntry.day);
+        const prevCode = prev?.markerCode ?? null;
+
+        if (dayEntry.markerCode !== prevCode) {
+          daysChanged++;
+          if (dayEntry.markerCode === null) {
+            deletesForThisTs.push(dayEntry.day);
+          } else {
+            allUpsertRows.push({
+              timesheetId,
+              day: dayEntry.day,
+              markerCode: dayEntry.markerCode,
+              note: dayEntry.note ?? null,
+            });
+          }
+        }
+      }
 
       totalDaysChanged += daysChanged;
 
-      // Sadece gerçekten değişim olan çalışanları log'a ekle
       if (daysChanged > 0) {
         affectedEmployees.push({
           name: emp ? `${emp.firstName} ${emp.lastName}` : ts.employeeId,
           daysCount: daysChanged,
         });
       }
+
+      if (deletesForThisTs.length > 0) {
+        await timesheetRepo.deleteSpecificDays(tx, timesheetId, deletesForThisTs);
+      }
     }
 
-    // Eski gün kayıtlarını temizle ve yenilerini toplu olarak ekle
-    await timesheetRepo.deleteDays(tx, allTimesheetIds);
-    await timesheetRepo.insertDays(tx, allDayRows);
+    if (allUpsertRows.length > 0) {
+      await timesheetRepo.upsertDays(tx, allUpsertRows);
+    }
 
     const periodLabel = formatPeriodLabel(period.year, period.month);
     const empCount = affectedEmployees.length;

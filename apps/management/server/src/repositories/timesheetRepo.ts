@@ -175,5 +175,38 @@ export const timesheetRepo = {
     for (let i = 0; i < rows.length; i += chunkSize) {
       await executor.insert(timesheetDays).values(rows.slice(i, i + chunkSize));
     }
+  },
+
+  /**
+   * Belirli gün detaylarını siler
+   */
+  async deleteSpecificDays(executor: DbExecutor, timesheetId: string, days: string[]): Promise<void> {
+    if (days.length === 0) return;
+    await executor.delete(timesheetDays)
+      .where(and(
+        eq(timesheetDays.timesheetId, timesheetId),
+        inArray(timesheetDays.day, days)
+      ));
+  },
+
+  /**
+   * Gün detaylarını ekler veya günceller (upsert)
+   */
+  async upsertDays(executor: DbExecutor, rows: TimesheetDayInsert[]): Promise<void> {
+    if (rows.length === 0) return;
+    
+    // Chunking to avoid parameter limits (Postgres max 65535 parameters)
+    const chunkSize = 5000;
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      await executor.insert(timesheetDays)
+        .values(rows.slice(i, i + chunkSize))
+        .onConflictDoUpdate({
+          target: [timesheetDays.timesheetId, timesheetDays.day],
+          set: {
+            markerCode: sql`excluded.marker_code`,
+            note: sql`excluded.note`,
+          },
+        });
+    }
   }
 };

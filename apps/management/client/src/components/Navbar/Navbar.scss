@@ -53,6 +53,11 @@
     font-weight: var(--font-weight-main-title);
     transform: translateX(10%);
     transition: 0.4s;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 0.8;
+    }
 
     // 'gri'
     .prefix {
@@ -168,6 +173,7 @@
     position: fixed;
     z-index: 101;
     flex-direction: row;
+    top: auto;
     bottom: 0;
     width: 100%;
     padding: var(--space-sm) var(--space-lg);

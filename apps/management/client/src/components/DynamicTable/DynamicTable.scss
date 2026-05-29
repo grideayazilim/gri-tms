@@ -194,6 +194,15 @@
     font-size: 1.1rem;
   }
 
+  .table-loading-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
   // --- Empty State ---
   .no-data {
     text-align: center;

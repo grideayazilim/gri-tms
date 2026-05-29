@@ -119,7 +119,10 @@ function DynamicTable<T extends { id: string | number }>({
             {isDelayedLoading ? (
               <tr>
                 <td colSpan={columns.length} className="no-data no-data--loading">
-                  Yükleniyor...
+                  <div className="table-loading-container">
+                    <div className="spinner spinner--small"></div>
+                    <span className="sr-only">Yükleniyor...</span>
+                  </div>
                 </td>
               </tr>
             ) : delayedData.length > 0 ? (

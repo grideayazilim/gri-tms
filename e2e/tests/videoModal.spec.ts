@@ -35,8 +35,8 @@ test.describe('VideoInfoModal Bileşeni', () => {
     await expect(nextBtn).toBeEnabled();
     await nextBtn.click();
 
-    // Counter "2 / 2" olmalı
-    await expect(container.locator('.video-info-nav__counter')).toContainText('2 / 2');
+    // Counter "2 / 3" olmalı (Admin için 3 video render edilir)
+    await expect(container.locator('.video-info-nav__counter')).toContainText('2 / 3');
 
     // Kapat butonuna bas (aria-label="Kapat")
     const closeBtn = container.locator('[aria-label="Kapat"]');

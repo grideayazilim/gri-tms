@@ -138,8 +138,8 @@ function SettingsPage() {
   } = useForm<z.input<typeof systemSettingsSchema>, unknown, SystemSettingsType>({
     resolver: zodResolver(systemSettingsSchema),
     defaultValues: {
-      dailyWage: "",
-      maxWeeklyDays: "",
+      dailyWage: "0",
+      maxWeeklyDays: "0",
       programStartDate: "",
       programEndDate: "",
     },
@@ -262,8 +262,8 @@ function SettingsPage() {
   useEffect(() => {
     if (systemSettings) {
       resetSystem({
-        dailyWage: systemSettings.dailyWage?.toString() ?? "",
-        maxWeeklyDays: systemSettings.maxWeeklyDays?.toString() ?? "",
+        dailyWage: systemSettings.dailyWage?.toString() ?? "0",
+        maxWeeklyDays: systemSettings.maxWeeklyDays?.toString() ?? "0",
         programStartDate: toISODateString(systemSettings.programStartDate) ?? "",
         programEndDate: toISODateString(systemSettings.programEndDate) ?? "",
       });

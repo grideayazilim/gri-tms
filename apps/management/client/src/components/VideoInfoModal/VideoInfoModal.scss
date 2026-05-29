@@ -103,12 +103,11 @@
    ========================================== */
 
 .info-trigger-btn {
+  justify-self: end;
   position: relative;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  border-radius: var(--radius-sm);
-  padding: 4px;
+  color: var(--secondary-text);
+  border-radius: var(--radius-md);
+  padding: 6px;
   cursor: pointer !important;
   display: flex;
   align-items: center;
@@ -122,18 +121,23 @@
     color: var(--text-primary);
   }
 
+  @media (max-width: 768px) {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
   svg {
     pointer-events: none;
   }
 
   .info-btn-pulse-ring {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 24px;
-    height: 24px;
-    border: 1.5px solid var(--text-secondary, #979797);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 1px solid var(--text-secondary, #979797);
     border-radius: 50%;
     opacity: 0;
     pointer-events: none;
@@ -143,13 +147,15 @@
 
 @keyframes info-pulse-ring-anim {
   0% {
-    width: 24px;
-    height: 24px;
+    transform: scale(1.2);
+    opacity: 0;
+  }
+  35% {
+    transform: scale(0.9);
     opacity: 0.8;
   }
   100% {
-    width: 56px;
-    height: 56px;
+    transform: scale(2);
     opacity: 0;
   }
 }

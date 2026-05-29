@@ -48,7 +48,7 @@ export interface UseTimesheetsReturn {
   error: string | null;
   fetchTimesheets: (apiParams?: Record<string, string | number | undefined>) => Promise<Result<{ rows: TimesheetUIRow[] }>>;
   fetchPeriods: () => Promise<void>;
-  saveTimesheets: (periodId: string, changedUIRows: TimesheetUIRow[], originalSnapshot: TimesheetUIRow[]) => Promise<Result<Record<string, never>>>;
+  saveTimesheets: (periodId: string, changedUIRows: TimesheetUIRow[], originalSnapshot?: TimesheetUIRow[]) => Promise<Result<Record<string, never>>>;
   toggleLockPeriod: (periodId: string) => Promise<Result<{ period: PeriodItem }>>;
 }
 
@@ -132,7 +132,7 @@ export const useTimesheets = (): UseTimesheetsReturn => {
   const [timesheets, setTimesheets] = useState<TimesheetUIRow[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta | null>(null);
   const [periods, setPeriods] = useState<UIPeriod[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isLocking, setIsLocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,20 +165,27 @@ export const useTimesheets = (): UseTimesheetsReturn => {
   }, []);
 
   const fetchPeriods = useCallback(async () => {
+    setIsLoading(true);
     try {
       const response = await timesheetService.getPeriods();
       if (response.success && response.data?.periods) {
-        setPeriods(response.data.periods.map(mapPeriod));
+        const mapped = response.data.periods.map(mapPeriod);
+        setPeriods(mapped);
+        if (mapped.length === 0) {
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
       }
     } catch {
-      // Dönemler alınamadı — filtre dropdown'ı boş kalır
+      setIsLoading(false);
     }
   }, []);
 
   const saveTimesheets = useCallback(async (
     periodId: string,
     changedUIRows: TimesheetUIRow[],
-    originalSnapshot: TimesheetUIRow[]
+    originalSnapshot: TimesheetUIRow[] = []
   ): Promise<Result<Record<string, never>>> => {
     if (!periodId || !changedUIRows?.length) {
       return { success: false, error: 'Kaydedilecek değişiklik bulunamadı' };

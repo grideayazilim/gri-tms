@@ -5,7 +5,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { eachDayOfInterval, format, parseISO } from "date-fns";
-import { AiOutlineBell } from "react-icons/ai";
+import { IoMdNotificationsOutline } from "react-icons/io";
 import DynamicTable from "../../components/DynamicTable/DynamicTable";
 import { timesheetColumns } from "./timesheetColumns";
 import { useModal } from "../../components/Modal";
@@ -458,7 +458,7 @@ const TimesheetPage = () => {
           title="Duyurular"
         >
           {unreadCount > 0 && <span className="announcement-pulse" />}
-          <AiOutlineBell />
+          <IoMdNotificationsOutline />
           {unreadCount > 0 && (
             <span className="announcement-badge">{unreadCount}</span>
           )}

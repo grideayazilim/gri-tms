@@ -17,7 +17,7 @@ describe('useUsers hook', () => {
 
     expect(result.current.users).toEqual([]);
     expect(result.current.pagination).toEqual({ totalRecords: 0, totalPages: 0, currentPage: 1, limit: DEFAULT_PAGINATION.limit });
-    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isLoading).toBe(true);
     expect(result.current.error).toBeNull();
   });
 

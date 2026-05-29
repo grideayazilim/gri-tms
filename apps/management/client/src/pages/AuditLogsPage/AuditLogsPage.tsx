@@ -31,12 +31,13 @@ const AuditLogsPage = () => {
   }, [fetchAuditLogs, apiParams, page]);
 
   return (
-    <PageShell title="İşlem Kayıtları" isLoading={isLoading}>
+    <PageShell title="İşlem Kayıtları">
       <FilterBar config={auditLogFilterConfig} filters={filters} onFilterChange={handleFilterChangeAndReset} />
       {error && <div className="error-message">{error}</div>}
       <DynamicTable
         columns={auditLogColumns}
         data={auditLogs}
+        loading={isLoading}
         pagination={pagination}
         onPageChange={setPage}
       />

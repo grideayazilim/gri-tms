@@ -16,7 +16,7 @@ interface PageShellProps {
   infoVideos?: InfoVideosConfig;
 }
 
-const PageShell = ({ title, headerActions, children, infoVideos }: PageShellProps) => {
+const PageShell = ({ title, headerActions, children, isLoading = false, infoVideos }: PageShellProps) => {
   const { user } = useAuth();
   const userRole = user?.role;
 
@@ -44,7 +44,14 @@ const PageShell = ({ title, headerActions, children, infoVideos }: PageShellProp
           {headerActions && <div className="page-actions">{headerActions}</div>}
         </div>
       )}
-      {children}
+      {isLoading ? (
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <span className="sr-only">Yükleniyor...</span>
+        </div>
+      ) : (
+        children
+      )}
     </motion.main>
   );
 };

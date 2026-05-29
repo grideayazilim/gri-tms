@@ -23,7 +23,7 @@ interface UseAuditLogsReturn {
 export const useAuditLogs = (): UseAuditLogsReturn => {
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>(DEFAULT_PAGINATION);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchAuditLogs = useCallback(async (apiParams: Record<string, unknown> = {}, page = 1) => {

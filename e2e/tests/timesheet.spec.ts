@@ -102,10 +102,12 @@ test.describe('Puantaj İşlemleri', () => {
         expect(lockResponse, 'Kilit toggle API yanıt vermedi').not.toBeNull();
         expect(lockResponse!.ok(), `HTTP Hatası: ${lockResponse!.status()}`).toBeTruthy();
 
-        // Checkbox state'inin güncellenmesi için kısa bekle
-        await page.waitForTimeout(500);
-        const isCheckedAfter = await timesheetPage.lockCheckbox.isChecked();
-        expect(isCheckedAfter).not.toBe(isCheckedBefore);
+        // Checkbox state'inin güncellenmesini bekle
+        if (isCheckedBefore) {
+          await expect(timesheetPage.lockCheckbox).not.toBeChecked();
+        } else {
+          await expect(timesheetPage.lockCheckbox).toBeChecked();
+        }
 
         // Eski duruma geri döndür
         await timesheetPage.toggleLock();

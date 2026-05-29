@@ -14,7 +14,7 @@ import { LiaUserTieSolid } from 'react-icons/lia';
 // Çalışanlar
 import { PiHardHat } from 'react-icons/pi';
 // İşlem kayıtları
-import { RiFileList3Line } from 'react-icons/ri';
+import { BiSearchAlt } from 'react-icons/bi';
 // Ayarlar
 import { IoSettingsOutline } from 'react-icons/io5';
 
@@ -83,7 +83,7 @@ export const managementRoutes: RouteConfig[] = [
     path: '/audit-logs',
     element: AuditLogsPage,
     name: 'İşlem Kayıtları',
-    icon: <RiFileList3Line />,
+    icon: <BiSearchAlt />,
     adminOnly: true,
   },
 ];

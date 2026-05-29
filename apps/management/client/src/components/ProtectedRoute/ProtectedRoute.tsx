@@ -18,7 +18,12 @@ const ProtectedRoute = ({ children, adminOnly = false }: ProtectedRouteProps) =>
   const { isAuthenticated, isBooting, user } = useAuth();
 
   if (isBooting) {
-    return <div>Yükleniyor...</div>;
+    return (
+      <div className="full-screen-loader">
+        <div className="spinner"></div>
+        <span className="sr-only">Yükleniyor...</span>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

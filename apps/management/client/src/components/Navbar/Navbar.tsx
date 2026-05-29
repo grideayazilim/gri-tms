@@ -180,7 +180,7 @@ function Navbar() {
       <div className="nav__bg"></div>
       {/* Nav management kısmı (üst kısım) */}
       <div className="nav__management">
-        <div className="nav__title">
+        <div className="nav__title" onClick={() => navigate("/")}>
           <div className="prefix">gri</div>
           <div className="colored">TMS</div>
         </div>

@@ -145,31 +145,13 @@ function LocationsPage() {
     </AnimatePresence>
   );
 
-  if (isLoading) {
-    return (
-      <PageShell
-        title="Yerleşke ve Birimler"
-        infoVideos={{
-          modalTitle: 'Yerleşke Yönetimi Nasıl Kullanılır?',
-          byRole: {
-            ADMIN: [
-              { src: '/video-guides/yerleske_yonetimi.mp4', title: 'Yerleşke Yönetimi' },
-              { src: '/video-guides/yerleske_export_ve_bot.mp4', title: 'Export ve Bot Ayarları' },
-            ],
-          },
-        }}
-      >
-        <div className="loading-container">
-          <div className="loader">Yükleniyor...</div>
-        </div>
-      </PageShell>
-    );
-  }
+
 
   return (
     <PageShell
       title="Yerleşke ve Birimler"
       headerActions={headerActions}
+      isLoading={isLoading}
       infoVideos={{
         modalTitle: 'Yerleşke Yönetimi Nasıl Kullanılır?',
         byRole: {
@@ -183,7 +165,12 @@ function LocationsPage() {
       <div className="locations-warning">
         <strong>Uyarı:</strong> Bir yerleşke veya birimi sildiğinizde, ilgili oluşuma ait tüm çalışanlar, puantaj verileri ve sistem sorumluları da <strong>kalıcı olarak silinir</strong>.
       </div>
-      <div className={`locations-tree${locations.length > 0 ? ' has-locations' : ''}`}>
+      <motion.div 
+        className={`locations-tree${locations.length > 0 ? ' has-locations' : ''}`}
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="tree-root-line" />
 
         {locations.map((location) => {
@@ -392,7 +379,7 @@ function LocationsPage() {
         >
           + Yeni Yerleşke Ekle
         </button>
-      </div>
+      </motion.div>
     </PageShell>
   );
 }

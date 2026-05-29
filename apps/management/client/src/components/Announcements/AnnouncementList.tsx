@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { RiAddLine, RiLoader4Line } from 'react-icons/ri';
+import { RiAddLine } from 'react-icons/ri';
+import { IoMdNotificationsOutline } from 'react-icons/io';
 import { useAuth } from '../../context/AuthContext';
 import { useModal } from '../Modal';
 import { useToast } from '../ToastBar/useToast';
@@ -85,8 +86,8 @@ function AnnouncementList({ onClose: _onClose }: AnnouncementListProps) {
 
   if (isLoading && announcements.length === 0) {
     return (
-      <div className="announcement-list__loading" style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}>
-        <RiLoader4Line className="spin-animation" size={32} color="#007bff" />
+      <div className="announcement-list__loading" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
+        <div className="spinner"></div>
       </div>
     );
   }
@@ -114,7 +115,9 @@ function AnnouncementList({ onClose: _onClose }: AnnouncementListProps) {
       {announcements.length === 0 ? (
         <div className="announcement-list__empty">
           <div className="empty-state">
-            <div className="empty-state__icon">📢</div>
+            <div className="empty-state__icon empty-state__icon--notification">
+              <IoMdNotificationsOutline />
+            </div>
             <div className="empty-state__title">Henüz duyuru yok</div>
             <div className="empty-state__description">
               {isAdmin ? 'Yeni bir duyuru ekleyerek başlayın.' : 'Şu anda görüntülenecek duyuru bulunmuyor.'}

@@ -18,7 +18,7 @@ describe('useTimesheets hook', () => {
     expect(result.current.timesheets).toEqual([]);
     expect(result.current.periods).toEqual([]);
     expect(result.current.pagination).toBeNull();
-    expect(result.current.isLoading).toBe(false);
+    expect(result.current.isLoading).toBe(true);
     expect(result.current.isSaving).toBe(false);
     expect(result.current.isLocking).toBe(false);
     expect(result.current.error).toBeNull();
@@ -169,7 +169,7 @@ describe('useTimesheets hook', () => {
 
       let response: any;
       await act(async () => {
-        response = await result.current.saveTimesheets('p-1', [mockRow]);
+        response = await result.current.saveTimesheets('p-1', [mockRow], []);
       });
 
       expect(response?.success).toBe(true);
@@ -186,7 +186,7 @@ describe('useTimesheets hook', () => {
 
       let response: any;
       await act(async () => {
-        response = await result.current.saveTimesheets('p-1', [mockRow]);
+        response = await result.current.saveTimesheets('p-1', [mockRow], []);
       });
 
       expect(response?.success).toBe(false);
@@ -256,7 +256,7 @@ describe('useTimesheets hook', () => {
     const { result } = renderHook(() => useTimesheets());
     const fakeRow = { id: 'r1', periodId: 'p1', employeeId: 'e1', timesheet_days: {}, workDaysCount: 0, isLocked: false } as any;
     let response: any;
-    await act(async () => { response = await result.current.saveTimesheets('p1', [fakeRow]); });
+    await act(async () => { response = await result.current.saveTimesheets('p1', [fakeRow], []); });
     expect(response?.success).toBe(false);
   });
 

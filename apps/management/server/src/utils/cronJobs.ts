@@ -72,6 +72,35 @@ export function initCronJobs(): void {
                         },
                     });
                 }
+
+                // Yeni aya geçildiğinde veya dönemin süresi başladığında kilidi otomatik aç
+                const unlockedPeriods = await tx.update(periods)
+                    .set({ isLocked: false })
+                    .where(and(
+                        eq(periods.isLocked, true),
+                        eq(periods.isDeleted, false),
+                        sql`CURRENT_DATE >= ${periods.startDate}::date`,
+                        sql`CURRENT_DATE < (${periods.endDate}::date + INTERVAL '5 days')::DATE`,
+                    ))
+                    .returning({ id: periods.id, year: periods.year, month: periods.month });
+
+                for (const row of unlockedPeriods) {
+                    const periodLabel = formatPeriodLabel(row.year, row.month);
+                    logger.info('[CRON] Dönem otomatik açıldı', { year: row.year, month: row.month });
+
+                    await createAuditLog(tx, {
+                        action: AUDIT_ACTION.PERIOD_UNLOCK,
+                        actor: SYSTEM_CRON_ACTOR,
+                        entityType: AUDIT_ENTITY_TYPE.PERIOD,
+                        entityId: row.id,
+                        summary: `${periodLabel} dönemi otomatik olarak açıldı.`,
+                        metadata: {
+                            periodLabel,
+                            year: row.year,
+                            month: row.month,
+                        },
+                    });
+                }
             });
         } catch (error: unknown) {
             logger.error('[CRON] Nightly maintenance başarısız', {

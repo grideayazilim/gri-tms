@@ -6,31 +6,6 @@ import type { DbExecutor } from '../types/db.js';
 export const importRepo = {
   // --- IMPORT ---
 
-  async findUnitByName(executor: DbExecutor, locationId: string, unitName: string) {
-    const res = await executor.select().from(units)
-      .where(and(eq(units.locationId, locationId), ilike(units.name, unitName)))
-      .limit(1);
-    return res[0];
-  },
-
-  async getFirstUnitInLocation(executor: DbExecutor, locationId: string) {
-    const res = await executor.select().from(units)
-      .where(eq(units.locationId, locationId))
-      .orderBy(asc(units.name))
-      .limit(1);
-    return res[0];
-  },
-
-  async findEmployeeByTc(executor: DbExecutor, tcNo: string): Promise<EmployeeRow | undefined> {
-    const res = await executor.select().from(employees).where(eq(employees.tcNo, tcNo)).limit(1);
-    return res[0];
-  },
-
-  async insertEmployee(executor: DbExecutor, data: EmployeeInsert) {
-    const res = await executor.insert(employees).values(data).returning();
-    return res[0]!;
-  },
-
   async insertEmployeeOnConflictDoNothing(
     executor: DbExecutor,
     data: EmployeeInsert,
@@ -44,47 +19,6 @@ export const importRepo = {
       .where(and(eq(periods.year, year), eq(periods.month, month), eq(periods.isDeleted, false)))
       .limit(1);
     return res[0];
-  },
-
-  async insertPeriod(executor: DbExecutor, year: number, month: number) {
-    const lastDay = new Date(year, month, 0).getDate();
-    const mm = month.toString().padStart(2, '0');
-
-    const res = await executor.insert(periods)
-      .values({ 
-        year, 
-        month, 
-        startDate: `${year}-${mm}-01`, 
-        endDate: `${year}-${mm}-${lastDay.toString().padStart(2, '0')}`,
-        isDeleted: false 
-      })
-      .returning();
-    return res[0]!;
-  },
-
-  async findTimesheet(executor: DbExecutor, employeeId: string, periodId: string) {
-    const res = await executor.select().from(timesheets)
-      .where(and(eq(timesheets.employeeId, employeeId), eq(timesheets.periodId, periodId)))
-      .limit(1);
-    return res[0];
-  },
-
-  async touchTimesheet(executor: DbExecutor, id: string) {
-    await executor.update(timesheets).set({ updatedAt: new Date() }).where(eq(timesheets.id, id));
-  },
-
-  async insertTimesheet(executor: DbExecutor, employeeId: string, periodId: string, unitId: string) {
-    const res = await executor.insert(timesheets).values({ employeeId, periodId, unitId }).returning();
-    return res[0]!;
-  },
-
-  async deleteTimesheetDays(executor: DbExecutor, timesheetId: string) {
-    await executor.delete(timesheetDays).where(eq(timesheetDays.timesheetId, timesheetId));
-  },
-
-  async insertTimesheetDays(executor: DbExecutor, rows: TimesheetDayInsert[]) {
-    if (rows.length === 0) return;
-    await executor.insert(timesheetDays).values(rows);
   },
 
   async getAllLocations(executor: DbExecutor) {

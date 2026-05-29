@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../vitest.setup';
-import { importEmployee, finalizeImport, bulkImportEmployees } from './importService';
+import { bulkImportEmployees } from './importService';
 
 /*
   importService unit testleri — MSW ile gerçek HTTP istekleri test edilir.
@@ -15,98 +15,6 @@ import { importEmployee, finalizeImport, bulkImportEmployees } from './importSer
 */
 
 describe('importService', () => {
-
-  // ─── importEmployee ────────────────────────────────────────────────────────
-
-  describe('importEmployee', () => {
-    it('POST /import/employee endpoint\'ine doğru payload göndermeli', async () => {
-      let capturedBody: Record<string, unknown> | null = null;
-
-      server.use(
-        http.post('*/api/import/employee', async ({ request }) => {
-          capturedBody = await request.json() as Record<string, unknown>;
-          return HttpResponse.json({
-            success: true,
-            data: { successCount: 1, failures: [] },
-          });
-        }),
-      );
-
-      const payload = { tcNo: '12345678901', firstName: 'Ali', lastName: 'Veli' };
-      const result = await importEmployee(payload as any);
-
-      expect(capturedBody).toMatchObject({ tcNo: '12345678901' });
-      expect(result).toMatchObject({
-        success: true,
-        data: { successCount: 1, failures: [] },
-      });
-    });
-
-    it('geçersiz TC no ile hata döndürmeli', async () => {
-      server.use(
-        http.post('*/api/import/employee', () =>
-          HttpResponse.json({ message: 'TC kimlik no geçersiz' }, { status: 422 }),
-        ),
-      );
-
-      await expect(importEmployee({ tcNo: '000' } as any))
-        .rejects.toMatchObject({ message: 'TC kimlik no geçersiz', status: 422 });
-    });
-
-    it('kısmi hata döndüğünde failures dizisini içermeli', async () => {
-      server.use(
-        http.post('*/api/import/employee', () =>
-          HttpResponse.json({
-            success: true,
-            data: {
-              successCount: 0,
-              failures: [{ row: 1, reason: 'Çalışan zaten mevcut' }],
-            },
-          }),
-        ),
-      );
-
-      const result = await importEmployee({ tcNo: '12345678901' } as any);
-      expect(result).toMatchObject({
-        data: {
-          successCount: 0,
-          failures: [{ row: 1, reason: 'Çalışan zaten mevcut' }],
-        },
-      });
-    });
-  });
-
-  // ─── finalizeImport ────────────────────────────────────────────────────────
-
-  describe('finalizeImport', () => {
-    it('POST /import/finalize endpoint\'ine özet verileri göndermeli', async () => {
-      let capturedBody: Record<string, unknown> | null = null;
-
-      server.use(
-        http.post('*/api/import/finalize', async ({ request }) => {
-          capturedBody = await request.json() as Record<string, unknown>;
-          return HttpResponse.json({ success: true, data: {} });
-        }),
-      );
-
-      const payload = { successCount: 5, failures: [] };
-      const result = await finalizeImport(payload as any);
-
-      expect(capturedBody).toEqual({ successCount: 5, failures: [] });
-      expect(result).toMatchObject({ success: true });
-    });
-
-    it('sunucu hatası durumunda reject olmalı', async () => {
-      server.use(
-        http.post('*/api/import/finalize', () =>
-          HttpResponse.json({ message: 'Audit log oluşturulamadı' }, { status: 500 }),
-        ),
-      );
-
-      await expect(finalizeImport({ successCount: 0, failures: [] } as any))
-        .rejects.toMatchObject({ status: 500 });
-    });
-  });
 
   // ─── bulkImportEmployees ───────────────────────────────────────────────────
 

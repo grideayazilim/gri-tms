@@ -253,14 +253,6 @@ export const handlers = [
   ),
 
   // ─── İçe Aktarım ──────────────────────────────────────────────────────────
-  http.post('*/api/import/employee', () =>
-    HttpResponse.json({ success: true, data: { successCount: 1, failures: [] } }),
-  ),
-
-  http.post('*/api/import/finalize', () =>
-    HttpResponse.json({ success: true, data: {} }),
-  ),
-
   http.post('*/api/import/bulk-employees', () =>
     HttpResponse.json({ success: true, data: { successCount: 1, failures: [] } }),
   ),

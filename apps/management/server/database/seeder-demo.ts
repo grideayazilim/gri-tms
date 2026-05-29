@@ -190,9 +190,16 @@ async function generatePeriods(db: ReturnType<typeof drizzle>, startDate: string
     const lastDay = String(new Date(y, m, 0).getDate()).padStart(2, '0');
     const periodEnd = isLastMonth ? endDate : `${y}-${mm}-${lastDay}`;
 
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const graceDate = new Date(new Date(periodEnd + 'T00:00:00').getTime() + 5 * 24 * 60 * 60 * 1000);
+    const graceDateStr = `${graceDate.getFullYear()}-${String(graceDate.getMonth() + 1).padStart(2, '0')}-${String(graceDate.getDate()).padStart(2, '0')}`;
+
+    const isLocked = !(todayStr >= periodStart && todayStr <= graceDateStr);
+
     await db.execute(sql`
       INSERT INTO app.periods (id, year, month, start_date, end_date, is_locked, is_deleted)
-      VALUES (gen_random_uuid(), ${y}, ${m}, ${periodStart}, ${periodEnd}, true, false)
+      VALUES (gen_random_uuid(), ${y}, ${m}, ${periodStart}, ${periodEnd}, ${isLocked}, false)
       ON CONFLICT (year, month) DO UPDATE
       SET start_date = ${periodStart}, end_date = ${periodEnd}, is_deleted = false;
     `);

@@ -104,12 +104,22 @@ export const settingsRepo = {
    * Belirtilen dönemi ekler veya günceller
    */
   async upsertPeriod(executor: DbExecutor, data: { year: number; month: number; startDate: string; endDate: string }) {
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    const end = new Date(data.endDate + 'T00:00:00');
+    const graceDate = new Date(end.getTime() + 5 * 24 * 60 * 60 * 1000);
+    const graceDateStr = `${graceDate.getFullYear()}-${String(graceDate.getMonth() + 1).padStart(2, '0')}-${String(graceDate.getDate()).padStart(2, '0')}`;
+
+    const isLocked = !(todayStr >= data.startDate && todayStr <= graceDateStr);
+
     await executor.insert(periods)
       .values({
         year: data.year,
         month: data.month,
         startDate: data.startDate,
         endDate: data.endDate,
+        isLocked,
         isDeleted: false,
       })
       .onConflictDoUpdate({

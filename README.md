@@ -81,6 +81,7 @@ Bu projeyi geliştirmede emeği geçen herkese teşekkürler 🙏
 ## 🚀 KURULUM ve HIZLI BAŞLANGIÇ
 
 > 🪟 **Windows Kullanıcıları İçin Kritik Ön Bilgiler:**
+> * **OneDrive Uyarısı:** Eğer proje klasörü OneDrive veya OneDrive altındaki bir klasör içindeyse Docker senkronizasyon sorunları nedeniyle düzgün çalışmaz. Projeyi `C:\` gibi bir konuma taşımanız önerilir. Projenizin nerede olduğunu kontrol etmek için terminalde `pwd` komutunu çalıştırabilirsiniz.
 > * **Komut Farklılıkları:** Aşağıdaki adımlarda bulunan `cp` (kopyalama) komutları Windows Command Prompt (CMD) üzerinde `copy`, PowerShell üzerinde ise `Copy-Item` olarak değiştirilmelidir.
 > * **Port Çakışması (Hata: `Port 5432 is already in use`):** Eğer bilgisayarınızda lokal bir PostgreSQL servisi çalışıyorsa Docker veritabanı container'ı başlamaz. Çözmek için PowerShell'i *Yönetici olarak* açıp `Stop-Service -Name postgresql*` yazarak yerel servisi durdurmalısınız. Portu kullanan süreci bulmak için ise CMD'de `netstat -ano | findstr :5432` çalıştırabilirsiniz.
 > * **Yedekleme ve Geri Yükleme:** Yedekleme betikleri `.sh` uzantılıdır. Bunları Windows'ta çalıştırabilmek için **Git Bash** terminalini kullanmanız gerekmektedir.
@@ -124,16 +125,16 @@ npm run dev:all
 ```bash
 # Veritabanını sıfırlamak için (sırayla)
 docker compose down -v
-docker compose up-d
+docker compose up -d
 npm run db:migrate
 npm run db:seed
 ```
 
 ---
 
-### 🌐 2. Canlıya Alma (Production)
+### 🌐 2. Canlıya Alma
 
-Sunucu ortamlarında tüm servisler (Backend, Frontend, Veritabanı, Nginx proxy) Docker container'ı içinde izole şekilde çalıştırılır. Sunucuda Node.js kurulu olması gerekmez.
+Sunucu ortamlarında tüm servisler (Backend, Frontend, Veritabanı, Nginx proxy) Docker container'ı içinde izole şekilde çalıştırılmaktadır. 
 
 #### 📋 Gereksinimler
 * **Docker:** v24+ & **Docker Compose:** v2+
@@ -152,13 +153,13 @@ nano apps/management/server/.env.prod
 # 3. Docker ile tüm sistemi arka planda build edip başlatın
 docker compose -f docker-compose.prod.yml up -d --build
 
-# 4. İlk kurulumda admin ve sistem ayarları seed verilerini veritabanına yükleyin
+# 4. İlk kurulumda admin kullanıcısı ve sistem ayarlarını yükleyin
 docker compose -f docker-compose.prod.yml exec server node dist/database/seeder.js
 ```
 * **Prod Ortamında Uygulama Arayüzü:** `http://<SUNUCU_IP>` (Varsayılan 80 portundan Nginx ile sunulur)
 
 > 💡 **Prod Ortamı Yönetim Komutları:**
-> * Komutlardaki `<DOSYA>` alanına production için `docker-compose.prod.yml`, test için `docker-compose.test.yml` yazın.
+> * Komutlardaki `<DOSYA>` alanına `docker-compose.prod.yml` yazın.
 > * Servis durumunu kontrol etme: `docker compose -f <DOSYA> ps`
 > * Canlı log izleme: `docker compose -f <DOSYA> logs -f server`
 > * Kod güncelleme ve yeniden deploy etme: `git pull && docker compose -f <DOSYA> up -d --build`

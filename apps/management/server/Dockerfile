@@ -23,8 +23,13 @@ COPY apps/management/server/ ./apps/management/server/
 RUN npm run build -w @timesheet/shared
 RUN npm run build -w management-server
 
-# Dev bağımlılıklarını kaldır (image boyutunu küçültmek için)
-RUN npm prune --omit=dev
+# Production ortamında image boyutunu küçültmek için devDependencies kaldırılır.
+ARG SKIP_PRUNE=false
+RUN if [ "$SKIP_PRUNE" = "true" ]; then \
+      echo "Skipping prune because SKIP_PRUNE is true"; \
+    else \
+      npm prune --omit=dev; \
+    fi
 
 # Workspace symlink'ini (node_modules/@timesheet/shared → ../../shared) gerçek
 # içerikle değiştir; prune'dan sonra yapılmalı — aksi halde prune symlink'i siler.

@@ -33,6 +33,8 @@ services:
     build:
       context: .
       dockerfile: apps/management/server/Dockerfile
+      args:
+        - SKIP_PRUNE=true
     container_name: timesheet_server_test
     restart: unless-stopped
     env_file:

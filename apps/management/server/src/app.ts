@@ -27,12 +27,15 @@ import { errorMiddleware } from './middlewares/errorMiddleware.js';
 
 const app = express();
 
+// Gerçek istemci IP adresini alabilmek için ters vekil sunucuya (Nginx, Ngrok vb.) güven
+app.set('trust proxy', 1);
+
 app.use(helmet());
 
-// Tüm /api/ rotalarına 15 dk pencerede max 300 istek — DoS koruması
+// Tüm /api/ rotalarına 15 dk pencerede max 5000 istek — DoS koruması
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 5000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Çok fazla istek gönderildi, lütfen daha sonra tekrar deneyin.' },

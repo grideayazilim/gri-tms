@@ -14,7 +14,7 @@ const router = express.Router();
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 dakika
-  max: 20,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Çok fazla istek gönderildi, lütfen 15 dakika sonra tekrar deneyin.' },

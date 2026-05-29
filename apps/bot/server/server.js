@@ -48,16 +48,19 @@ function clearProgress() {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Gerçek istemci IP adresini alabilmek için ters vekil sunucuya (Nginx, Ngrok vb.) güven
+app.set('trust proxy', 1);
+
 // ─────────────────────────────────────────────
 // MIDDLEWARE
 // ─────────────────────────────────────────────
 // Güvenlik başlıkları (X-Frame-Options, CSP, X-Content-Type-Options vb.)
 app.use(helmet());
 
-// Tüm endpoint'lere 15 dk pencerede max 100 istek — DoS koruması
+// Tüm endpoint'lere 15 dk pencerede max 300 istek — DoS koruması
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Çok fazla istek gönderildi, lütfen daha sonra tekrar deneyin.' },

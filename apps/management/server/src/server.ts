@@ -6,7 +6,7 @@ import 'dotenv/config';
 import { sql } from 'drizzle-orm';
 import app from './app.js';
 import { db } from './config/database.js';
-import { initCronJobs } from './utils/cronJobs.js';
+import { initCronJobs, runNightlyMaintenance } from './utils/cronJobs.js';
 import logger from './utils/logger.js';
 
 const PORT = process.env.PORT ?? 3000;
@@ -29,6 +29,9 @@ async function main(): Promise<void> {
   app.listen(PORT, () => {
     logger.info(`Server başlatıldı`, { port: PORT, env: process.env.NODE_ENV });
     initCronJobs();
+    runNightlyMaintenance().catch((err: unknown) => {
+      logger.error('Startup maintenance check failed', { error: err instanceof Error ? err.message : String(err) });
+    });
   });
 }
 

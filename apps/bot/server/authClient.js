@@ -1,21 +1,6 @@
 'use strict';
 
-/**
- * İŞKUR Auth Client
- * Python web_server.py + esube_playwright_automation.py akışının birebir karşılığı
- * 
- * KRİTİK: Tarayıcı login + devam çizelgesi açıldıktan sonra KAPATILMIYOR
- * Cookie'ler alınıp HTTP client'a verilir, tarayıcı arka planda açık kalır
- * 
- * Akış:
- * 1. open_for_manual_login() → tarayıcı aç, ana sayfaya git
- * 2. login_with_credentials() → TC + Şifre + Firma Ara + Select2 + Login
- * 3. open_devam_cizelgesi_with_program() → IstIupListe → Ara → Seç → Devam Çizelgesi
- * 4. get_cookies() → cookie'leri al
- * 5. Tarayıcıyı AÇIK BIRAK (keep_alive)
- * 6. HTTP client devam çizelgesini işler
- * 7. Yeniden login gerekirse: logout() + login_with_credentials() + open_devam_cizelgesi_with_program()
- */
+
 
 const { chromium } = require('playwright');
 
@@ -81,10 +66,7 @@ class IskurAuthClient {
     }
   }
 
-  /**
-   * TC + Şifre ile otomatik login
-   * Python login_with_credentials() fonksiyonunun birebir karşılığı
-   */
+  
   async loginWithCredentials(username, password) {
     try {
       if (!this.page) return { success: false, message: 'Sayfa objesi bulunamadı' };
@@ -309,7 +291,6 @@ class IskurAuthClient {
 
   /**
    * Login olunup olunmadığını kontrol et
-   * Python is_logged_in() fonksiyonunun karşılığı
    */
   async isLoggedIn() {
     try {
@@ -326,7 +307,6 @@ class IskurAuthClient {
 
   /**
    * Program numarası ile Devam Çizelgesi sayfasını aç
-   * Python open_devam_cizelgesi_with_program() fonksiyonunun birebir karşılığı
    */
   async openDevamCizelgesi(programNo) {
     try {
@@ -395,7 +375,6 @@ class IskurAuthClient {
 
   /**
    * Cookie'leri al
-   * Python get_cookies() fonksiyonunun karşılığı
    */
   async getCookies() {
     try {
@@ -425,7 +404,6 @@ class IskurAuthClient {
 
   /**
    * Logout yap
-   * Python logout() fonksiyonunun karşılığı
    */
   async logout() {
     try {
@@ -459,7 +437,6 @@ class IskurAuthClient {
 
   /**
    * Tam login + devam çizelgesi akışı
-   * web_server.py'deki ana akışın karşılığı
    * 
    * KRİTİK: Tarayıcı KAPATILMIYOR - caller close() çağırmalı
    */
@@ -508,7 +485,6 @@ class IskurAuthClient {
 
   /**
    * Yeniden login (10 dakika sonra)
-   * web_server.py'deki relogin akışının karşılığı
    */
   async relogin(username, password, programNo) {
     try {

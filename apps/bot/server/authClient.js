@@ -43,8 +43,11 @@ class IskurAuthClient {
     try {
       this.log('🌐 Tarayıcı açılıyor...');
 
-      this.browser = await chromium.launch({
-        headless: false,
+
+     const headlessMode = process.env.HEADLESS !== 'false';
+
+     this.browser = await chromium.launch({
+       headless: headlessMode,
         slowMo: 10,
         args: [
           '--disable-blink-features=AutomationControlled',
@@ -57,7 +60,7 @@ class IskurAuthClient {
         // Chrome bulunamazsa varsayılan Chromium kullan
         this.log('⚠️ Chrome bulunamadı, Chromium deneniyor...');
         return await chromium.launch({
-          headless: false,
+          headless: headlessMode,
           slowMo: 10,
           args: ['--start-maximized'],
         });

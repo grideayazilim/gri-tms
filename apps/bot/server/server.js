@@ -1,13 +1,8 @@
 'use strict';
 
-/**
- * İŞKUR E-Şube Otomasyon Backend
- * Express.js API Server
- */
+
 
 const express = require('express');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const cors = require('cors');
 const path = require('path');
@@ -48,30 +43,10 @@ function clearProgress() {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Gerçek istemci IP adresini alabilmek için ters vekil sunucuya (Nginx, Ngrok vb.) güven
-app.set('trust proxy', 1);
-
 // ─────────────────────────────────────────────
 // MIDDLEWARE
 // ─────────────────────────────────────────────
-// Güvenlik başlıkları (X-Frame-Options, CSP, X-Content-Type-Options vb.)
-app.use(helmet());
-
-// Tüm endpoint'lere 15 dk pencerede max 300 istek — DoS koruması
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: 'Çok fazla istek gönderildi, lütfen daha sonra tekrar deneyin.' },
-});
-app.use(globalLimiter);
-
-// Wildcard yerine izin verilen origin — CORS wildcard CVE önlemi
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGIN || 'http://localhost:80',
-  credentials: true,
-}));
+app.use(cors());
 app.use(express.json());
 
 // Multer - Excel dosyası upload (memory storage)
@@ -220,7 +195,7 @@ app.post('/api/logs/clear', (req, res) => {
 /**
  * POST /api/debug/excel - Excel dosyasını parse edip önizleme göster
  */
-app.post('/api/debug/excel', upload.single('excel'), async (req, res) => {
+app.post('/api/debug/excel', upload.single('excel'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: 'Excel dosyası gerekli' });
@@ -233,7 +208,7 @@ app.post('/api/debug/excel', upload.single('excel'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'Ay ve yıl gerekli' });
     }
 
-    const persons = await parseExcel(req.file.buffer, month, year);
+    const persons = parseExcel(req.file.buffer, month, year);
     const toProcess = getPersonsToProcess(persons);
 
     res.json({
@@ -275,7 +250,7 @@ app.post('/api/process/start', upload.single('excel'), async (req, res) => {
     if (!username || !password) return res.status(400).json({ success: false, message: 'Kullanıcı adı ve şifre gerekli' });
 
     // Excel parse et
-    const persons = await parseExcel(req.file.buffer, parseInt(month, 10), parseInt(year, 10));
+    const persons = parseExcel(req.file.buffer, parseInt(month, 10), parseInt(year, 10));
     const toProcess = getPersonsToProcess(persons);
 
     if (!toProcess.length) {

@@ -10,41 +10,26 @@
  * - Günler: index 3'ten itibaren
  */
 
-const ExcelJS = require('exceljs');
+const XLSX = require('xlsx');
 
 /**
  * Excel dosyasını parse et
  * @param {Buffer|string} filePathOrBuffer
  * @param {number} month - Ay (1-12)
  * @param {number} year  - Yıl
- * @returns {Promise<Array>} [{ adSoyad, tc, dayFlags, hasAnyDay, rowIndex }]
+ * @returns {Array} [{ adSoyad, tc, dayFlags, hasAnyDay, rowIndex }]
  */
-async function parseExcel(filePathOrBuffer, month, year) {
-  const workbook = new ExcelJS.Workbook();
+function parseExcel(filePathOrBuffer, month, year) {
+  let workbook;
   if (Buffer.isBuffer(filePathOrBuffer)) {
-    await workbook.xlsx.load(filePathOrBuffer);
+    workbook = XLSX.read(filePathOrBuffer, { type: 'buffer' });
   } else {
-    await workbook.xlsx.readFile(filePathOrBuffer);
+    workbook = XLSX.readFile(filePathOrBuffer);
   }
 
-  const worksheet = workbook.worksheets[0];
-  if (!worksheet) {
-    throw new Error('Excel dosyası boş veya geçersiz format');
-  }
-
-  // Worksheet'i 0-indexed satır dizilerine dönüştür (boş hücre = 0)
-  // ExcelJS satırları 1-indexed; 0-indexed diziye dönüştür, boş hücre → 0
-  const rows = [];
-  const minCols = 3 + 31;
-  worksheet.eachRow({ includeEmpty: false }, (row) => {
-    const rowData = [];
-    const lastCol = Math.max(row.cellCount, minCols);
-    for (let i = 1; i <= lastCol; i++) {
-      const cell = row.getCell(i);
-      rowData.push(cell.value !== null && cell.value !== undefined ? cell.value : 0);
-    }
-    rows.push(rowData);
-  });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: 0 });
 
   if (!rows || rows.length < 2) {
     throw new Error('Excel dosyası boş veya geçersiz format');

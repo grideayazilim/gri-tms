@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p . && tsc-alias -p tsconfig.json",
+    "build": "tsc -p . && tsc-alias -p tsconfig.json && node -e \"const fs = require('fs'); fs.mkdirSync('dist/src/templates', { recursive: true }); fs.copyFileSync('src/templates/timesheet_template.xlsm', 'dist/src/templates/timesheet_template.xlsm')\"",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "db:introspect": "drizzle-kit introspect",

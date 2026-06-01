@@ -1,6 +1,21 @@
 'use strict';
 
-
+/**
+ * İŞKUR Auth Client
+ * Python web_server.py + esube_playwright_automation.py akışının birebir karşılığı
+ * 
+ * KRİTİK: Tarayıcı login + devam çizelgesi açıldıktan sonra KAPATILMIYOR
+ * Cookie'ler alınıp HTTP client'a verilir, tarayıcı arka planda açık kalır
+ * 
+ * Akış:
+ * 1. open_for_manual_login() → tarayıcı aç, ana sayfaya git
+ * 2. login_with_credentials() → TC + Şifre + Firma Ara + Select2 + Login
+ * 3. open_devam_cizelgesi_with_program() → IstIupListe → Ara → Seç → Devam Çizelgesi
+ * 4. get_cookies() → cookie'leri al
+ * 5. Tarayıcıyı AÇIK BIRAK (keep_alive)
+ * 6. HTTP client devam çizelgesini işler
+ * 7. Yeniden login gerekirse: logout() + login_with_credentials() + open_devam_cizelgesi_with_program()
+ */
 
 const { chromium } = require('playwright');
 
@@ -26,7 +41,7 @@ class IskurAuthClient {
    */
   async openForLogin() {
     try {
-      this.log('🌐 Tarayıcı açılıyor, lütfen bekleyin...');
+      this.log('🌐 Tarayıcı açılıyor...');
 
       this.browser = await chromium.launch({
         headless: false,
@@ -40,7 +55,7 @@ class IskurAuthClient {
         channel: 'chrome',
       }).catch(async () => {
         // Chrome bulunamazsa varsayılan Chromium kullan
-        this.log('⚠️ Chrome bulunamadı, alternatif tarayıcı ile devam ediliyor...');
+        this.log('⚠️ Chrome bulunamadı, Chromium deneniyor...');
         return await chromium.launch({
           headless: false,
           slowMo: 10,
@@ -53,23 +68,26 @@ class IskurAuthClient {
       this.page.setDefaultTimeout(60000);
       this.page.setDefaultNavigationTimeout(60000);
 
-      this.log('🌐 İŞKUR portalı açılıyor...');
+      this.log('🌐 İŞKUR ana sayfasına gidiliyor...');
       await this.page.goto(ISKUR_BASE_URL, { waitUntil: 'domcontentloaded' });
       await sleep(300);
 
       return { success: true, message: 'Portal açıldı' };
     } catch (err) {
-      return { success: false, message: `❌ Portal açılamadı. İnternet bağlantınızı kontrol edin. (Hata: ${err.message})` };
+      return { success: false, message: `Portal açma hatası: ${err.message}` };
     }
   }
 
-  
+  /**
+   * TC + Şifre ile otomatik login
+   * Python login_with_credentials() fonksiyonunun birebir karşılığı
+   */
   async loginWithCredentials(username, password) {
     try {
       if (!this.page) return { success: false, message: 'Sayfa objesi bulunamadı' };
 
       // 1. Giriş butonuna tıkla
-      this.log("🔍 Portala giriş yapılıyor, 'Giriş' butonu aranıyor...");
+      this.log("🔍 'Giriş' butonu aranıyor...");
       const girisSelectors = [
         'a[href="#modalIsverenGiris"]',
         'a.btn:has-text("Giriş")',
@@ -83,17 +101,17 @@ class IskurAuthClient {
           if (await btn.count() > 0 && await btn.isVisible()) {
             await btn.click();
             girisClicked = true;
-            this.log(`✅ Giriş ekranı açıldı`);
+            this.log(`✅ Giriş butonuna tıklandı`);
             break;
           }
         } catch {}
       }
-      if (!girisClicked) return { success: false, message: "❌ Portal giriş ekranı açılamadı. Sayfa yüklenememiş olabilir, tekrar deneyin." };
+      if (!girisClicked) return { success: false, message: "'Giriş' butonu bulunamadı" };
 
       await sleep(1000);
 
       // 2. TC gir
-      this.log('🔍 Kullanıcı adı (TC) giriliyor...');
+      this.log('🔍 TC input alanı aranıyor...');
       const tcSelectors = [
         '#ctl02_userLoginIsveren_ctlEmployerUserId',
         'input[name="ctl02$userLoginIsveren$ctlEmployerUserId"]',
@@ -107,17 +125,17 @@ class IskurAuthClient {
           if (await input.count() > 0) {
             await input.fill(username);
             tcFilled = true;
-            this.log('✅ Kullanıcı adı (TC) girildi');
+            this.log('✅ TC alanı dolduruldu');
             break;
           }
         } catch {}
       }
-      if (!tcFilled) return { success: false, message: '❌ Kullanıcı adı girilemedi. İŞKUR portalı değişmiş olabilir, geliştirici ile iletişime geçin.' };
+      if (!tcFilled) return { success: false, message: 'TC input alanı bulunamadı' };
 
       await sleep(500);
 
       // 3. Şifre gir
-      this.log('🔍 Şifre giriliyor...');
+      this.log('🔍 Şifre input alanı aranıyor...');
       const passSelectors = [
         '#ctl02_userLoginIsveren_ctlEmployerPassword',
         'input[name="ctl02$userLoginIsveren$ctlEmployerPassword"]',
@@ -132,17 +150,17 @@ class IskurAuthClient {
           if (await input.count() > 0) {
             await input.fill(password);
             passFilled = true;
-            this.log('✅ Şifre girildi');
+            this.log('✅ Şifre alanı dolduruldu');
             break;
           }
         } catch {}
       }
-      if (!passFilled) return { success: false, message: '❌ Şifre girilemedi. İŞKUR portalı değişmiş olabilir, geliştirici ile iletişime geçin.' };
+      if (!passFilled) return { success: false, message: 'Şifre input alanı bulunamadı' };
 
       await sleep(500);
 
       // 4. Firma Ara butonuna tıkla
-      this.log("🔍 Firma bilgileri yükleniyor, 'Firma Ara' butonuna tıklanıyor...");
+      this.log("🔍 'İşveren Giriş' (Firma Ara) butonu aranıyor...");
       const firmaAraSelectors = [
         '#ctl02_userLoginIsveren_ctlEmployerFirmaAra',
         'input[name="ctl02$userLoginIsveren$ctlEmployerFirmaAra"]',
@@ -156,37 +174,19 @@ class IskurAuthClient {
           if (await btn.count() > 0 && await btn.isVisible()) {
             await btn.click();
             firmaAraClicked = true;
-            this.log('✅ Firma Ara tıklandı, firmalar yükleniyor...');
+            this.log('✅ Firma Ara butonuna tıklandı');
             break;
           }
         } catch {}
       }
-      if (!firmaAraClicked) return { success: false, message: '❌ Firma Ara butonu bulunamadı. İŞKUR portalı değişmiş olabilir, geliştirici ile iletişime geçin.' };
+      if (!firmaAraClicked) return { success: false, message: 'Firma Ara butonu bulunamadı' };
 
       await sleep(2000); // Firma listesi yüklensin
-
-      // ── Hata popup kontrolü: TC geçersiz veya şifre hatalı mı? ──
-      try {
-        const errorMsg = this.page.locator('#ctl02_ctlMessageBox_lblMessage');
-        if (await errorMsg.count() > 0 && await errorMsg.isVisible()) {
-          const text = (await errorMsg.textContent() || '').trim();
-          if (text && text.length > 3) {
-            // Tamam butonunu kapat
-            try {
-              const tamam = this.page.locator('button:has-text("Tamam"), input[value="Tamam"]').first();
-              if (await tamam.count() > 0) await tamam.click().catch(() => {});
-            } catch {}
-            return { success: false, message: `❌ Giriş başarısız: ${text} — Kullanıcı adı veya şifrenizi kontrol edin.` };
-          }
-        }
-      } catch {}
-
-      this.log('✅ Hata mesajı yok, firma listesi yükleniyor...');
 
       // 5. Select2 dropdown'dan ilk seçeneği seç
       // KRİTİK: Select2 animasyonu nedeniyle isVisible() bazen false döner
       // Bu yüzden waitFor + force:true kullanıyoruz
-      this.log('🔍 Firma listesi açılıyor, firma seçiliyor...');
+      this.log('🔍 Select2 dropdown aranıyor...');
       
       let firmaSecildi = false;
       
@@ -199,21 +199,25 @@ class IskurAuthClient {
         this.log('✅ Select2 container tıklandı');
         await sleep(800);
 
+        // Sonuçların gelmesini bekle
         const results = this.page.locator('.select2-results li, .select2-result');
         await results.first().waitFor({ state: 'attached', timeout: 5000 });
         await sleep(300);
 
+        // İlk sonuca tıkla (force:true ile animasyon sorununu atla)
         await results.first().click({ force: true });
-        this.log('✅ Firma seçildi');
+        this.log('✅ İlk firma seçildi (Yöntem 1)');
         firmaSecildi = true;
       } catch (e) {
-        this.log(`⚠️ Firma listesi açılmaya çalışılıyor (2. yöntem deneniyor)...`);
+        this.log(`⚠️ Select2 Yöntem 1 başarısız: ${e.message}`);
       }
 
-      // Yöntem 2
+      // Yöntem 2: JavaScript ile seç (Yöntem 1 başarısız olursa)
       if (!firmaSecildi) {
         try {
+          this.log('🔍 Select2 Yöntem 2: JavaScript ile seçim deneniyor...');
           await this.page.evaluate(() => {
+            // Select2'yi JS ile aç
             const container = document.querySelector('.select2-container');
             if (container) {
               const choice = container.querySelector('a.select2-choice, .select2-choice');
@@ -222,20 +226,23 @@ class IskurAuthClient {
           });
           await sleep(800);
 
+          // İlk li'yi JS ile tıkla
           await this.page.evaluate(() => {
             const firstResult = document.querySelector('.select2-results li, .select2-result');
             if (firstResult) firstResult.click();
           });
-          this.log('✅ Firma seçildi');
+          this.log('✅ İlk firma seçildi (Yöntem 2 - JavaScript)');
           firmaSecildi = true;
         } catch (e) {
-          this.log(`⚠️ Firma listesi açılmaya çalışılıyor (3. yöntem deneniyor)...`);
+          this.log(`⚠️ Select2 Yöntem 2 başarısız: ${e.message}`);
         }
       }
 
-      // Yöntem 3
+      // Yöntem 3: Klavye ile seç (↓ + Enter)
       if (!firmaSecildi) {
         try {
+          this.log('🔍 Select2 Yöntem 3: Klavye ile seçim deneniyor...');
+          // Select2'yi bul ve klavye ile ilk seçeneği seç
           const select2 = this.page.locator('.select2-container, a.select2-choice').first();
           if (await select2.count() > 0) {
             await select2.click({ force: true });
@@ -243,22 +250,22 @@ class IskurAuthClient {
             await this.page.keyboard.press('ArrowDown');
             await sleep(300);
             await this.page.keyboard.press('Enter');
-            this.log('✅ Firma seçildi');
+            this.log('✅ İlk firma seçildi (Yöntem 3 - Klavye)');
             firmaSecildi = true;
           }
         } catch (e) {
-          this.log(`⚠️ Firma listesinden otomatik seçim yapılamadı`);
+          this.log(`⚠️ Select2 Yöntem 3 başarısız: ${e.message}`);
         }
       }
 
       if (!firmaSecildi) {
-        this.log('⚠️ Firma listesinden otomatik seçim yapılamadı, giriş yine de deneniyor...');
+        this.log('⚠️ Select2 firma seçimi başarısız - login yine de deneniyor...');
       }
 
       await sleep(1000);
 
       // 6. İşveren Giriş (login) butonuna tıkla
-      this.log("🔍 Portala giriş yapılıyor...");
+      this.log("🔍 'İşveren Giriş' (login) butonu aranıyor...");
       const loginBtnSelectors = [
         '#ctl02_userLoginIsveren_ctlEmployerLogin',
         'input[name="ctl02$userLoginIsveren$ctlEmployerLogin"]',
@@ -272,12 +279,12 @@ class IskurAuthClient {
           if (await btn.count() > 0 && await btn.isVisible()) {
             await btn.click();
             loginClicked = true;
-            this.log('✅ Giriş butonuna tıklandı, portal yanıt bekleniyor...');
+            this.log('✅ İşveren Giriş butonuna tıklandı');
             break;
           }
         } catch {}
       }
-      if (!loginClicked) return { success: false, message: '❌ Giriş yapılamadı. Kullanıcı adı veya şifreniz hatalı olabilir. Lütfen kontrol edip tekrar deneyin.' };
+      if (!loginClicked) return { success: false, message: 'İşveren Giriş butonu bulunamadı' };
 
       // Login tamamlanmasını bekle
       await sleep(3000);
@@ -286,18 +293,21 @@ class IskurAuthClient {
       // Login başarılı mı kontrol et
       const isLogged = await this.isLoggedIn();
       if (!isLogged) {
-        return { success: false, message: '❌ Giriş başarısız. Kullanıcı adı veya şifreniz hatalı. Lütfen kontrol edip tekrar deneyin.' };
+        return { success: false, message: 'Login başarısız: Kullanıcı adı veya şifre hatalı' };
       }
 
-      this.log('✅ Giriş başarılı! Portal açıldı.');
+      this.log('✅ Login başarılı!');
       return { success: true, message: 'Login başarılı' };
 
     } catch (err) {
-      return { success: false, message: `❌ Beklenmeyen giriş hatası: ${err.message}. Tekrar deneyin.` };
+      return { success: false, message: `Login hatası: ${err.message}` };
     }
   }
 
-  
+  /**
+   * Login olunup olunmadığını kontrol et
+   * Python is_logged_in() fonksiyonunun karşılığı
+   */
   async isLoggedIn() {
     try {
       if (!this.page) return false;
@@ -311,13 +321,16 @@ class IskurAuthClient {
     }
   }
 
-  
+  /**
+   * Program numarası ile Devam Çizelgesi sayfasını aç
+   * Python open_devam_cizelgesi_with_program() fonksiyonunun birebir karşılığı
+   */
   async openDevamCizelgesi(programNo) {
     try {
-      this.log(`📋 Devam Çizelgesi açılıyor (Program No: ${programNo})...`);
+      this.log(`📋 Devam Çizelgesi açılıyor: Program ${programNo}`);
 
       // 1. IstIupListe sayfasına git
-      this.log(`📋 Program listesi sayfasına gidiliyor...`);
+      this.log(`📋 Liste sayfasına gidiliyor: ${LISTE_URL}`);
       await this.page.goto(LISTE_URL, { waitUntil: 'domcontentloaded' });
       await sleep(2000);
       await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
@@ -331,53 +344,56 @@ class IskurAuthClient {
 
       // 3. Ara butonuna tıkla
       await this.page.click('#ctl03_ctlCommandIstIupListe_CommandItem_Search');
-      this.log('✅ Program aranıyor...');
+      this.log('✅ Ara butonuna tıklandı');
       await sleep(800);
 
       // 4. Seçim butonuna tıkla
       await this.page.click('#ctl03_ctlGridIstIupListe_ctl02_select');
-      this.log('✅ Program bulundu, Devam Çizelgesi açılıyor...');
+      this.log('✅ Seçim butonuna tıklandı');
       await sleep(300);
 
       // 5. Devam Çizelgesi butonuna tıkla
       await this.page.click('#ctl03_ctlCommandIstIupListe_CommandItem_IstIupDevamCizelgeAc');
-      this.log('✅ Devam Çizelgesi yükleniyor, sayfa bekleniyor...');
+      this.log('✅ Devam Çizelgesi butonuna tıklandı - yeni sekme açılmalı!');
       await sleep(1000);
 
       // 6. Yeni sekmeyi bul (20 deneme)
       for (let attempt = 1; attempt <= 20; attempt++) {
         const pages = this.context.pages();
-        if (attempt % 5 === 1) {
-          this.log(`🔍 Devam Çizelgesi sayfası aranıyor... (${attempt}/20)`);
-        }
+        this.log(`📋 Deneme ${attempt}/20 - ${pages.length} sekme açık`);
 
         for (const p of pages) {
           const url = p.url();
           if (url.includes('IstIupDevamCizelge') || url.includes('DevamCizelge')) {
             this.page = p;
             await p.bringToFront();
-            this.log(`✅ Devam Çizelgesi sayfası açıldı`);
+            this.log(`✅ Devam Çizelgesi sayfası bulundu: ${url}`);
             await sleep(200);
             return { success: true, message: 'Devam Çizelgesi açıldı', url };
           }
         }
 
+        // Sekme geçişleri dene
         try { await this.page.keyboard.press('Control+2'); await sleep(100); } catch {}
         try { await this.page.keyboard.press('Control+1'); await sleep(100); } catch {}
         try { await this.page.mouse.click(200, 200); await sleep(200); } catch {}
         try { await this.page.waitForLoadState('domcontentloaded', { timeout: 3000 }); } catch {}
       }
 
-      this.log(`❌ Devam Çizelgesi sayfası açılamadı`);
-      return { success: false, message: '❌ Devam Çizelgesi açılamadı. Program numarası doğru mu? Yetkili hesapla giriş yapıldı mı?', url: null };
+      const finalUrl = this.page.url();
+      this.log(`⚠️ Devam Çizelgesi bulunamadı. Son URL: ${finalUrl}`);
+      return { success: false, message: 'Devam Çizelgesi sayfası bulunamadı', url: null };
 
     } catch (err) {
-      this.log(`❌ Devam Çizelgesi açılırken hata oluştu: ${err.message}`);
-      return { success: false, message: `❌ Devam Çizelgesi açılamadı: ${err.message}`, url: null };
+      this.log(`❌ Devam Çizelgesi açma hatası: ${err.message}`);
+      return { success: false, message: err.message, url: null };
     }
   }
 
-  
+  /**
+   * Cookie'leri al
+   * Python get_cookies() fonksiyonunun karşılığı
+   */
   async getCookies() {
     try {
       if (!this.context) return {};
@@ -404,7 +420,10 @@ class IskurAuthClient {
     }
   }
 
-
+  /**
+   * Logout yap
+   * Python logout() fonksiyonunun karşılığı
+   */
   async logout() {
     try {
       if (!this.page) return;
@@ -421,7 +440,7 @@ class IskurAuthClient {
           const el = this.page.locator(sel).first();
           if (await el.count() > 0 && await el.isVisible()) {
             await el.click();
-            this.log('✅ Portal oturumu kapatıldı');
+            this.log('✅ Çıkış yapıldı');
             await sleep(2000);
             return;
           }
@@ -435,7 +454,12 @@ class IskurAuthClient {
     }
   }
 
-  
+  /**
+   * Tam login + devam çizelgesi akışı
+   * web_server.py'deki ana akışın karşılığı
+   * 
+   * KRİTİK: Tarayıcı KAPATILMIYOR - caller close() çağırmalı
+   */
   async loginAndOpenCizelge(username, password, programNo) {
     // 1. Tarayıcı aç
     const openResult = await this.openForLogin();
@@ -445,13 +469,13 @@ class IskurAuthClient {
     }
 
     // 2. Login yap
-    this.log('🔐 Portal açılıyor, otomatik giriş yapılıyor...');
+    this.log('🔄 Otomatik login yapılıyor...');
     const loginResult = await this.loginWithCredentials(username, password);
     if (!loginResult.success) {
       await this.close();
       return { success: false, message: loginResult.message, cookies: {}, attendanceUrl: null, pageHtml: null };
     }
-    this.log('✅ Giriş başarılı!');
+    this.log('✅ Otomatik login başarılı!');
 
     // 3. Devam Çizelgesi aç
     this.log(`📋 Program numarası ile Devam Çizelgesi açılıyor: ${programNo}...`);
@@ -479,10 +503,13 @@ class IskurAuthClient {
     };
   }
 
-  
+  /**
+   * Yeniden login (10 dakika sonra)
+   * web_server.py'deki relogin akışının karşılığı
+   */
   async relogin(username, password, programNo) {
     try {
-      this.log('🔄 10 dakika doldu, portal oturumu yenileniyor...');
+      this.log('🔄 Yeniden login yapılıyor...');
 
       // Önce logout yap
       await this.logout();
@@ -499,7 +526,7 @@ class IskurAuthClient {
       const cizelgeResult = await this.openDevamCizelgesi(programNo);
       const cookies = await this.getCookies();
 
-      this.log('✅ Portal oturumu yenilendi, işlemler devam ediyor...');
+      this.log('✅ Yeniden login başarılı!');
       return {
         success: true,
         message: 'Yeniden login başarılı',
@@ -507,7 +534,7 @@ class IskurAuthClient {
         attendanceUrl: cizelgeResult.url,
       };
     } catch (err) {
-      return { success: false, message: `❌ Oturum yenileme sırasında beklenmeyen hata: ${err.message}`, cookies: {}, attendanceUrl: null };
+      return { success: false, message: `Yeniden login hatası: ${err.message}`, cookies: {}, attendanceUrl: null };
     }
   }
 

@@ -1,6 +1,10 @@
 'use strict';
 
-
+/**
+ * Portal HTTP Client
+ * İŞKUR E-Şube portalı ile HTTP istekleri üzerinden iletişim kurar
+ * Python'daki portal_http_client.py'ın Node.js karşılığı
+ */
 
 const axios = require('axios');
 const cheerio = require('cheerio');
@@ -12,7 +16,7 @@ const DEBUG_MODE = true;
 // ─────────────────────────────────────────────
 
 /**
- * TC kimlik numarasını maskele 
+ * TC kimlik numarasını maskele (güvenlik için)
  */
 function maskTc(tc) {
   if (!tc || tc.length < 4) return '****';
@@ -648,9 +652,9 @@ class PortalClient {
   }
 }
 
-
+// ─────────────────────────────────────────────
 // YARDIMCI
-
+// ─────────────────────────────────────────────
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }

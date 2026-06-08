@@ -11,6 +11,9 @@ export * from './types/domain';
 export * from './types/responses';
 export * from './types/queries';
 
+// Yardımcı Fonksiyonlar (Utils)
+export * from './utils/phoneUtils';
+
 // Sabitler (Constants)
 export * from './constants/markers';
 export * from './constants/dateConstants';

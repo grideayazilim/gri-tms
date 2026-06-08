@@ -36,6 +36,10 @@ export const employeeColumns = (
             : <span className="cell-value--empty">—</span>,
     },
     {
+        header: 'Telefon No',
+        render: (row) => row.phoneNo || '-',
+    },
+    {
         header: 'İşe Giriş',
         render: (row) => row.startDate ? formatDate(row.startDate) : '-',
     },

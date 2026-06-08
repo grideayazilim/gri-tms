@@ -29,6 +29,7 @@ export class EmployeesPage {
   readonly endDateInput: Locator;
   readonly isActiveCheckbox: Locator;
   readonly ibanInput: Locator;
+  readonly phoneNoInput: Locator;
   readonly modalSaveButton: Locator;
   readonly modalCancelButton: Locator;
   readonly modalApiError: Locator;
@@ -55,6 +56,7 @@ export class EmployeesPage {
     this.endDateInput = page.locator('#endDate');
     this.isActiveCheckbox = page.locator('#isActiveCheck');
     this.ibanInput = page.locator('#ibanNo');
+    this.phoneNoInput = page.locator('#phoneNo');
     this.modalSaveButton = page.locator('.modal-form__actions button[type="submit"]');
     this.modalCancelButton = page.getByRole('button', { name: 'Vazgeç' });
     this.modalApiError = page.locator('.api-error-alert');
@@ -81,6 +83,7 @@ export class EmployeesPage {
     unitValue?: string;
     startDate: string;
     ibanNo: string;
+    phoneNo?: string;
   }) {
     await this.tcNoInput.fill(data.tcNo);
     await this.firstNameInput.fill(data.firstName);
@@ -95,6 +98,9 @@ export class EmployeesPage {
     }
     await this.startDateInput.fill(data.startDate);
     await this.ibanInput.fill(data.ibanNo);
+    if (data.phoneNo) {
+      await this.phoneNoInput.fill(data.phoneNo);
+    }
   }
 
   /** Modal kaydet butonuna tıkla */

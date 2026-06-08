@@ -51,6 +51,7 @@ export interface EmployeeListRow {
   readonly firstName: string;
   readonly lastName: string;
   readonly ibanNo: string | null;
+  readonly phoneNo: string | null;
   readonly startDate: string;
   readonly endDate: string | null;
   readonly isActive: boolean;

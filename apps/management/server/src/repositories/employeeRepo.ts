@@ -76,6 +76,7 @@ export async function list(
       firstName: employees.firstName,
       lastName: employees.lastName,
       ibanNo: employees.ibanNo,
+      phoneNo: employees.phoneNo,
       startDate: employees.startDate,
       endDate: employees.endDate,
       isActive: employees.isActive,
@@ -104,6 +105,7 @@ export async function create(
     firstName: string;
     lastName: string;
     ibanNo: string | null;
+    phoneNo: string | null;
     unitId: string;
     startDate: string;
     endDate: string | null;

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { employeeSchema } from '@timesheet/shared';
+import { employeeSchema, formatPhoneAsTyped, FORMATTED_PHONE_LENGTH } from '@timesheet/shared';
 import type { EmployeeType, EmployeeListItem, Result } from '@timesheet/shared';
 import { useLocationsAndUnits } from '../../../hooks/data/useLocationsAndUnits';
 import { toISODateString } from '../../../utils/dateUtils';
@@ -36,6 +36,7 @@ const SingleEmployeeForm = ({ employee, onClose, onSave }: SingleEmployeeFormPro
       startDate: toISODateString(employee?.startDate) ?? '',
       endDate: toISODateString(employee?.endDate) ?? '',
       ibanNo: employee?.ibanNo ?? '',
+      phoneNo: employee?.phoneNo ?? '',
       isActive: employee?.isActive ?? true,
     },
   });
@@ -65,6 +66,7 @@ const SingleEmployeeForm = ({ employee, onClose, onSave }: SingleEmployeeFormPro
         startDate: data.startDate,
         endDate: data.isActive ? null : data.endDate || null,
         ibanNo: data.ibanNo,
+        phoneNo: data.phoneNo,
         isActive: data.isActive,
       };
       const result = await onSave(payload);
@@ -196,16 +198,37 @@ const SingleEmployeeForm = ({ employee, onClose, onSave }: SingleEmployeeFormPro
         <label htmlFor="isActiveCheck">Çalışmaya devam ediyor mu?</label>
       </div>
 
-      <div className="floating-group flex-full">
-        <input
-          type="text"
-          id="ibanNo"
-          className={`input ${errors.ibanNo ? 'input--error' : ''}`}
-          placeholder=" TR..."
-          {...register('ibanNo')}
-        />
-        <label htmlFor="ibanNo" className="floating-group__label">IBAN</label>
-        {errors.ibanNo && <span className="input-error-message">{errors.ibanNo.message}</span>}
+      <div className="settings-row">
+        <div className="floating-group flex-full">
+          <input
+            type="tel"
+            id="phoneNo"
+            className={`input ${errors.phoneNo ? 'input--error' : ''}`}
+            placeholder=" 0555 555 4455"
+            maxLength={FORMATTED_PHONE_LENGTH}
+            {...register('phoneNo', {
+              onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+                e.target.value = formatPhoneAsTyped(e.target.value);
+              },
+            })}
+          />
+          <label htmlFor="phoneNo" className="floating-group__label">Telefon No</label>
+          {errors.phoneNo && <span className="input-error-message">{errors.phoneNo.message}</span>}
+        </div>
+      </div>
+
+      <div className="settings-row">
+        <div className="floating-group flex-full">
+          <input
+            type="text"
+            id="ibanNo"
+            className={`input ${errors.ibanNo ? 'input--error' : ''}`}
+            placeholder=" TR..."
+            {...register('ibanNo')}
+          />
+          <label htmlFor="ibanNo" className="floating-group__label">IBAN</label>
+          {errors.ibanNo && <span className="input-error-message">{errors.ibanNo.message}</span>}
+        </div>
       </div>
 
       {apiError && <div className="api-error-alert">{apiError}</div>}

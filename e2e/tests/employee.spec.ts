@@ -80,6 +80,8 @@ test.describe('Personel İşlemleri', () => {
       await employeesPage.startDateInput.fill(TEST_EMPLOYEE.startDate);
       // IBAN gir
       await employeesPage.ibanInput.fill(TEST_EMPLOYEE.ibanNo);
+      // Telefon numarası gir
+      await employeesPage.phoneNoInput.fill(TEST_EMPLOYEE.phoneNo);
 
       // Kaydet butonuna tıkla
       await employeesPage.saveForm();
@@ -125,6 +127,9 @@ test.describe('Personel İşlemleri', () => {
 
       const firstNameValue = await employeesPage.firstNameInput.inputValue();
       expect(firstNameValue.length).toBeGreaterThan(0);
+
+      // Telefon alanının mevcut olduğunu doğrula
+      await expect(employeesPage.phoneNoInput).toBeVisible();
 
       // Adı değiştir
       const updatedFirstName = firstNameValue + ' (E2E)';

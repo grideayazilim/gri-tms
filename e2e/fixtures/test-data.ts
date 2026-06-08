@@ -25,6 +25,7 @@ export const TEST_EMPLOYEE = {
   firstName: 'Test',
   lastName: 'Çalışan',
   ibanNo: 'TR000000000000000000000001',
+  phoneNo: '05551234567',
   startDate: '2025-01-15',
 } as const;
 

@@ -297,6 +297,7 @@ const runDemoSeed = async () => {
       unitId: string;
       tcNo: string;
       ibanNo: string;
+      phoneNo: string;
       firstName: string;
       lastName: string;
       startDate: string;
@@ -314,12 +315,14 @@ const runDemoSeed = async () => {
       const firstDigit = faker.number.int({ min: 1, max: 9 }).toString();
       const tcNo = firstDigit + faker.string.numeric(10);
       const ibanNo = 'TR' + faker.string.numeric(24);
+      const phoneNo = `05${faker.string.numeric(2)} ${faker.string.numeric(3)} ${faker.string.numeric(4)}`;
 
       employees.push({
         id: randomUUID(),
         unitId,
         tcNo,
         ibanNo,
+        phoneNo,
         firstName,
         lastName,
         startDate, // Program başlangıcından itibaren aktif
@@ -333,12 +336,12 @@ const runDemoSeed = async () => {
       const chunk = employees.slice(i, i + EMP_CHUNK_SIZE);
       const valuesSql = chunk
         .map(e =>
-          `('${e.id}', '${e.unitId}', '${e.tcNo}', '${e.ibanNo}', '${e.firstName.replace(/'/g, "''")}', '${e.lastName.replace(/'/g, "''")}', '${e.startDate}')`,
+          `('${e.id}', '${e.unitId}', '${e.tcNo}', '${e.ibanNo}', '${e.phoneNo}', '${e.firstName.replace(/'/g, "''")}', '${e.lastName.replace(/'/g, "''")}', '${e.startDate}')`,
         )
         .join(', ');
 
       await db.execute(sql.raw(`
-        INSERT INTO app.employees (id, unit_id, tc_no, iban_no, first_name, last_name, start_date)
+        INSERT INTO app.employees (id, unit_id, tc_no, iban_no, phone_no, first_name, last_name, start_date)
         VALUES ${valuesSql};
       `));
     }

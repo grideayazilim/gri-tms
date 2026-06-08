@@ -14,7 +14,7 @@ import * as employeeRepo from '../repositories/employeeRepo.js';
 
 
 function buildEmployeeResponse(
-  row: { id: string; tcNo: string | null; firstName: string; lastName: string; ibanNo: string | null; startDate: string; endDate: string | null; isActive: boolean; createdAt: Date; updatedAt: Date },
+  row: { id: string; tcNo: string | null; firstName: string; lastName: string; ibanNo: string | null; phoneNo: string | null; startDate: string; endDate: string | null; isActive: boolean; createdAt: Date; updatedAt: Date },
   unit: { id: string; name: string; locationId: string; locationName: string },
 ) {
   return {
@@ -23,6 +23,7 @@ function buildEmployeeResponse(
     firstName: row.firstName,
     lastName: row.lastName,
     ibanNo: row.ibanNo,
+    phoneNo: row.phoneNo,
     startDate: row.startDate,
     endDate: row.endDate,
     isActive: row.isActive,
@@ -56,6 +57,7 @@ export const getEmployees = asyncHandler<Record<string, string>, unknown, unknow
     firstName: row.firstName,
     lastName: row.lastName,
     ibanNo: row.ibanNo,
+    phoneNo: row.phoneNo,
     startDate: row.startDate,
     endDate: row.endDate,
     isActive: row.isActive,
@@ -73,7 +75,7 @@ export const getEmployees = asyncHandler<Record<string, string>, unknown, unknow
 
 export const createEmployee = asyncHandler<Record<string, string>, unknown, EmployeeType>(async (req, res) => {
   const body = req.body;
-  const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate, isActive } = body;
+  const { tcNo, firstName, lastName, ibanNo, phoneNo, unitId, startDate, endDate, isActive } = body;
 
   let result: { employee: ReturnType<typeof buildEmployeeResponse> };
   try {
@@ -83,6 +85,7 @@ export const createEmployee = asyncHandler<Record<string, string>, unknown, Empl
         firstName,
         lastName,
         ibanNo: ibanNo ?? null,
+        phoneNo: phoneNo ?? null,
         unitId,
         startDate,
         endDate: endDate ?? null,
@@ -120,7 +123,7 @@ export const createEmployee = asyncHandler<Record<string, string>, unknown, Empl
 export const updateEmployee = asyncHandler<{ id: string }, unknown, Partial<EmployeeType>>(async (req, res) => {
   const { id } = req.params;
   const body = req.body;
-  const { tcNo, firstName, lastName, ibanNo, unitId, startDate, endDate } = body;
+  const { tcNo, firstName, lastName, ibanNo, phoneNo, unitId, startDate, endDate } = body;
 
   let result: { employee: ReturnType<typeof buildEmployeeResponse> };
   try {
@@ -132,6 +135,7 @@ export const updateEmployee = asyncHandler<{ id: string }, unknown, Partial<Empl
         ...(firstName != null ? { firstName } : {}),
         ...(lastName != null ? { lastName } : {}),
         ...(ibanNo !== undefined ? { ibanNo: ibanNo ?? null } : {}),
+        ...(phoneNo !== undefined ? { phoneNo: phoneNo ?? null } : {}),
         ...(unitId != null ? { unitId } : {}),
         ...(startDate != null ? { startDate } : {}),
         ...(endDate !== undefined ? { endDate: endDate ?? null } : {}),

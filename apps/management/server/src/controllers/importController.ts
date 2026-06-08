@@ -4,7 +4,7 @@
    ======================================================================== */
 import { db, withDrizzleTransaction } from '../config/database.js';
 import { createAuditLog, buildActor, truncateChanges } from '../utils/auditLogger.js';
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, BulkImportEmployeesType } from '@timesheet/shared';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, BulkImportEmployeesType, normalizePhone } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { conflict } from '../utils/AppError.js';
 import { importRepo } from '../repositories/importRepo.js';
@@ -46,6 +46,7 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
         locationName,
         unitName,
         ibanNo,
+        phoneNo,
         startDate,
         endDate,
       } = emp;
@@ -74,6 +75,7 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
           firstName,
           lastName,
           ibanNo: ibanNo || null,
+          phoneNo: phoneNo ? normalizePhone(phoneNo) : null,
           unitId: unitId,
           startDate: (startDate || new Date().toISOString().split('T')[0]) as string,
           endDate: endDate || null,

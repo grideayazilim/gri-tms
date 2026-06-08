@@ -17,6 +17,7 @@ const COLUMN_MAP: Record<string, string[]> = {
   startDate: ['giriş', 'işe giriş', 'baslangic', 'başlangıç', 'tarih'],
   endDate: ['çıkış', 'işten çıkış', 'bitis', 'bitiş'],
   ibanNo: ['iban', 'iban no', 'hesap', 'hesap no'],
+  phoneNo: ['telefon', 'tel', 'tel no', 'phone', 'gsm', 'cep', 'cep tel', 'cep telefonu', 'telefon no'],
 };
 
 function getFieldKey(header: string): string | null {
@@ -214,6 +215,7 @@ const BulkImportView = ({ onClose, onBusyChange, onImportSuccess }: BulkImportVi
           locationName: String(row[mapping.locationName] ?? '').trim().toLocaleUpperCase('tr-TR'),
           unitName: mapping.unitName !== undefined ? String(row[mapping.unitName] ?? '').trim().toLocaleUpperCase('tr-TR') || null : null,
           ibanNo: mapping.ibanNo !== undefined ? String(row[mapping.ibanNo] ?? '').trim() || null : null,
+          phoneNo: mapping.phoneNo !== undefined ? String(row[mapping.phoneNo] ?? '').trim() || null : null,
           startDate: mapping.startDate !== undefined ? formatExcelDate(row[mapping.startDate]) : null,
           endDate: mapping.endDate !== undefined ? formatExcelDate(row[mapping.endDate]) : null,
         });
@@ -284,7 +286,8 @@ const BulkImportView = ({ onClose, onBusyChange, onImportSuccess }: BulkImportVi
               <p>
                 Sistem Excel sütunlarını otomatik tanır.{' '}
                 <strong>TC, Ad Soyad, Yerleşke, İşe Giriş ve IBAN</strong>{' '}
-                sütunları zorunludur. <strong>İşten Çıkış</strong> sütunu ise isteğe bağlıdır.
+                sütunları zorunludur. <strong>Telefon No</strong> ve <strong>İşten Çıkış</strong>{' '}
+                sütunları ise isteğe bağlıdır.
               </p>
             </div>
             <input

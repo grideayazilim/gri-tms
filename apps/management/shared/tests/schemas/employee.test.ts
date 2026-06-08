@@ -10,6 +10,7 @@ const validEmployee = {
   startDate: '2024-01-01',
   endDate: null,
   ibanNo: 'TR' + '1'.repeat(24),
+  phoneNo: '05551234567',
   isActive: true,
 }
 
@@ -65,5 +66,44 @@ describe('employeeSchema', () => {
     const result = employeeSchema.safeParse(rest)
     expect(result.success).toBe(true)
     if (result.success) expect(result.data.isActive).toBe(true)
+  })
+
+  it('phoneNo opsiyoneldir — undefined geçerli', () => {
+    const { phoneNo: _, ...rest } = validEmployee
+    const result = employeeSchema.safeParse(rest)
+    expect(result.success).toBe(true)
+  })
+
+  it('phoneNo null geçerli', () => {
+    const result = employeeSchema.safeParse({ ...validEmployee, phoneNo: null })
+    expect(result.success).toBe(true)
+  })
+
+  it('phoneNo boş string null\'a dönüştürülür', () => {
+    const result = employeeSchema.safeParse({ ...validEmployee, phoneNo: '' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.phoneNo).toBeNull()
+  })
+
+  it('phoneNo "05551234567" normalize edilir → "0555 123 4567"', () => {
+    const result = employeeSchema.safeParse({ ...validEmployee, phoneNo: '05551234567' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.phoneNo).toBe('0555 123 4567')
+  })
+
+  it('phoneNo "+905551234567" normalize edilir → "0555 123 4567"', () => {
+    const result = employeeSchema.safeParse({ ...validEmployee, phoneNo: '+905551234567' })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.phoneNo).toBe('0555 123 4567')
+  })
+
+  it('phoneNo geçersiz numara reddeder (sabit hat)', () => {
+    const result = employeeSchema.safeParse({ ...validEmployee, phoneNo: '03121234567' })
+    expect(result.success).toBe(false)
+  })
+
+  it('phoneNo eksik haneli numara reddeder', () => {
+    const result = employeeSchema.safeParse({ ...validEmployee, phoneNo: '055512345' })
+    expect(result.success).toBe(false)
   })
 })

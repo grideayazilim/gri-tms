@@ -26,6 +26,7 @@ export const importEmployeeSchema = z.object({
         .nullable(),
     startDate: z.string().optional().nullable(),
     endDate: z.string().optional().nullable(),
+    phoneNo: z.string().optional().nullable(),
     markers: z.record(z.string(), z.string()).optional().nullable(),
 });
 
@@ -50,6 +51,7 @@ export const bulkImportEmployeesSchema = z.object({
         locationName: z.string().min(1),
         unitName: z.string().optional().nullable(),
         ibanNo: z.string().optional().nullable(),
+        phoneNo: z.string().optional().nullable(),
         startDate: z.string().optional().nullable(),
         endDate: z.string().optional().nullable(),
     })),

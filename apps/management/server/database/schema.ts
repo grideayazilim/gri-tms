@@ -70,6 +70,7 @@ export const employees = appSchema.table('employees', {
   unitId: uuid('unit_id').notNull().references(() => units.id, { onDelete: 'cascade' }),
   tcNo: text('tc_no').unique(),
   ibanNo: text('iban_no'),
+  phoneNo: text('phone_no'),
   firstName: text('first_name').notNull(),
   lastName: text('last_name').notNull(),
   startDate: date('start_date').notNull(),

@@ -65,12 +65,38 @@ describe('SingleEmployeeForm Bileşeni', () => {
     fireEventChangeDate(screen.getByLabelText('İşe Giriş'), '2024-01-01');
     
     await userEvent.type(screen.getByLabelText('IBAN'), 'TR123456789012345678901234');
+    await userEvent.type(screen.getByLabelText('Telefon No'), '05551234567');
 
     const submitBtn = screen.getByText('Kaydet');
     await userEvent.click(submitBtn);
 
     await waitFor(() => {
       expect(mockOnSave).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('telefon alanı boş bırakılabilmeli ve form submit olabilmeli', async () => {
+    const mockOnSave = vi.fn().mockResolvedValue({ success: true, data: {} });
+
+    render(<SingleEmployeeForm onClose={vi.fn()} onSave={mockOnSave} />);
+
+    await userEvent.type(screen.getByLabelText('TC No'), '12345678901');
+    await userEvent.type(screen.getByLabelText('Ad'), 'Ahmet');
+    await userEvent.type(screen.getByLabelText('Soyad'), 'Yılmaz');
+    await userEvent.selectOptions(screen.getByLabelText('Yerleşke'), '1');
+    await waitFor(() => expect(screen.getByLabelText('Birim')).not.toBeDisabled());
+    await userEvent.selectOptions(screen.getByLabelText('Birim'), '1');
+    fireEventChangeDate(screen.getByLabelText('İşe Giriş'), '2024-01-01');
+    await userEvent.type(screen.getByLabelText('IBAN'), 'TR123456789012345678901234');
+    // Telefon alanı boş bırakıldı
+
+    await userEvent.click(screen.getByText('Kaydet'));
+
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalledTimes(1);
+      expect(mockOnSave).toHaveBeenCalledWith(
+        expect.objectContaining({ phoneNo: null }),
+      );
     });
   });
 });

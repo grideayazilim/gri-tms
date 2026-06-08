@@ -64,6 +64,7 @@ export interface EmployeeListItem {
   startDate: string | null;
   endDate: string | null;
   ibanNo: string | null;
+  phoneNo: string | null;
   isActive: boolean;
   createdAt: string;
   unit: UnitWithLocation | null;

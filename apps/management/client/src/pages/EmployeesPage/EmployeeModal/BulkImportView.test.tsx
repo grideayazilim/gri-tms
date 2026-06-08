@@ -44,8 +44,8 @@ Object.defineProperty(xlsxFile, 'arrayBuffer', {
 
 function validWorkbook() {
   mockReadXlsxFile.mockResolvedValue([
-    ['tc', 'ad soyad', 'yerleşke', 'işe giriş', 'iban'],
-    ['11111111111', 'Ali Veli', 'Merkez', '2024-01-01', 'TR12 0001 0017 0000 0123 4567 89'],
+    ['tc', 'ad soyad', 'yerleşke', 'işe giriş', 'iban', 'telefon'],
+    ['11111111111', 'Ali Veli', 'Merkez', '2024-01-01', 'TR12 0001 0017 0000 0123 4567 89', '05551234567'],
   ]);
 }
 
@@ -115,6 +115,28 @@ describe('BulkImportView Bileşeni', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/KB/)).toBeInTheDocument();
+    });
+  });
+
+  it('telefon sütunu olmadan da başarılı import yapılabilmeli', async () => {
+    mockReadXlsxFile.mockResolvedValue([
+      ['tc', 'ad soyad', 'yerleşke', 'işe giriş', 'iban'],
+      ['11111111111', 'Ali Veli', 'Merkez', '2024-01-01', 'TR120001001700000123456789'],
+    ]);
+    mockBulkImport.mockResolvedValue({ success: true, data: { successCount: 1, failures: [] } });
+
+    render(<BulkImportView onClose={vi.fn()} onBusyChange={vi.fn()} />);
+
+    const input = document.querySelector('#excel-upload') as HTMLInputElement;
+    await userEvent.upload(input, xlsxFile);
+    await waitFor(() => expect(screen.getByText('test-data.xlsx')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('İşlemi Başlat'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('İçe Aktarma Tamamlandı')).toBeInTheDocument();
     });
   });
 

@@ -38,12 +38,57 @@ describe('Employee CRUD API', () => {
           locationId: location.id,
           startDate: '2024-01-01',
           ibanNo: 'TR' + faker.string.numeric(24),
+          phoneNo: '05551234567',
         })
 
       expect(res.status).toBe(201)
       expect(res.body).toBeDefined()
 
 
+    })
+
+    it('POST /api/employees → phoneNo olmadan da personel ekler (nullable) → 201', async () => {
+      const admin = await createAdminUser()
+      const location = await createLocation()
+      const unit = await createUnit(location.id)
+
+      const res = await request(app)
+        .post('/api/employees')
+        .set('Cookie', admin.cookie)
+        .send({
+          tcNo: faker.string.numeric(11),
+          firstName: 'Telefonsuz',
+          lastName: 'Çalışan',
+          unitId: unit.id,
+          locationId: location.id,
+          startDate: '2024-01-01',
+          ibanNo: 'TR' + faker.string.numeric(24),
+        })
+
+      expect(res.status).toBe(201)
+    })
+
+    it('POST /api/employees → phoneNo normalize edilerek kaydedilir', async () => {
+      const admin = await createAdminUser()
+      const location = await createLocation()
+      const unit = await createUnit(location.id)
+
+      const res = await request(app)
+        .post('/api/employees')
+        .set('Cookie', admin.cookie)
+        .send({
+          tcNo: faker.string.numeric(11),
+          firstName: 'Telefonlu',
+          lastName: 'Çalışan',
+          unitId: unit.id,
+          locationId: location.id,
+          startDate: '2024-01-01',
+          ibanNo: 'TR' + faker.string.numeric(24),
+          phoneNo: '+905551234567',
+        })
+
+      expect(res.status).toBe(201)
+      expect(res.body.data.employee.phoneNo).toBe('0555 123 4567')
     })
 
     it('GET /api/employees → personel listesi döner + pagination → 200', async () => {
@@ -84,6 +129,7 @@ describe('Employee CRUD API', () => {
           locationId: location.id,
           startDate: '2024-01-01',
           ibanNo: 'TR' + faker.string.numeric(24),
+          phoneNo: '05559876543',
           tcNo: emp.tcNo,
         })
 

@@ -145,9 +145,10 @@ export interface TestEmployee {
   tcNo: string
   firstName: string
   lastName: string
+  phoneNo: string | null
 }
 
-export async function createEmployee(unitId: string, overrides: { tcNo?: string; isActive?: boolean } = {}): Promise<TestEmployee> {
+export async function createEmployee(unitId: string, overrides: { tcNo?: string; isActive?: boolean; phoneNo?: string } = {}): Promise<TestEmployee> {
   const tcNo = overrides.tcNo ?? faker.string.numeric(11)
   const firstName = faker.person.firstName()
   const lastName = faker.person.lastName()
@@ -160,10 +161,11 @@ export async function createEmployee(unitId: string, overrides: { tcNo?: string;
     startDate: '2024-01-01',
     isActive: overrides.isActive ?? true,
     ibanNo: 'TR' + faker.string.numeric(24),
+    phoneNo: overrides.phoneNo ?? null,
   }).returning()
 
   if (!emp) throw new Error('Personel oluşturulamadı')
-  return { id: emp.id, unitId, tcNo, firstName, lastName }
+  return { id: emp.id, unitId, tcNo, firstName, lastName, phoneNo: emp.phoneNo }
 }
 
 /* ─── Dönem Yardımcıları ───────────────────────────────────────────── */

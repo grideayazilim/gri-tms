@@ -1,0 +1,1 @@
+ALTER TABLE "app"."employees" ADD COLUMN "phone_no" text;

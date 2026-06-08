@@ -201,21 +201,27 @@ class IskurAuthClient {
       if (!firmaSecildi) {
         try {
           this.log('🔍 Select2 Yöntem 2: JavaScript ile seçim deneniyor...');
-          await this.page.evaluate(() => {
-            // Select2'yi JS ile aç
+          // Select2'yi JS ile aç
+          const opened = await this.page.evaluate(() => {
             const container = document.querySelector('.select2-container');
-            if (container) {
-              const choice = container.querySelector('a.select2-choice, .select2-choice');
-              if (choice) choice.click();
-            }
+            if (!container) return false;
+            const choice = container.querySelector('a.select2-choice, .select2-choice');
+            if (!choice) return false;
+            choice.click();
+            return true;
           });
+          if (!opened) throw new Error('Select2 container/choice bulunamadı');
           await sleep(800);
 
-          // İlk li'yi JS ile tıkla
-          await this.page.evaluate(() => {
+          // İlk li'yi JS ile tıkla — gerçekten bir sonuç bulunup tıklandı mı diye kontrol et
+          const clicked = await this.page.evaluate(() => {
             const firstResult = document.querySelector('.select2-results li, .select2-result');
-            if (firstResult) firstResult.click();
+            if (!firstResult) return false;
+            firstResult.click();
+            return true;
           });
+          if (!clicked) throw new Error('Select2 sonuç listesi boş, tıklanacak öğe yok');
+
           this.log('✅ İlk firma seçildi (Yöntem 2 - JavaScript)');
           firmaSecildi = true;
         } catch (e) {

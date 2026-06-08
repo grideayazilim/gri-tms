@@ -342,8 +342,6 @@ async function runProcess({ persons, month, year, group, username, password, pro
   let portalClient = null;
   let lastLoginTime = null;
   let attendanceUrl = null;
-  let consecutiveSessionFailures = 0;
-  const MAX_SESSION_FAILURES = 3;
   const authClient = new IskurAuthClient((msg) => addLog(msg));
 
   // ── Progress: daha önce işlenmiş TC'leri yükle ────────────────
@@ -445,40 +443,6 @@ async function runProcess({ persons, month, year, group, username, password, pro
         group
       );
 
-      // ── Oturum sonlanmış mı? Hemen relogin yap ve kişiyi tekrar dene ──
-      if (result.sessionExpired) {
-        addLog(`🔒 Oturum sonlanmış tespit edildi (${person.adSoyad}) — beklenmeden yeniden giriş yapılıyor...`, 'warning');
-
-        const reloginResult = await authClient.relogin(username, password, programNo);
-        if (reloginResult.success) {
-          consecutiveSessionFailures = 0;
-          lastLoginTime = Date.now();
-          attendanceUrl = reloginResult.attendanceUrl || attendanceUrl;
-          portalClient.setCookies(reloginResult.cookies);
-          portalClient.attendanceUrl = attendanceUrl;
-          addLog(`✅ Yeniden giriş başarılı, ${person.adSoyad} tekrar deneniyor`, 'success');
-          i--; // bu kişiyi tekrar dene
-          continue;
-        }
-
-        consecutiveSessionFailures++;
-        addLog(`❌ Yeniden giriş başarısız (${consecutiveSessionFailures}/${MAX_SESSION_FAILURES}): ${reloginResult.message}`, 'error');
-
-        if (consecutiveSessionFailures >= MAX_SESSION_FAILURES) {
-          addLog(`🛑 Art arda ${MAX_SESSION_FAILURES} oturum yenileme hatası — işlem durduruluyor`, 'error');
-          break;
-        }
-
-        // Bu kişiyi hata say ve devam et — bir sonraki kişide tekrar denenecek
-        processState.processedTC++;
-        processState.errorTC++;
-        addLog(`❌ Hata: ${person.adSoyad} - Oturum yenilenemedi`, 'error');
-        processState.tcResults.push({ tc: person.tc, adSoyad: person.adSoyad, success: false, message: 'Oturum yenilenemedi' });
-        processEvents.emit('stats', getStats());
-        continue;
-      }
-
-      consecutiveSessionFailures = 0;
       processState.processedTC++;
       if (result.success) {
         processState.successTC++;

@@ -231,14 +231,6 @@ function parseExistingCheckedCheckboxes(html) {
 }
 
 /**
- * HTML'in oturum süresi dolmuş giriş sayfasına yönlendirilmiş olup olmadığını tespit et
- */
-function isLoginPage(html) {
-  const $ = cheerio.load(html);
-  return $('input[name*="userLoginIsveren"], #ctl02_userLoginIsveren_ctlEmployerUserId').length > 0;
-}
-
-/**
  * HTML'den hata mesajını çıkar
  */
 function extractErrorMessage(html) {
@@ -334,9 +326,6 @@ class PortalClient {
 
     try {
       const response = await this.axiosInstance.get(this.attendanceUrl);
-      if (isLoginPage(response.data)) {
-        return { success: false, sessionExpired: true, message: 'Oturum sonlanmış (giriş sayfasına yönlendirildi)', html: response.data };
-      }
       return { success: true, message: 'Sayfa alındı', html: response.data };
     } catch (err) {
       return { success: false, message: `GET hatası: ${err.message}`, html: null };
@@ -523,13 +512,7 @@ class PortalClient {
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
           // Fresh sayfa al
-          const pageResult = await this.getAttendancePage();
-          if (pageResult.sessionExpired) {
-            // Oturum ölmüş — retry'lerle uğraşmanın anlamı yok, hemen yukarı bildir (relogin gerekiyor)
-            this.log('🔒 Oturum sonlanmış tespit edildi, relogin gerekiyor');
-            return { success: false, sessionExpired: true, message: 'Oturum sonlanmış, yeniden giriş gerekiyor' };
-          }
-          const { success: pageOk, html: pageHtml } = pageResult;
+          const { success: pageOk, html: pageHtml } = await this.getAttendancePage();
           if (!pageOk) {
             if (attempt < maxRetries) { await sleep(500); continue; }
             totalErrors += datesInWeek.size; break;

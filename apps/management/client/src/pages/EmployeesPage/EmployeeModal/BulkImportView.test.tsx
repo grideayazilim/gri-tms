@@ -2,6 +2,7 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BulkImportView from './BulkImportView';
+import { ApiError } from '../../../api/httpClient';
 
 /*
   BulkImportView Testleri
@@ -81,8 +82,9 @@ describe('BulkImportView Bileşeni', () => {
     expect(screen.getByText('İşlemi Başlat')).toBeInTheDocument();
   });
 
-  it('"Vazgeç" butonuna basınca dosya seçimi iptal edilmeli', async () => {
-    render(<BulkImportView onClose={vi.fn()} onBusyChange={vi.fn()} />);
+  it('"Vazgeç" butonuna basınca modal kapanmalı', async () => {
+    const onClose = vi.fn();
+    render(<BulkImportView onClose={onClose} onBusyChange={vi.fn()} />);
 
     const input = document.querySelector('#excel-upload') as HTMLInputElement;
     await userEvent.upload(input, xlsxFile);
@@ -91,10 +93,11 @@ describe('BulkImportView Bileşeni', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Vazgeç' }));
 
-    expect(screen.getByText('Excel Dosyası Yükle')).toBeInTheDocument();
+    expect(onClose).toHaveBeenCalled();
   });
 
-  it('"buraya tıklayın" tıklanınca dosya seçimi sıfırlanmalı', async () => {
+  // Dosya değiştirme görünür bir düğmedir, küçük punto bir bağlantı değil
+  it('"Dosyayı Değiştir" tıklanınca dosya seçimi sıfırlanmalı', async () => {
     render(<BulkImportView onClose={vi.fn()} onBusyChange={vi.fn()} />);
 
     const input = document.querySelector('#excel-upload') as HTMLInputElement;
@@ -102,7 +105,7 @@ describe('BulkImportView Bileşeni', () => {
 
     await waitFor(() => expect(screen.getByText('test-data.xlsx')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByText('buraya tıklayın'));
+    fireEvent.click(screen.getByRole('button', { name: 'Dosyayı Değiştir' }));
 
     expect(screen.getByText('Excel Dosyası Yükle')).toBeInTheDocument();
   });
@@ -196,8 +199,11 @@ describe('BulkImportView Bileşeni', () => {
 
     fireEvent.click(screen.getByText('Yeni Dosya Yükle'));
 
-    // selectedFile is still set so we stay on the file-selected view
-    expect(screen.getByText('İşlemi Başlat')).toBeInTheDocument();
+    /* resetImport selectedFile'ı da temizlemeli; aksi halde önceki dosya seçili
+       kalır ve kullanıcı aynı dosyayı ikinci kez aktarabilir. */
+    expect(screen.getByText('Excel Dosyası Yükle')).toBeInTheDocument();
+    expect(screen.queryByText('test-data.xlsx')).not.toBeInTheDocument();
+    expect(screen.queryByText('İşlemi Başlat')).not.toBeInTheDocument();
   });
 
   it('rapor ekranında "Vazgeç" butonu onClose çağırmalı', async () => {
@@ -332,5 +338,85 @@ describe('BulkImportView Bileşeni', () => {
     await waitFor(() => {
       expect(onImportSuccess).toHaveBeenCalled();
     });
+  });
+
+  /* httpClient `ApiError` (bir Error sınıfı) reddeder; bu sayede buradaki
+     `err instanceof Error` kontrolü çalışır ve sunucunun net mesajı genel
+     "Dosya işlenirken hata oluştu" ile değiştirilmez. */
+  describe('sunucu hata mesajı kullanıcıya birebir ulaşır', () => {
+    it('ApiError mesajı bildirimde birebir görünür', async () => {
+      validWorkbook();
+      mockBulkImport.mockRejectedValue(new ApiError('TC No 11 haneli rakam olmalıdır', 400));
+
+      render(<BulkImportView onClose={vi.fn()} onBusyChange={vi.fn()} />);
+
+      const input = document.querySelector('#excel-upload') as HTMLInputElement;
+      await userEvent.upload(input, xlsxFile);
+      await waitFor(() => expect(screen.getByText('test-data.xlsx')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('İşlemi Başlat'));
+      });
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'TC No 11 haneli rakam olmalıdır',
+        });
+      });
+    });
+
+    it('Error olmayan bir hatada yerel okuma mesajı gösterilir', async () => {
+      validWorkbook();
+      mockBulkImport.mockRejectedValue('beklenmeyen');
+
+      render(<BulkImportView onClose={vi.fn()} onBusyChange={vi.fn()} />);
+
+      const input = document.querySelector('#excel-upload') as HTMLInputElement;
+      await userEvent.upload(input, xlsxFile);
+      await waitFor(() => expect(screen.getByText('test-data.xlsx')).toBeInTheDocument());
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('İşlemi Başlat'));
+      });
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          type: 'error',
+          message: 'Dosya okunamadı. Excel dosyasının bozuk olmadığından emin olun.',
+        });
+      });
+    });
+  });
+
+  /* Sunucu artık kısmi başarı döndürüyor — 1 hatalı satır 10 geçerli
+     satırı engellemiyor; hatalı satır rapor modalında görünmeli. */
+  it('kısmi başarıda rapor hem eklenenleri hem hatalı satırı gösterir', async () => {
+    validWorkbook();
+    mockBulkImport.mockResolvedValue({
+      success: true,
+      data: {
+        successCount: 10,
+        successes: [{ row: 2, name: 'ALİ VELİ' }],
+        failures: [{ row: 7, name: 'AHMET YILMAZ', error: 'TC No 11 haneli rakam olmalıdır' }],
+      },
+    });
+
+    render(<BulkImportView onClose={vi.fn()} onBusyChange={vi.fn()} />);
+
+    const input = document.querySelector('#excel-upload') as HTMLInputElement;
+    await userEvent.upload(input, xlsxFile);
+    await waitFor(() => expect(screen.getByText('test-data.xlsx')).toBeInTheDocument());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('İşlemi Başlat'));
+    });
+
+    await waitFor(() => expect(screen.getByText('İçe Aktarma Tamamlandı')).toBeInTheDocument());
+
+    expect(screen.getByText('10')).toBeInTheDocument();          // eklenen sayısı
+    expect(screen.getByText('Satır 7')).toBeInTheDocument();
+    expect(screen.getByText('AHMET YILMAZ')).toBeInTheDocument();
+    expect(screen.getByText('TC No 11 haneli rakam olmalıdır')).toBeInTheDocument();
   });
 });

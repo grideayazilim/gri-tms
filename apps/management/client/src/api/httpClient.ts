@@ -8,9 +8,17 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from 'axios';
 
-export interface ApiError {
-  message: string;
-  status: number;
+/* Error'dan türer: düz bir nesne (`{ message, status }`) reddedilseydi `catch`
+   bloklarındaki `err instanceof Error` kontrolleri her zaman false döner ve
+   sunucunun açıklayıcı mesajı atılırdı. */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
 }
 
 function hasMessage(data: unknown): data is { message: string } {
@@ -32,8 +40,7 @@ httpClient.interceptors.response.use(
   (response) => response.data,
   async (error: unknown) => {
     if (!axios.isAxiosError(error)) {
-      const unexpectedError: ApiError = { message: 'Beklenmeyen hata', status: 0 };
-      return Promise.reject(unexpectedError);
+      return Promise.reject(new ApiError('Beklenmeyen hata', 0));
     }
 
     const originalRequest = error.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
@@ -46,14 +53,12 @@ httpClient.interceptors.response.use(
       originalRequest?.url?.includes('/auth/register')
     ) {
       if (error.response) {
-        const apiError: ApiError = {
-          message: hasMessage(error.response.data) ? error.response.data.message : 'Bir hata oluştu',
-          status: error.response.status,
-        };
-        return Promise.reject(apiError);
+        return Promise.reject(new ApiError(
+          hasMessage(error.response.data) ? error.response.data.message : 'Bir hata oluştu',
+          error.response.status,
+        ));
       }
-      const networkError: ApiError = { message: 'Sunucuya ulaşılamıyor', status: 0 };
-      return Promise.reject(networkError);
+      return Promise.reject(new ApiError('Sunucuya ulaşılamıyor', 0));
     }
 
     // 401 + henüz retry yapılmadıysa — session yenile
@@ -85,12 +90,10 @@ httpClient.interceptors.response.use(
       } else {
         errorMessage = hasMessage(error.response.data) ? error.response.data.message : errorMessage;
       }
-      const apiError: ApiError = { message: errorMessage, status: error.response.status };
-      return Promise.reject(apiError);
+      return Promise.reject(new ApiError(errorMessage, error.response.status));
     }
 
-    const finalError: ApiError = { message: 'Sunucuya ulaşılamıyor', status: 0 };
-    return Promise.reject(finalError);
+    return Promise.reject(new ApiError('Sunucuya ulaşılamıyor', 0));
   },
 );
 

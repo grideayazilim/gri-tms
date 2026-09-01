@@ -4,6 +4,62 @@ import './App.css';
 
 const API_URL = process.env.NODE_ENV === 'production' ? '/bot-api' : '';
 
+/* Token yenileme ucu yönetim uygulamasında; bot arayüzü onunla aynı origin'de
+   sunulduğu için göreli yol yeterli. */
+const REFRESH_URL = process.env.NODE_ENV === 'production'
+  ? '/api/auth/refresh'
+  : 'http://localhost:3000/api/auth/refresh';
+
+/* Bot kimlik doğrulaması istiyor. Oturum kurtarılamıyorsa ana uygulamanın
+   giriş ekranına dön ve dönüş adresini taşı. */
+const LOGIN_URL = `/auth?next=${encodeURIComponent('/bot/')}`;
+
+function redirectToLogin() {
+  if (!window.location.pathname.startsWith('/auth')) {
+    window.location.href = LOGIN_URL;
+  }
+}
+
+/* Cookie tabanlı oturum: her istekte cookie gitsin. */
+axios.defaults.withCredentials = true;
+
+/* Access token 15 dakika ömürlü; bot işi saatlerce sürebiliyor. Yenileme
+   olmadan kullanıcı 15 dakikada bir çalışan işin ekranından atılırdı.
+   Aynı anda birden fazla istek 401 alabildiği için yenileme tek bir söze
+   bağlanır — hepsi onu bekler, tek bir yenileme isteği gider. */
+let refreshInFlight = null;
+
+function refreshSession() {
+  refreshInFlight ??= axios
+    .post(REFRESH_URL, {}, { withCredentials: true, skipAuthRetry: true })
+    .finally(() => { refreshInFlight = null; });
+  return refreshInFlight;
+}
+
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const status = error?.response?.status;
+    const original = error?.config;
+
+    /* Yalnızca 401'de ve isteği bir kez tekrarla. Yenileme isteğinin kendisi
+       401 alırsa oturum gerçekten bitmiştir. */
+    if (status === 401 && original && !original._retried && !original.skipAuthRetry) {
+      original._retried = true;
+      try {
+        await refreshSession();
+        return await axios(original);
+      } catch {
+        redirectToLogin();
+        return Promise.reject(error);
+      }
+    }
+
+    if (status === 401) redirectToLogin();
+    return Promise.reject(error);
+  },
+);
+
 const MONTHS = [
   { value: 1, label: 'Ocak' },
   { value: 2, label: 'Şubat' },
@@ -20,6 +76,15 @@ const MONTHS = [
 ];
 
 const YEARS = [2024, 2025, 2026, 2027];
+
+// Aynı anda render edilecek en fazla log satırı
+const MAX_VISIBLE_LOGS = 300;
+
+/* TC maskesi: yalnızca ilk 2 + son 2 hane açık kalır. */
+function maskTc(tc) {
+  if (!tc || tc.length < 11) return '***********';
+  return `${tc.slice(0, 2)}${'*'.repeat(tc.length - 4)}${tc.slice(-2)}`;
+}
 
 function App() {
   const [form, setForm] = useState({
@@ -44,18 +109,56 @@ function App() {
     remainingTC: 0,
     progress: 0,
     elapsedTime: '00:00:00',
-    tcResults: [],
+    resultCount: 0,
   });
+  /* Sonuç listesi artık her stats yayınında gelmiyor (1000 kişilik işte
+     istemci başına GB'larca trafik oluyordu); ayrı ve sayfalı uçtan çekilir. */
+  const [tcResults, setTcResults] = useState([]);
   const [debugTab, setDebugTab] = useState('all'); // 'all' | 'success' | 'error'
   const [logs, setLogs] = useState([]);
   const logsEndRef = useRef(null);
   const eventSourceRef = useRef(null);
 
+  /* Access token 15 dakika ömürlü, bot işi saatlerce sürebiliyor. 401'i
+     bekleyip yenilemek de çalışıyor ama o sırada SSE bir kez kopup yeniden
+     bağlanıyor ve log akışında boşluk oluyor; 13 dakikada bir önden
+     yenileyerek bunu kapatıyoruz.
+
+     YALNIZCA iş çalışırken. Boşta duran bir sekmenin oturumu günlerce
+     uzatmasının gereği yok — iş yokken 401 geldiğinde tepkisel yenileme
+     zaten devrede. */
+  useEffect(() => {
+    if (!stats.isRunning) return undefined;
+    const id = setInterval(() => {
+      refreshSession().catch(() => { /* tepkisel yenileme yine devreye girer */ });
+    }, 13 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [stats.isRunning]);
+
   // SSE bağlantısı
   useEffect(() => {
-    const es = new EventSource(`${API_URL}/api/stream`);
+    let closed = false;
+    let es = null;
+    let recovering = false;
 
-    es.onmessage = (e) => {
+    /* EventSource'a başlık eklenemez; token süresi dolunca bağlantı kapanır.
+       Kapanmayı doğrudan giriş ekranına çevirmek yerine önce oturumu
+       yenilemeyi deniyoruz — saatler süren bir işin ekranı ayakta kalsın. */
+    const connect = () => {
+      if (closed) return;
+      es = new EventSource(`${API_URL}/api/stream`, { withCredentials: true });
+      eventSourceRef.current = es;
+      es.onmessage = onMessage;
+      es.onerror = () => {
+        if (closed || es.readyState !== EventSource.CLOSED || recovering) return;
+        recovering = true;
+        refreshSession()
+          .then(() => { recovering = false; connect(); })
+          .catch(() => { recovering = false; redirectToLogin(); });
+      };
+    };
+
+    const onMessage = (e) => {
       const data = JSON.parse(e.data);
 
       if (data.type === 'init') {
@@ -72,9 +175,37 @@ function App() {
       }
     };
 
-    eventSourceRef.current = es;
-    return () => es.close();
+    connect();
+
+    return () => {
+      closed = true;
+      es?.close();
+    };
   }, []);
+
+  // Sonuç listesini ayrı uçtan çek — çalışırken periyodik, bitince bir kez
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchResults = async () => {
+      if (!stats.resultCount) {
+        setTcResults([]);
+        return;
+      }
+      try {
+        const res = await axios.get(`${API_URL}/api/results`, { params: { limit: 200 } });
+        if (!cancelled && res.data?.success) setTcResults(res.data.data.items || []);
+      } catch {
+        // Sessizce geç — sonuç listesi kritik değil
+      }
+    };
+
+    fetchResults();
+    if (!stats.isRunning) return () => { cancelled = true; };
+
+    const id = setInterval(fetchResults, 5000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [stats.resultCount, stats.isRunning]);
 
   // Canlı sayaç - işlem başlayınca tıklar
   useEffect(() => {
@@ -96,10 +227,17 @@ function App() {
     return () => clearInterval(timerRef.current);
   }, [stats.isRunning]);
 
-  // Loglar güncellenince en alta kaydır
+  /* Her log satırında `behavior: 'smooth'` ile scrollIntoView çağrılıyordu;
+     saniyede onlarca log geldiğinde tarayıcı sekmesi kilitleniyordu. */
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
+    const id = setTimeout(() => {
+      logsEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    }, 200);
+    return () => clearTimeout(id);
+  }, [logs.length]);
+
+  // Sadece son 300 log render edilir — 15.000 DOM satırı üretilmez
+  const visibleLogs = logs.length > MAX_VISIBLE_LOGS ? logs.slice(-MAX_VISIBLE_LOGS) : logs;
 
   const formatElapsed = (seconds) => {
     const hh = String(Math.floor(seconds / 3600)).padStart(2, '0');
@@ -153,6 +291,17 @@ function App() {
     }
   };
 
+  /* İş bir `await` içinde asılı kalırsa isRunning kalıcı olarak true kalır;
+     bu düğme container'ı yeniden başlatmadan kurtarmanın yoludur. */
+  const handleForceReset = async () => {
+    if (!window.confirm('Bot durumu sıfırlanacak. Çalışan bir işlem varsa takip edilmeyecek. Emin misiniz?')) return;
+    try {
+      await axios.post(`${API_URL}/api/process/force-reset`);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Sıfırlama başarısız');
+    }
+  };
+
   const handleStop = async () => {
     await axios.post(`${API_URL}/api/process/stop`);
   };
@@ -173,7 +322,7 @@ function App() {
       const res = await axios.post(`${API_URL}/api/debug/excel`, formData);
       if (res.data.success) {
         const { totalPersons, personsToProcess, persons } = res.data.data;
-        alert(`Toplam: ${totalPersons} kişi\nİşlenecek: ${personsToProcess} kişi\n\nİlk 5:\n${persons.slice(0, 5).map(p => `${p.adSoyad} (TC: ${p.tc || 'YOK'})`).join('\n')}`);
+        alert(`Toplam: ${totalPersons} kişi\nİşlenecek: ${personsToProcess} kişi\n\nİlk 5:\n${persons.slice(0, 5).map(p => `${p.adSoyad} (TC: ${p.tc ? maskTc(p.tc) : 'YOK'})`).join('\n')}`);
       }
     } catch (err) {
       alert(err.response?.data?.message || 'Hata');
@@ -324,6 +473,11 @@ function App() {
                     🔄 Formu Sıfırla
                   </button>
                 )}
+                {stats.isRunning && (
+                  <button className="btn btn-secondary" onClick={handleForceReset} title="İşlem takılı kaldıysa bot durumunu sıfırlar">
+                    🧯 Zorla Sıfırla
+                  </button>
+                )}
               </div>
             </div>
 
@@ -384,7 +538,12 @@ function App() {
                   {logs.length === 0 && (
                     <div className="logs-empty">Henüz log yok...</div>
                   )}
-                  {logs.map((log, i) => {
+                  {logs.length > MAX_VISIBLE_LOGS && (
+                    <div className="logs-empty">
+                      … eski {logs.length - MAX_VISIBLE_LOGS} satır gizlendi (son {MAX_VISIBLE_LOGS} gösteriliyor)
+                    </div>
+                  )}
+                  {visibleLogs.map((log, i) => {
                     const style = getLogStyle(log.level);
                     return (
                       <div
@@ -403,15 +562,15 @@ function App() {
               </div>
 
               {/* TC Sonuç Raporu */}
-              {(stats.tcResults || []).length > 0 && (
+              {tcResults.length > 0 && (
                 <div className="panel" style={{ marginTop: '1.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h2 className="panel-title">🧾 TC Sonuç Raporu</h2>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       {[
-                        { key: 'all', label: `Tümü (${(stats.tcResults||[]).length})` },
-                        { key: 'success', label: `✅ Başarılı (${(stats.tcResults||[]).filter(r=>r.success).length})` },
-                        { key: 'error', label: `❌ Hatalı (${(stats.tcResults||[]).filter(r=>!r.success).length})` },
+                        { key: 'all', label: `Tümü (${stats.resultCount ?? tcResults.length})` },
+                        { key: 'success', label: `✅ Başarılı (${tcResults.filter(r=>r.success).length})` },
+                        { key: 'error', label: `❌ Hatalı (${tcResults.filter(r=>!r.success).length})` },
                       ].map(tab => (
                         <button
                           key={tab.key}
@@ -433,7 +592,7 @@ function App() {
                   </div>
 
                   <div style={{ maxHeight: '300px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                    {(stats.tcResults || [])
+                    {tcResults
                       .filter(r => debugTab === 'all' || (debugTab === 'success' ? r.success : !r.success))
                       .map((r, i) => (
                         <div key={i} style={{
@@ -447,7 +606,7 @@ function App() {
                         }}>
                           <span>{r.success ? '✅' : '❌'}</span>
                           <span style={{ color: '#a0aec0', minWidth: '140px' }}>
-                            {r.tc.slice(0,4)}****{r.tc.slice(-2)}
+                            {maskTc(r.tc)}
                           </span>
                           <span style={{ color: '#e2e8f0', minWidth: '180px' }}>{r.adSoyad}</span>
                           <span style={{ color: r.success ? '#4ade80' : '#f87171' }}>{r.message}</span>

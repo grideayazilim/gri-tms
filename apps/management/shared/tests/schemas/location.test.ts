@@ -87,3 +87,21 @@ describe('syncLocationSchema', () => {
     expect(result.success).toBe(false)
   })
 })
+
+describe('şema üst sınırları', () => {
+  it('120 karakterden uzun yerleşke adı reddedilir', () => {
+    const result = locationSchema.safeParse({ name: 'A'.repeat(121), programNo: '123' })
+    expect(result.success).toBe(false)
+  })
+
+  it('50 karakterden uzun programNo reddedilir', () => {
+    const result = locationSchema.safeParse({ name: 'MERKEZ', programNo: '1'.repeat(51) })
+    expect(result.success).toBe(false)
+  })
+
+  it('200 birimden fazlası reddedilir', () => {
+    const units = Array.from({ length: 201 }, (_, i) => ({ name: `BIRIM ${i}` }))
+    const result = syncLocationSchema.safeParse({ name: 'MERKEZ', programNo: '123', units })
+    expect(result.success).toBe(false)
+  })
+})

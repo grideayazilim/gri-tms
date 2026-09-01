@@ -57,25 +57,27 @@ describe('Location & Unit API', () => {
     })
 
     it('GET /api/locationAndUnits/locations → lokasyon listesi → 200', async () => {
+      const admin = await createAdminUser()
       await createLocation()
       await createLocation()
 
       const res = await request(app)
         .get('/api/locationAndUnits/locations')
+        .set('Cookie', admin.cookie)
 
       expect(res.status).toBe(200)
       expect(res.body).toBeDefined()
-
-
     })
 
     it('GET /api/locationAndUnits/locations/:id/units → lokasyona ait birimler → 200', async () => {
+      const admin = await createAdminUser()
       const location = await createLocation()
       await createUnit(location.id, { name: 'Birim A' })
       await createUnit(location.id, { name: 'Birim B' })
 
       const res = await request(app)
         .get(`/api/locationAndUnits/locations/${location.id}/units`)
+        .set('Cookie', admin.cookie)
 
       expect(res.status).toBe(200)
 
@@ -222,5 +224,64 @@ describe('Location & Unit API', () => {
       // 200 veya anlamlı yanıt
       expect(res.status).toBe(200)
     })
+  })
+})
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Public kayıt ağacı ucu.
+   Kayıt ekranı için gereken asgari veriyi (id + ad) döndürür; programNo (İŞKUR
+   kurum kimliği) ve employeeCount kimliksiz erişime açılmaz.
+   ───────────────────────────────────────────────────────────────────────── */
+describe('Public kayıt ağacı ucu', () => {
+  beforeEach(async () => {
+    await cleanDb()
+  })
+
+  it('GET /locationAndUnits/locations → kimliksiz erişim 401', async () => {
+    const res = await request(app).get('/api/locationAndUnits/locations')
+    expect(res.status).toBe(401)
+  })
+
+  it('GET /locationAndUnits/locations/:id/units → kimliksiz erişim 401', async () => {
+    const location = await createLocation()
+    const res = await request(app).get(`/api/locationAndUnits/locations/${location.id}/units`)
+    expect(res.status).toBe(401)
+  })
+
+  it('GET /locationAndUnits/public/signup-tree → kimliksiz 200 döner', async () => {
+    const location = await createLocation()
+    await createUnit(location.id, { name: 'Birim A' })
+
+    const res = await request(app).get('/api/locationAndUnits/public/signup-tree')
+
+    expect(res.status).toBe(200)
+    expect(res.body.success).toBe(true)
+    expect(Array.isArray(res.body.data.locations)).toBe(true)
+  })
+
+  it('public uç programNo SIZDIRMAZ', async () => {
+    const location = await createLocation()
+    await createUnit(location.id, { name: 'Birim A' })
+
+    const res = await request(app).get('/api/locationAndUnits/public/signup-tree')
+
+    const raw = JSON.stringify(res.body)
+    expect(raw).not.toContain('programNo')
+    expect(raw).not.toContain('employeeCount')
+    expect(raw).not.toContain('createdAt')
+  })
+
+  it('public uç kayıt ekranının ihtiyacı olan id + ad + birimleri döner', async () => {
+    const location = await createLocation()
+    await createUnit(location.id, { name: 'Birim A' })
+    await createUnit(location.id, { name: 'Birim B' })
+
+    const res = await request(app).get('/api/locationAndUnits/public/signup-tree')
+
+    const loc = res.body.data.locations.find((l: { id: string }) => l.id === location.id)
+    expect(loc).toBeDefined()
+    expect(Object.keys(loc).sort()).toEqual(['id', 'name', 'units'])
+    expect(loc.units).toHaveLength(2)
+    expect(Object.keys(loc.units[0]).sort()).toEqual(['id', 'name'])
   })
 })

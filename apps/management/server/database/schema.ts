@@ -51,6 +51,10 @@ export const users = appSchema.table('users', {
   unitId: uuid('unit_id').references(() => units.id, { onDelete: 'cascade' }),
   expiryDate: date('expiry_date'), // Hesap geçerlilik son tarihi
   lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+  // true ise kullanıcı şifresini değiştirene kadar hiçbir API'yi kullanamaz
+  mustChangePassword: boolean('must_change_password').default(false).notNull(),
+  // Oturum iptali — şifre/rol/durum değişiminde artar, eski token'lar geçersizleşir
+  tokenVersion: integer('token_version').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
@@ -140,6 +144,8 @@ export const periods = appSchema.table('periods', {
   endDate: date('end_date').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   isLocked: boolean('is_locked').default(true).notNull(), // Kilitli dönemlerde değişiklik yapılamaz
+  // Kilidi kim koydu — gece cron'u yalnızca AUTO kilitleri açar, MANUAL olanlara dokunmaz
+  lockReason: text('lock_reason', { enum: ['AUTO', 'MANUAL'] }).default('AUTO').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   isDeleted: boolean('is_deleted').default(false).notNull(),
 }, (table) => ({

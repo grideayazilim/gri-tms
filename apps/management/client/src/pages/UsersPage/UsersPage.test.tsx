@@ -50,9 +50,11 @@ vi.mock('../../hooks/data/useLocationUnitFilter', () => ({
   }),
 }));
 
-// useAuth mock (PageShell için gerekli olabilir)
+/* useAuth mock (PageShell ve kendi satırı kontrolü için).
+   Oturumdaki kullanıcı bilinçli olarak '2' (mehmet_birim): böylece listedeki
+   İLK satır ('1') silinebilir kalır ve mevcut silme testleri etkilenmez. */
 vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({ user: { role: 'ADMIN' } }),
+  useAuth: () => ({ user: { id: '2', role: 'ADMIN' } }),
 }));
 
 function renderUsersPage() {
@@ -134,6 +136,40 @@ describe('UsersPage (Kullanıcı Yönetimi)', () => {
 
     await waitFor(() => {
       expect(mockRemoveUser).toHaveBeenCalled();
+    });
+  });
+
+  /* Sistemde birden fazla yönetici varken bir yönetici kendi hesabını
+     silebiliyordu; oturumu bir sonraki istekte sessizce kopuyordu. Asıl koruma
+     sunucuda (400), arayüz yalnızca yardımcıdır. */
+  describe('kendi hesabını silme', () => {
+    it('kendi satırındaki silme düğmesi devre dışıdır ve sebebini söyler', () => {
+      const { container } = renderUsersPage();
+
+      const deleteButtons = container.querySelectorAll('.delete-btn');
+      expect(deleteButtons).toHaveLength(2);
+
+      // İkinci satır oturumdaki kullanıcı ('2' — mehmet_birim)
+      const ownRowButton = deleteButtons[1] as HTMLButtonElement;
+      expect(ownRowButton).toBeDisabled();
+      expect(ownRowButton).toHaveAttribute('title', 'Kendi hesabınızı silemezsiniz');
+    });
+
+    it('başka kullanıcıların silme düğmesi açık kalır', () => {
+      const { container } = renderUsersPage();
+
+      const otherRowButton = container.querySelectorAll('.delete-btn')[0] as HTMLButtonElement;
+      expect(otherRowButton).toBeEnabled();
+      expect(otherRowButton).not.toHaveAttribute('title');
+    });
+
+    it('devre dışı düğmeye tıklamak onay modalını açmaz', () => {
+      const { container } = renderUsersPage();
+
+      fireEvent.click(container.querySelectorAll('.delete-btn')[1] as HTMLButtonElement);
+
+      expect(screen.queryByText('Kullanıcıyı Sil')).not.toBeInTheDocument();
+      expect(mockRemoveUser).not.toHaveBeenCalled();
     });
   });
 });

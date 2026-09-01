@@ -67,7 +67,26 @@ function sortAlphabetically(employees: ExcelEmployee[]): ExcelEmployee[] {
 
 // ─── Maaş Tablosu (Şablon Tabanlı) ───────────────────────────────────────────
 
+/* Şablonun taşıyabileceği en fazla çalışan sayısı.
+   Şablonda her sheet'te hazır satır bloğu ve altında sabit footer var:
+     Puantaj        → veri 9..8+n,  footer 455-459 → sınır 446
+     MAAŞ BORDROSU  → veri 4..3+n,  footer 453-461 → sınır 449
+     banka listesi  → veri 3..2+n,  footer 393-399 → sınır 390  ← EN DAR
+     İşçi Bilgileri → veri 2..1+n,  footer yok     → sınır 669
+   Sınır aşılırsa çalışan satırları footer'ın üzerine yazılır ve baskı alanı
+   sabit olduğu için fazla satırlar çıktıda görünmez; bu yüzden sessizce bozuk
+   belge üretmek yerine hata veriyoruz. */
+export const TEMPLATE_MAX_EMPLOYEES = 390;
+
 export async function generateTimesheetExcel(options: TimesheetExcelOptions): Promise<Buffer> {
+  if (options.employees.length > TEMPLATE_MAX_EMPLOYEES) {
+    throw new AppError(
+      `Bu yerleşkede ${options.employees.length} çalışan var; Excel şablonu en fazla `
+      + `${TEMPLATE_MAX_EMPLOYEES} satır taşıyabiliyor. Yerleşkeyi bölün ya da şablonu genişletin.`,
+      400,
+    );
+  }
+
   if (!fs.existsSync(TIMESHEET_TEMPLATE_PATH)) {
     throw new AppError(
       "Maaş tablosu şablonu bulunamadı. Lütfen sunucuya 'timesheet_template.xlsm' dosyasını ekleyin.",
@@ -184,7 +203,16 @@ export async function generateTimesheetExcel(options: TimesheetExcelOptions): Pr
     const ws = workbook.sheet(sheetName);
     if (!ws) continue;
 
-    // Boş satır bloğunu gizle
+    /* Boş satır bloğunu gizle.
+       hideFrom === hideTo + 1 → veri bloğu tam doldu, gizlenecek satır yok.
+       hideFrom > hideTo + 1 → veri footer'a taşmış; yukarıdaki kontrol bunu
+       zaten engelliyor, buradaki ikinci kapı sessiz bozulmaya karşı sigorta. */
+    if (hideFrom > hideTo + 1) {
+      throw new AppError(
+        `Excel şablonu kapasitesi aşıldı ("${sheetName}" sayfası). Çalışan sayısını azaltın.`,
+        400,
+      );
+    }
     for (let r = hideFrom; r <= hideTo; r++) {
       ws.row(r).hidden(true);
     }

@@ -8,6 +8,8 @@ export function makeUser(overrides: Partial<JwtPayload> = {}): JwtPayload {
     role: 'ADMIN',
     locationId: faker.string.uuid(),
     unitId: faker.string.uuid(),
+    mustChangePassword: false,
+    tokenVersion: 0,
     ...overrides,
   }
 }

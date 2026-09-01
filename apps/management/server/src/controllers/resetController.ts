@@ -1,7 +1,8 @@
 /* ========================================================================
    RESET CONTROLLER (SİSTEM SIFIRLAMA KONTROLCÜSÜ)
    Sistemi yeni bir programa/döneme geçiş için temizler ve yeniden yapılandırır.
-   İsteğe bağlı olarak silmeden önce tüm aktif dönemlerin yedeğini alır.
+   Yedek BU UÇTAN ALINMAZ — ayrı ve salt-okunur `GET /settings/backup` uçtan
+   alınır; gerekçesi o ucun başlığında.
    ======================================================================== */
 import type { Request, Response } from 'express';
 import JSZip from 'jszip';
@@ -10,19 +11,14 @@ import { createAuditLog, buildActor } from '../utils/auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, USER_ROLE } from '@timesheet/shared';
 import type { SystemResetType } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
+import { badRequest } from '../utils/AppError.js';
 import { generateTimesheetExcel } from '../utils/excelHandler.js';
 import { fetchExportData } from './exportController.js';
 import { regeneratePeriodsForRange } from '../utils/periodGenerator.js';
-import { toISODateString } from '../utils/dateUtils.js';
 import { settingsRepo } from '../repositories/settingsRepo.js';
 import { importRepo } from '../repositories/importRepo.js';
 import logger from '../utils/logger.js';
 import {
-  timesheetDays,
-  timesheets,
-  announcementReads,
-  announcements,
-  auditLogs,
   employees,
   periods,
   users,
@@ -36,23 +32,49 @@ import { TURKISH_MONTHS_UPPER as TURKISH_MONTHS } from '@timesheet/shared';
    POST /settings/reset
    ======================================================================== */
 
+/* TRUNCATE listesi tek bir yerde tutulur. `CASCADE`, listede YAZILMAYAN
+   ama listedekilere yabancı anahtarla bağlı bir tabloyu da sessizce siler;
+   bugün böyle bir tablo yok, ama ileride eklenirse kimse fark etmez. Bu sabit
+   sayesinde bir test listeyi şemayla karşılaştırıp o durumu yakalayabilir. */
+export const RESET_TRUNCATE_TABLES = [
+  'timesheet_days',
+  'timesheets',
+  'announcement_reads',
+  'announcements',
+  'audit_logs',
+  'employees',
+  'periods',
+] as const;
+
 export const systemReset = asyncHandler(async (req: Request, res: Response) => {
   const { backup, deleteLocationsAndUnits, newSettings } = req.body as SystemResetType;
   const username = req.user?.username ?? 'unknown';
 
-  logger.warn(`Sistem sıfırlama işlemi başlatıldı. Başlatan: ${username}, Yedekli: ${backup ? 'Evet' : 'Hayır'}, Yerleşke/Birim silme: ${deleteLocationsAndUnits ? 'Evet' : 'Hayır'}`);
-
-  let zipBuffer: Buffer | null = null;
-
-  // ── Adım 1: Yedekleme ─────────────────────────────────────────────────────
+  /* Bu uç yedek üretmez. Yedeği silme isteğinin içinde üretmek, dakikalarca
+     süren tek bir istek demekti: istemci ya da nginx timeout'a düştüğünde
+     bağlantı kopuyor, kullanıcı hata görüyor ama sunucudaki silme yine
+     tamamlanıyordu — yedeksiz veri kaybı. Bayrak açık gelirse çağıranı doğru
+     akışa yönlendiriyoruz, sessizce yok saymıyoruz. */
   if (backup) {
-    logger.info('Yedek ZIP dosyası oluşturuluyor...');
-    zipBuffer = await buildBackupZip();
-    logger.info('Yedek ZIP dosyası başarıyla oluşturuldu.');
+    throw badRequest(
+      'Yedek bu uçtan alınmaz. Önce GET /api/settings/backup ile yedeği indirin, '
+      + 'ardından sıfırlamayı backup: false ile çağırın.',
+    );
   }
 
-  // ── Adım 2 & 3: Silme + Yeni ayarlar (transaction içinde) ─────────────────
+  logger.warn(`Sistem sıfırlama işlemi başlatıldı. Başlatan: ${username}, Yerleşke/Birim silme: ${deleteLocationsAndUnits ? 'Evet' : 'Hayır'}`);
+
+  /* Sonuç kalıcı bir modalda gösteriliyor; kullanıcı neyin silindiğini
+     görebilmeli. Sayılar zaten audit log için hesaplanıyor, yanıta da taşınır. */
+  const deleted = { employees: 0, users: 0, periods: 0 };
+
+  // ── Silme + Yeni ayarlar (transaction içinde) ─────────────────────────────
   await withDrizzleTransaction(async (tx) => {
+    /* Havuzdaki genel `statement_timeout` 30 saniye; bu işlem 260 binden fazla
+       satır sildiği için o sınırı aşabilir ve transaction 57014 ile rollback
+       olur. SET LOCAL yalnızca bu transaction için geçerlidir. */
+    await tx.execute(sql`SET LOCAL statement_timeout = 0`);
+    await tx.execute(sql`SET LOCAL idle_in_transaction_session_timeout = 0`);
 
     // Silmeden önce sayıları kaydet (audit log için)
     const [empCount] = await tx.select({ count: sql<number>`count(*)::int` }).from(employees);
@@ -60,32 +82,18 @@ export const systemReset = asyncHandler(async (req: Request, res: Response) => {
       .from(users).where(ne(users.role, USER_ROLE.ADMIN));
     const [periodCount] = await tx.select({ count: sql<number>`count(*)::int` }).from(periods);
 
-    // Silmeden ÖNCE audit logu yaz (tablolar temizlenince log da silinecek)
-    await createAuditLog(tx, {
-      action: AUDIT_ACTION.SYSTEM_RESET,
-      actor: buildActor(req),
-      entityType: AUDIT_ENTITY_TYPE.SETTINGS,
-      entityId: null,
-      summary: `Sistem sıfırlama işlemi başlatıldı. Yedek: ${backup ? 'Evet' : 'Hayır'}, Yerleşke/Birim silme: ${deleteLocationsAndUnits ? 'Evet' : 'Hayır'}.`,
-      metadata: {
-        backup,
-        deleteLocationsAndUnits,
-        deletedEmployeeCount: empCount?.count ?? 0,
-        deletedUserCount: userCount?.count ?? 0,
-        deletedPeriodCount: periodCount?.count ?? 0,
-        initiatedBy: req.user!.username,
-      },
-    });
+    deleted.employees = empCount?.count ?? 0;
+    deleted.users = userCount?.count ?? 0;
+    deleted.periods = periodCount?.count ?? 0;
 
-    // FK sırasına göre sil
-    await tx.delete(timesheetDays);
-    await tx.delete(timesheets);
-    await tx.delete(announcementReads);
-    await tx.delete(announcements);
-    await tx.delete(auditLogs);
-    await tx.delete(employees);
-    await tx.delete(periods);
-    // Admin olmayan kullanıcıları sil
+    /* DELETE yerine TRUNCATE: 260 bin satırda çok daha hızlıdır ve WAL üretmez.
+       app_user'ın TRUNCATE yetkisi 01-init.sh ve docker-setup.ts'te veriliyor.
+       users TRUNCATE edilmez çünkü adminler korunacak. Tablo adları
+       RESET_TRUNCATE_TABLES sabitinden gelir, kullanıcı girdisi değildir. */
+    const truncateList = RESET_TRUNCATE_TABLES.map((t) => `app.${t}`).join(', ');
+    await tx.execute(sql.raw(`TRUNCATE TABLE ${truncateList} RESTART IDENTITY CASCADE`));
+
+    // Admin olmayan kullanıcıları sil (adminler korunur → TRUNCATE kullanılamaz)
     await tx.delete(users).where(ne(users.role, USER_ROLE.ADMIN));
 
     if (deleteLocationsAndUnits) {
@@ -105,20 +113,56 @@ export const systemReset = asyncHandler(async (req: Request, res: Response) => {
 
     // Yeni tarih aralığına göre dönemleri oluştur
     await regeneratePeriodsForRange(tx, programStartDate, programEndDate);
+
+    /* Audit kaydı silmelerden sonra yazılır; önce yazılsaydı aynı transaction
+       içindeki audit_logs temizliğiyle birlikte silinirdi. */
+    await createAuditLog(tx, {
+      action: AUDIT_ACTION.SYSTEM_RESET,
+      actor: buildActor(req),
+      entityType: AUDIT_ENTITY_TYPE.SETTINGS,
+      entityId: null,
+      summary: `Sistem sıfırlandı. Silinen: ${empCount?.count ?? 0} çalışan, `
+        + `${userCount?.count ?? 0} kullanıcı, ${periodCount?.count ?? 0} dönem. `
+        + `Yerleşke/Birim silme: ${deleteLocationsAndUnits ? 'Evet' : 'Hayır'}.`,
+      metadata: {
+        deleteLocationsAndUnits,
+        deletedEmployeeCount: empCount?.count ?? 0,
+        deletedUserCount: userCount?.count ?? 0,
+        deletedPeriodCount: periodCount?.count ?? 0,
+        initiatedBy: req.user!.username,
+      },
+    });
   });
 
   logger.info(`Sistem sıfırlama işlemi başarıyla tamamlandı. Başlatan: ${username}`);
 
-  // ── Yanıt gönder ──────────────────────────────────────────────────────────
-  if (backup && zipBuffer) {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const filename = `sistem-yedegi-${timestamp}.zip`;
-    res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
-    res.send(zipBuffer);
-  } else {
-    res.json({ success: true, message: 'Sistem başarıyla sıfırlandı.' });
+  res.json({ success: true, message: 'Sistem başarıyla sıfırlandı.', data: { deleted } });
+});
+
+/* ========================================================================
+   GET /settings/backup
+
+   Yedek üretimi yerleşke × dönem sayısına bağlı olarak dakikalar sürebilir
+   (70-84 workbook). Bu yüzden sıfırlamadan ayrı, salt-okunur bir uçtur: admin
+   önce yedeği indirir, sonra sıfırlamayı çalıştırır. Tek uzun istekte
+   birleştirilseydi timeout'ta kopan bağlantı silmeyi durdurmazdı.
+   ======================================================================== */
+
+export const downloadBackup = asyncHandler(async (req: Request, res: Response) => {
+  logger.info(`Yedek ZIP talebi. İsteyen: ${req.user?.username ?? 'unknown'}`);
+
+  const zipBuffer = await buildBackupZip();
+
+  if (zipBuffer.length === 0) {
+    throw badRequest('Yedeklenecek aktif dönem veya yerleşke bulunamadı.');
   }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const filename = `sistem-yedegi-${timestamp}.zip`;
+
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`);
+  res.send(zipBuffer);
 });
 
 // ─── Yedek ZIP oluştur ────────────────────────────────────────────────────────
@@ -135,13 +179,15 @@ async function buildBackupZip(): Promise<Buffer> {
   }
 
   const zip = new JSZip();
-  const tasks: Promise<void>[] = [];
 
+  /* Workbook'lar sırayla üretilir. 96 dönem × yerleşke kombinasyonunu Promise.all
+     ile aynı anda üretmek 512 MB'lık container limitinde OOM riski ve havuz
+     baskısı yaratır; sıralı üretim yavaş ama güvenlidir. */
   for (const period of activePeriods.rows) {
     for (const location of activeLocations) {
-      tasks.push((async () => {
+      {
         const data = await fetchExportData(db, location.id, period.year, period.month);
-        if (!data) return;
+        if (!data) continue;
 
         const buffer = await generateTimesheetExcel({
           employees: data.employees.map((e) => ({
@@ -168,11 +214,9 @@ async function buildBackupZip(): Promise<Buffer> {
         const monthName = TURKISH_MONTHS[period.month - 1] ?? String(period.month);
         const filename = `${data.location.name} - ${period.year} ${monthName} MAAŞLAR.xlsm`;
         zip.file(filename, buffer);
-      })());
+      }
     }
   }
-
-  await Promise.all(tasks);
 
   return zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
 }

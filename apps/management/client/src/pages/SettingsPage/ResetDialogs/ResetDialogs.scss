@@ -1,0 +1,80 @@
+@use "../../../styles/variables.scss" as *;
+
+/* ==========================================
+   Sıfırlama Onayı (3.3)
+   ========================================== */
+
+.reset-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  &__warning {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin: 0;
+    font-weight: 600;
+    color: var(--danger-color, #dc2626);
+  }
+
+  &__intro {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  &__list {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+  }
+
+  &__field {
+    margin-top: var(--space-xs);
+    font-size: 0.875rem;
+    color: var(--text-primary);
+  }
+}
+
+/* ==========================================
+   Sıfırlama Sonucu (3.4)
+   ========================================== */
+
+.reset-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  &__headline {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin: 0;
+    font-weight: 600;
+  }
+
+  &__list {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    line-height: 1.6;
+  }
+
+  &__note {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+  }
+
+  &--success .reset-result__headline {
+    color: var(--success-color, #16a34a);
+  }
+
+  &--failure .reset-result__headline {
+    color: var(--danger-color, #dc2626);
+  }
+}

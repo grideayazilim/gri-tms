@@ -30,6 +30,25 @@ export const getLocations = asyncHandler(async (_req, res) => {
   return ok(res, { locations });
 });
 
+/* Kayıt ekranı için asgari veri: yalnızca id + ad. programNo ve employeeCount
+   kimliksiz erişime açılmaz. */
+export const getPublicSignupTree = asyncHandler(async (_req, res) => {
+  const [locs, units] = await Promise.all([
+    locationRepo.findAllLocations(db),
+    locationRepo.findAllUnits(db),
+  ]);
+
+  const locations = locs.map((loc) => ({
+    id: loc.id,
+    name: loc.name,
+    units: units
+      .filter((u) => u.locationId === loc.id)
+      .map((u) => ({ id: u.id, name: u.name })),
+  }));
+
+  return ok(res, { locations });
+});
+
 export const getUnits = asyncHandler(async (_req, res) => {
   const rows = await locationRepo.findAllUnits(db);
 

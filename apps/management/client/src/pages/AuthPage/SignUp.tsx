@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useLocationsAndUnits } from "../../hooks/data/useLocationsAndUnits";
+import { useSignupTree } from "../../hooks/data/useSignupTree";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { signUpSchema } from "@timesheet/shared";
+import { signUpSchema, PASSWORD_RULE_TEXT } from "@timesheet/shared";
 import { useToast } from "../../components/ToastBar/useToast";
 import type { SignUpType } from "@timesheet/shared";
 
@@ -17,7 +17,9 @@ function SignUp({ onToggle }: SignUpProps) {
 
   const { register: authRegister } = useAuth();
   const toast = useToast();
-  const { locations, units, fetchLocations, fetchUnitsByLocation } = useLocationsAndUnits();
+  /* Kayıt ekranı artık programNo/employeeCount sızdıran uçları değil,
+     yalnızca id + ad döndüren tek public ucu kullanıyor. */
+  const { locations, unitsFor, fetchTree } = useSignupTree();
 
   const {
     register,
@@ -49,20 +51,20 @@ function SignUp({ onToggle }: SignUpProps) {
   const role = watch("role");
   const isBirimSorumlusu = role === "RESPONSIBLE";
 
-  // Sayfa ilk yüklendiğinde mevcut Yerleşkeleri sunucudan çeker
+  // Sayfa ilk yüklendiğinde yerleşke + birim ağacını tek istekte çeker
   useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
+    fetchTree();
+  }, [fetchTree]);
 
-  // Yerleşke seçimi değiştiğinde (watch('locationId')), o yerleşkeye bağlı birimleri getirir
+  // Yerleşke seçimi temizlenirse birim seçimini de sıfırla
   useEffect(() => {
-    if (locationId) {
-      fetchUnitsByLocation(locationId);
-    } else {
-      // Yerleşke seçimi temizlenirse birim seçimini de sıfırla
+    if (!locationId) {
       setValue("unitId", null);
     }
-  }, [locationId, fetchUnitsByLocation, setValue]);
+  }, [locationId, setValue]);
+
+  // Seçili yerleşkenin birimleri — ikinci bir istek gerekmez
+  const units = unitsFor(locationId);
 
 
 
@@ -139,7 +141,7 @@ function SignUp({ onToggle }: SignUpProps) {
                 <option value="" disabled hidden></option>
                 {locations.map((loc) => (
                   <option key={loc.id} value={loc.id}>
-                    {loc.name} ({loc.programNo})
+                    {loc.name}
                   </option>
                 ))}
               </select>
@@ -212,6 +214,8 @@ function SignUp({ onToggle }: SignUpProps) {
             <label className="floating-group__label" htmlFor="password">
               Şifre
             </label>
+            {/* Kural metni gerçek politikadan okunur */}
+            <span className="input-rule-hint">{PASSWORD_RULE_TEXT}</span>
             {errors.password && (
               <span className="input-error-message">{errors.password.message}</span>
             )}

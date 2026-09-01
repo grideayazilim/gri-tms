@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { userEditSchema } from '@timesheet/shared';
 import { useLocationsAndUnits } from '../../../hooks/data/useLocationsAndUnits';
 import { toISODateString } from '../../../utils/dateUtils';
-import { USER_ROLE } from '@timesheet/shared';
+import { USER_ROLE, PASSWORD_RULE_TEXT } from '@timesheet/shared';
 import type { UserListItem, UserEditType } from '@timesheet/shared';
 import './UserEditModal.scss';
 
@@ -24,6 +24,7 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isDirty },
     reset,
     resetField,
@@ -60,6 +61,17 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
     }
   }, [user, reset]);
 
+
+  /* Sunucu, rolü ADMIN olan kullanıcının geçerlilik tarihini yok sayar
+     (userController: `if (newRole === ADMIN) newExpiryDate = null`) — çünkü
+     süresi dolan bir admin sistemi yönetici olmadan bırakabilir. Alanı burada
+     da kapatıyoruz ki kullanıcı sessizce çöpe giden bir değer girmesin. */
+  const selectedRole = watch('role');
+  const isAdminRole = selectedRole === USER_ROLE.ADMIN;
+
+  useEffect(() => {
+    if (isAdminRole) setValue('expiryDate', '', { shouldDirty: true });
+  }, [isAdminRole, setValue]);
 
   const onSubmit = (data: UserEditType) => {
     onSave({
@@ -102,11 +114,17 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
             id="expiryDate"
             className={`input ${errors.expiryDate ? 'input--error' : ''}`}
             placeholder=" "
+            disabled={isAdminRole}
             {...register('expiryDate')}
           />
           <label htmlFor="expiryDate" className="floating-group__label">
             Geçerlilik Tarihi
           </label>
+          {isAdminRole ? (
+            <span className="input-rule-hint">
+              Yönetici hesaplarına süre verilmez; sistem yöneticisiz kalmamalıdır.
+            </span>
+          ) : null}
           {errors.expiryDate && (
             <span className="input-error-message">{errors.expiryDate.message}</span>
           )}
@@ -186,8 +204,10 @@ const UserEditModal = ({ user, onClose, onSave }: UserEditModalProps) => {
               {...register('forceNewPassword')}
             />
             <label htmlFor="forceNewPassword" className="floating-group__label">
-              Yeni şifre (en az 8 karakter)
+              Yeni şifre
             </label>
+            {/* Metin gerçek şifre politikasından okunur, elle yazılmaz */}
+            <span className="input-rule-hint">{PASSWORD_RULE_TEXT}</span>
             {errors.forceNewPassword && (
               <span className="input-error-message">{errors.forceNewPassword.message}</span>
             )}

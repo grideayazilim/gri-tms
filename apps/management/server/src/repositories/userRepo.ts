@@ -3,7 +3,7 @@
    Kullanıcılarla ilgili tüm veritabanı sorgularını barındırır.
    Controller'lar iş mantığı + response shaping yapar; SQL burada yaşar.
    ======================================================================== */
-import { eq, and, ilike, sql, inArray } from 'drizzle-orm';
+import { eq, and, ne, ilike, sql, count } from 'drizzle-orm';
 
 import type { DbExecutor } from '../types/db.js';
 import { users, units, locations, settings } from '../../database/schema.js';
@@ -55,6 +55,8 @@ export async function findPublicById(
       unitId: users.unitId,
       expiryDate: users.expiryDate,
       lastLoginAt: users.lastLoginAt,
+      mustChangePassword: users.mustChangePassword,
+      tokenVersion: users.tokenVersion,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
     })
@@ -62,6 +64,64 @@ export async function findPublicById(
     .where(eq(users.id, id))
     .limit(1);
   return rows[0];
+}
+
+/**
+ * Sistemde hedef kullanıcı dışında kaç aktif ADMIN kaldığını sayar.
+ * Son admin'in silinmesini/yetkisinin düşürülmesini engellemek için kullanılır.
+ */
+export async function countOtherActiveAdmins(
+  executor: DbExecutor,
+  excludeUserId: string,
+): Promise<number> {
+  const rows = await executor
+    .select({ n: count() })
+    .from(users)
+    .where(and(
+      eq(users.role, USER_ROLE.ADMIN),
+      eq(users.status, USER_STATUS.ACTIVE),
+      ne(users.id, excludeUserId),
+    ));
+  return rows[0]?.n ?? 0;
+}
+
+/**
+ * Zorunlu şifre değişimini tamamlar: şifreyi günceller, bayrağı temizler ve
+ * token_version'ı artırarak eski oturumları geçersiz kılar.
+ */
+export async function completeInitialPasswordChange(
+  executor: DbExecutor,
+  id: string,
+  passwordHash: string,
+): Promise<UserRow | undefined> {
+  const rows = await executor
+    .update(users)
+    .set({
+      passwordHash,
+      mustChangePassword: false,
+      tokenVersion: sql`${users.tokenVersion} + 1`,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, id))
+    .returning();
+  return rows[0];
+}
+
+/**
+ * 7 günden eski, onaylanmamış kayıtları temizler.
+ * Kayıt ucu kötüye kullanılırsa tablo ve bekleyen kullanıcı listesi şişmesin.
+ */
+export async function deleteStalePendingUsers(
+  executor: DbExecutor,
+  olderThanDays = 7,
+): Promise<{ id: string; username: string }[]> {
+  return await executor
+    .delete(users)
+    .where(and(
+      eq(users.status, USER_STATUS.PENDING),
+      sql`${users.createdAt} < now() - (${olderThanDays} * INTERVAL '1 day')`,
+    ))
+    .returning({ id: users.id, username: users.username });
 }
 
 export async function createPendingUser(
@@ -147,11 +207,17 @@ export async function list(
 export async function updateUser(
   executor: DbExecutor,
   id: string,
-  data: Partial<Pick<UserRow, 'role' | 'status' | 'unitId' | 'locationId' | 'expiryDate' | 'passwordHash'>>,
+  data: Partial<Pick<UserRow, 'role' | 'status' | 'unitId' | 'locationId' | 'expiryDate' | 'passwordHash' | 'mustChangePassword'>>,
+  /** Yetki/şifre değişiminde mevcut token'ları geçersiz kıl */
+  bumpTokenVersion = false,
 ): Promise<UserRow | undefined> {
   const rows = await executor
     .update(users)
-    .set({ ...data, updatedAt: new Date() })
+    .set({
+      ...data,
+      ...(bumpTokenVersion ? { tokenVersion: sql`${users.tokenVersion} + 1` } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(users.id, id))
     .returning();
   return rows[0];
@@ -171,13 +237,15 @@ export async function deleteUser(
 export async function updateProfile(
   executor: DbExecutor,
   id: string,
-  data: { username?: string | null; passwordHash: string },
+  data: { username?: string | null; passwordHash: string; passwordChanged?: boolean },
 ): Promise<UserRow | undefined> {
   const rows = await executor
     .update(users)
     .set({
       ...(data.username != null ? { username: data.username } : {}),
       passwordHash: data.passwordHash,
+      // Şifre değiştiyse eski oturumlar düşsün
+      ...(data.passwordChanged ? { tokenVersion: sql`${users.tokenVersion} + 1` } : {}),
       updatedAt: new Date(),
     })
     .where(eq(users.id, id))

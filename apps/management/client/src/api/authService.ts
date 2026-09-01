@@ -32,3 +32,8 @@ export const refreshToken = () =>
 // Şifre değiştirme — eski şifre doğrulaması gerektirir (PUT metodu kullanılır)
 export const changePassword = (oldPassword: string, newPassword: string) =>
   api.put<ApiResponse<Record<string, never>>>('/users/me', { oldPassword, newPassword });
+
+/* Zorunlu ilk şifre değişimi. Kullanıcı o şifreyle zaten giriş yaptığı
+   için eski şifre sorulmaz; yalnızca yeni şifre + tekrarı gönderilir. */
+export const changeInitialPassword = (newPassword: string, newPasswordConfirm: string) =>
+  api.post<ApiResponse<AuthResponse>>('/auth/change-initial-password', { newPassword, newPasswordConfirm });

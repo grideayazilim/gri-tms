@@ -55,9 +55,10 @@ export const periodRepo = {
   /**
    * Dönem kilit durumunu günceller.
    */
-  async updateLockStatus(executor: DbExecutor, id: string, isLocked: boolean): Promise<void> {
+  /** lockReason ile birlikte günceller — MANUAL kilitleri gece cron'u açmaz. */
+  async updateLockStatus(executor: DbExecutor, id: string, isLocked: boolean, lockReason: 'AUTO' | 'MANUAL' = 'AUTO'): Promise<void> {
     await executor.update(periods)
-      .set({ isLocked })
+      .set({ isLocked, lockReason })
       .where(eq(periods.id, id));
   }
 };

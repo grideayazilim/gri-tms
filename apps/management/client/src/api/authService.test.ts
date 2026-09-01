@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../vitest.setup';
-import { register, login, getMe, logout, refreshToken, changePassword } from './authService';
+import { register, login, getMe, logout, refreshToken, changePassword, changeInitialPassword } from './authService';
 
 /*
   authService unit testleri — MSW ile gerçek HTTP istekleri test edilir.
@@ -202,6 +202,57 @@ describe('authService', () => {
 
       await expect(changePassword('yanliseski', 'yeni1234'))
         .rejects.toMatchObject({ message: 'Eski şifre hatalı', status: 400 });
+    });
+  });
+
+  /* Zorunlu ilk şifre değişimi — eski şifre sorulmaz. */
+  describe('changeInitialPassword', () => {
+    it('POST /auth/change-initial-password ucuna yeni şifre + tekrarını göndermeli', async () => {
+      let capturedBody: Record<string, unknown> | null = null;
+
+      server.use(
+        http.post('*/api/auth/change-initial-password', async ({ request }) => {
+          capturedBody = await request.json() as Record<string, unknown>;
+          return HttpResponse.json({
+            success: true,
+            data: { user: { id: 'u1', username: 'admin', role: 'ADMIN', locationId: null, unitId: null, mustChangePassword: false } },
+          });
+        }),
+      );
+
+      const result = await changeInitialPassword('Guclu-Sifre-2026', 'Guclu-Sifre-2026');
+
+      expect(capturedBody).toEqual({
+        newPassword: 'Guclu-Sifre-2026',
+        newPasswordConfirm: 'Guclu-Sifre-2026',
+      });
+      expect(result).toMatchObject({ success: true });
+    });
+
+    it('istek gövdesinde eski şifre ALANI bulunmamalı', async () => {
+      let capturedBody: Record<string, unknown> | null = null;
+
+      server.use(
+        http.post('*/api/auth/change-initial-password', async ({ request }) => {
+          capturedBody = await request.json() as Record<string, unknown>;
+          return HttpResponse.json({ success: true, data: { user: {} } });
+        }),
+      );
+
+      await changeInitialPassword('Guclu-Sifre-2026', 'Guclu-Sifre-2026');
+
+      expect(capturedBody).not.toHaveProperty('oldPassword');
+    });
+
+    it('sunucu reddederse hata döndürmeli', async () => {
+      server.use(
+        http.post('*/api/auth/change-initial-password', () =>
+          HttpResponse.json({ message: 'Yeni şifre mevcut şifreyle aynı olamaz.' }, { status: 400 }),
+        ),
+      );
+
+      await expect(changeInitialPassword('1234567890', '1234567890'))
+        .rejects.toMatchObject({ status: 400 });
     });
   });
 });

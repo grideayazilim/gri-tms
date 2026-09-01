@@ -34,5 +34,6 @@ COPY --from=builder /app/apps/management/client/dist /usr/share/nginx/html
 # Nginx konfigürasyonu (API proxy dahil)
 COPY nginx/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 8080
+# 8080: HTTP (yalnızca ACME + HTTPS yönlendirmesi), 8443: HTTPS
+EXPOSE 8080 8443
 CMD ["nginx", "-g", "daemon off;"]

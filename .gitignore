@@ -35,3 +35,10 @@ blob-report/
 coverage/
 coverage-unit/
 .nyc_output/
+
+# Test çıktıları — build artifact, repoda durmamalı
+vitest-results.json
+
+# TLS sertifikaları — özel anahtarlar repoya girmez
+docker/nginx/certs/
+

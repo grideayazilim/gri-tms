@@ -8,8 +8,7 @@ import {
   getSystemSettings,
   updateSystemSettings,
   resetSystem,
-  resetSystemWithBackup,
-  resetSystemWithoutBackup,
+  downloadBackupZip,
 } from './settingsService';
 
 /*
@@ -210,8 +209,10 @@ describe('settingsService', () => {
   // SYSTEM RESET
   // ═══════════════════════════════════════════════════════════════════════════
 
-  describe('resetSystemWithoutBackup', () => {
-    it('POST /settings/reset endpoint\'ine backup:false göndermeli', async () => {
+  /* Yedek artık sıfırlamadan ayrı bir uçtan alınıyor. Tek uzun istek
+     yerine iki kısa istek; yedek başarısız olursa hiçbir şey silinmiyor. */
+  describe('resetSystem', () => {
+    it('POST /settings/reset ucuna her zaman backup:false göndermeli', async () => {
       let capturedBody: Record<string, unknown> | null = null;
 
       server.use(
@@ -221,7 +222,8 @@ describe('settingsService', () => {
         }),
       );
 
-      const result = await resetSystemWithoutBackup({ backup: false } as any);
+      // Çağıran backup:true göndermiş olsa bile sıfırlama ucu yedek üretmemeli
+      const result = await resetSystem({ backup: true, deleteLocationsAndUnits: false } as any);
 
       expect(capturedBody).toMatchObject({ backup: false });
       expect(result).toMatchObject({ success: true });
@@ -234,54 +236,39 @@ describe('settingsService', () => {
         ),
       );
 
-      await expect(resetSystemWithoutBackup({ backup: false } as any))
+      await expect(resetSystem({ backup: false } as any))
         .rejects.toMatchObject({ status: 500 });
     });
   });
 
-  describe('resetSystemWithBackup', () => {
-    it('POST /settings/reset endpoint\'ine backup:true göndermeli ve Blob döndürmeli', async () => {
+  describe('downloadBackupZip', () => {
+    it('GET /settings/backup ucuna istek atmalı ve Blob döndürmeli', async () => {
+      let called = false;
+
       server.use(
-        http.post('*/api/settings/reset', () =>
-          new HttpResponse(
+        http.get('*/api/settings/backup', () => {
+          called = true;
+          return new HttpResponse(
             new Blob(['zip-content'], { type: 'application/zip' }),
             { status: 200 },
-          ),
-        ),
-      );
-
-      const result = await resetSystemWithBackup({ backup: true } as any);
-      // httpClient interceptor response.data döndürür, bu Blob olmalı
-      expect(result).toBeDefined();
-    });
-  });
-
-  describe('resetSystem (dispatcher)', () => {
-    it('backup:false ise resetSystemWithoutBackup çağırmalı', async () => {
-      server.use(
-        http.post('*/api/settings/reset', async ({ request }) => {
-          const body = await request.json() as Record<string, unknown>;
-          expect(body).toMatchObject({ backup: false });
-          return HttpResponse.json({ success: true, data: {} });
+          );
         }),
       );
 
-      const result = await resetSystem({ backup: false } as any);
-      expect(result).toMatchObject({ success: true });
+      const result = await downloadBackupZip();
+
+      expect(called).toBe(true);
+      expect(result).toBeDefined();
     });
 
-    it('backup:true ise resetSystemWithBackup çağırmalı', async () => {
+    it('yedeklenecek veri yoksa hata döndürmeli (veri silinmemeli)', async () => {
       server.use(
-        http.post('*/api/settings/reset', () =>
-          new HttpResponse(
-            new Blob(['backup-zip'], { type: 'application/zip' }),
-            { status: 200 },
-          ),
+        http.get('*/api/settings/backup', () =>
+          HttpResponse.json({ message: 'Yedeklenecek aktif dönem veya yerleşke bulunamadı.' }, { status: 400 }),
         ),
       );
 
-      const result = await resetSystem({ backup: true } as any);
-      expect(result).toBeDefined();
+      await expect(downloadBackupZip()).rejects.toMatchObject({ status: 400 });
     });
   });
 });

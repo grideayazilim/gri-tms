@@ -27,13 +27,26 @@ interface CookieConfigShape {
 
 // JWT Yapılandırması: Access ve Refresh Token sırları ve süreleri
 
+// Secret gücü doğrulanmıyordu — .env.prod'a "abc" yazılsa kabul ediliyordu.
 function requireEnv(name: 'ACCESS_TOKEN_SECRET' | 'REFRESH_TOKEN_SECRET'): string {
   const value = process.env[name];
   if (!value) {
     throw new Error(`${name} is required`);
   }
+  if (process.env.NODE_ENV === 'production' && value.length < 32) {
+    throw new Error(
+      `${name} production ortamında en az 32 karakter olmalıdır. Üretmek için:\n` +
+      `  node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
+    );
+  }
   return value;
 }
+
+// Token'lara kimlik damgası — aynı secret başka bir yerde kullanılsa bile
+// bu iss/aud çiftini taşımayan token kabul edilmez.
+export const JWT_ISSUER = 'gri-tms';
+export const JWT_AUDIENCE = 'gri-tms-web';
+export const JWT_ALGORITHM = 'HS256' as const;
 
 export const jwtConfig: JwtConfigShape = {
   access: {
@@ -50,7 +63,9 @@ export const jwtConfig: JwtConfigShape = {
 
 export const cookieConfig: CookieConfigShape = {
   httpOnly: true, // JavaScript tarafından erişilemez
-  sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+  // 'strict' iken e-posta/dış linkten gelen kullanıcı ilk yüklemede çıkış
+  // yapmış görünüyordu. 'lax' CSRF korumasını POST için korur, deneyimi bozmaz.
+  sameSite: 'lax',
   secure: process.env.COOKIE_SECURE === 'true', // HTTPS varsa true, HTTP ise false
   maxAge: {
     access: 15 * 60 * 1000, // 15 dakika (ms)

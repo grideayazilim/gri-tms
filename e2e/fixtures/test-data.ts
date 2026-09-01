@@ -4,10 +4,24 @@
  * Veritabanı seed script'leriyle uyumlu olmalıdır.
  */
 
-/** Admin kullanıcı bilgileri (seeder.ts ile oluşturulur) */
+/**
+ * Admin kullanıcı bilgileri (seeder.ts ile oluşturulur).
+ * Gerçek kurulumda ilk girişte şifre değişimi zorunlu; demo seed'i bu bayrağı
+ * temizler, zorunlu akış FIRST_LOGIN_USER ile test edilir.
+ */
 export const ADMIN_USER = {
   username: 'admin',
   password: '1234',
+} as const;
+
+/**
+ * Zorunlu ilk şifre değişimi akışını test etmek için özel kullanıcı.
+ * seeder-demo.ts tarafından `must_change_password = true` ile oluşturulur.
+ */
+export const FIRST_LOGIN_USER = {
+  username: 'ilk_giris',
+  password: 'ilk_giris',
+  newPassword: 'Guclu-Sifre-2026',
 } as const;
 
 /**

@@ -15,6 +15,11 @@ import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { notFound } from '../utils/AppError.js';
 import { importRepo } from '../repositories/importRepo.js';
 import type { DbExecutor } from '../types/db.js';
+import { createSemaphore } from '../utils/semaphore.js';
+
+/* Excel üretimi tek event loop'u saniyelerce bloke ediyor. Aynı anda en
+   fazla 2 üretim; fazlası kuyrukta bekler, sunucu yanıt vermeye devam eder. */
+const excelSemaphore = createSemaphore(2);
 
 export async function fetchExportData(tx: DbExecutor, locationId: string, year: number, month: number) {
   const location = await importRepo.getLocation(tx, locationId);
@@ -101,7 +106,7 @@ export const exportTimesheet = asyncHandler(async (req: Request, res: Response) 
   const data = await withDrizzleTransaction((tx) => fetchExportData(tx, locationId, year, month));
   if (!data) throw notFound('Yerleşke bulunamadı');
 
-  const buffer = await generateTimesheetExcel({
+  const buffer = await excelSemaphore(() => generateTimesheetExcel({
     employees: data.employees.map(mapEmployee),
     daysMap: Object.fromEntries(data.daysMap.entries()),
     dailyWage: data.dailyWage,
@@ -111,7 +116,7 @@ export const exportTimesheet = asyncHandler(async (req: Request, res: Response) 
     programNo: data.location.programNo,
     periodStartDate: data.programStartDate,
     periodEndDate: data.programEndDate,
-  });
+  }));
 
   const filename = `${data.location.name.toLocaleUpperCase('tr-TR')} - ${periodLabel(year, month)} MAAŞLAR.xlsm`;
   sendExcelResponse(res, buffer, filename);
@@ -129,13 +134,13 @@ export const exportBot = asyncHandler(async (req: Request, res: Response) => {
   const data = await withDrizzleTransaction((tx) => fetchExportData(tx, locationId, year, month));
   if (!data) throw notFound('Yerleşke bulunamadı');
 
-  const buffer = await generateBotExcel({
+  const buffer = await excelSemaphore(() => generateBotExcel({
     employees: data.employees.map(mapEmployee),
     daysMap: Object.fromEntries(data.daysMap.entries()),
     year,
     month,
     locationName: data.location.name,
-  });
+  }));
 
   const filename = `${data.location.name.toLocaleUpperCase('tr-TR')} - ${periodLabel(year, month)} BOT GİRDİSİ.xlsx`;
   sendExcelResponse(res, buffer, filename);

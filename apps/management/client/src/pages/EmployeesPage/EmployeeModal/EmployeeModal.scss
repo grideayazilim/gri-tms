@@ -148,21 +148,6 @@
         }
       }
 
-      .file-hint {
-        font-size: 13px;
-        color: var(--text-color-secondary);
-        margin-bottom: 24px;
-        cursor: pointer;
-
-        u {
-          color: var(--primary-color);
-        }
-
-        &:hover u {
-          opacity: 0.8;
-        }
-      }
-
       .file-actions {
         display: flex;
         gap: 12px;

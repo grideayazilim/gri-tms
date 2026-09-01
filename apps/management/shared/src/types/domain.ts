@@ -74,7 +74,7 @@ export interface EmployeeListItem {
 
 export interface TimesheetDay {
   day: string;
-  // #19: plain string yerine MarkerCode union tipi — tip güvenliği uygulama genelinde korunur
+  // plain string yerine MarkerCode union tipi — tip güvenliği uygulama genelinde korunur
   markerCode: MarkerCode;
 }
 
@@ -86,14 +86,14 @@ export interface TimesheetEntry {
 }
 
 export interface TimesheetListItem {
-  // #21: EmployeeListItem'ın ilgili alanları Pick ile alındı — bağımsız drift riski azaltıldı
+  // EmployeeListItem'ın ilgili alanları Pick ile alındı — bağımsız drift riski azaltıldı
   employee: Pick<
     EmployeeListItem,
     'id' | 'tcNo' | 'firstName' | 'lastName' | 'ibanNo' | 'isActive' | 'startDate' | 'endDate'
   >;
   unit: { id: string; name: string } | null;
   location: { id: string; name: string } | null;
-  period?: { isLocked: boolean };
+  period?: { isLocked: boolean; lockReason?: PeriodLockReason };
   totalWorkDays?: number;
   timesheet: {
     id: string | null;
@@ -102,6 +102,9 @@ export interface TimesheetListItem {
   };
 }
 
+/** Kilidi kim koydu — AUTO (gece cron'u) veya MANUAL (yönetici). */
+export type PeriodLockReason = 'AUTO' | 'MANUAL';
+
 export interface PeriodItem {
   id: string;
   year: number;
@@ -109,6 +112,8 @@ export interface PeriodItem {
   startDate: string;
   endDate: string;
   isLocked: boolean;
+  /** MANUAL kilitleri gece cron'u açmaz; arayüz bunu göstermelidir. */
+  lockReason?: PeriodLockReason;
   isDeleted: boolean;
   createdAt: string;
 }
@@ -132,7 +137,7 @@ export interface AuditLogItem {
   entityId: string | null;
   entityLabel?: string;
   actorUsername: string;
-  // #20: plain string yerine UserRole union tipi + SYSTEM sabit aktörü
+  // plain string yerine UserRole union tipi + SYSTEM sabit aktörü
   actorRole: UserRole | 'SYSTEM' | null;
   summary: string | null;
   changes: string[] | null;

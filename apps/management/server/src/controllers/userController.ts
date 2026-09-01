@@ -13,6 +13,7 @@ import { notFound, badRequest, forbidden, rethrowIfNotUniqueViolation } from '..
 import { buildPagination, paginationParams } from '../utils/pagination.js';
 import { ok, paginated } from '../utils/responses.js';
 import * as userRepo from '../repositories/userRepo.js';
+import type { DbExecutor } from '../types/db.js';
 
 
 export const getUsers = asyncHandler<Record<string, string>, unknown, unknown, UserListQuery>(async (req, res) => {
@@ -47,9 +48,31 @@ export const getUsers = asyncHandler<Record<string, string>, unknown, unknown, U
   return paginated(res, 'users', users, buildPagination(page, limit, result.total));
 });
 
+/* Sistemde en az bir aktif admin kalmasını garanti eder. Son admin giderse
+   yeni kayıtlar sonsuza kadar PENDING'de bekler, kurtarma yolu elle SQL. */
+async function assertNotLastAdmin(tx: DbExecutor, targetUserId: string): Promise<void> {
+  const target = await userRepo.findById(tx, targetUserId);
+  if (!target) return;
+  if (target.role !== USER_ROLE.ADMIN || target.status !== USER_STATUS.ACTIVE) return;
+
+  const others = await userRepo.countOtherActiveAdmins(tx, targetUserId);
+  if (others === 0) {
+    throw badRequest(
+      'Sistemdeki son aktif yönetici. Silinemez veya yetkisi düşürülemez — '
+      + 'önce başka bir yönetici hesabı oluşturup aktifleştirin.',
+    );
+  }
+}
+
 export const updateUser = asyncHandler<{ userId: string }, unknown, UserEditType>(async (req, res) => {
   const { userId } = req.params;
   const { role, status, unitId, locationId, expiryDate, forceNewPassword } = req.body;
+
+  /* bcrypt pahalı bir CPU işi; transaction içinde çalıştırıldığında
+     havuz bağlantısını ~100 ms boyunca gereksiz yere tutuyordu. */
+  const forcedPasswordHash = forceNewPassword
+    ? await bcrypt.hash(forceNewPassword, 10)
+    : undefined;
 
   const result = await withDrizzleTransaction(async (tx) => {
     const existingUser = await userRepo.findById(tx, userId);
@@ -78,8 +101,22 @@ export const updateUser = asyncHandler<{ userId: string }, unknown, UserEditType
       if (!req.user || req.user.role !== USER_ROLE.ADMIN) {
         throw forbidden('Başka bir kullanıcının şifresini değiştirmek için admin yetkisi gereklidir.');
       }
-      passwordHash = await bcrypt.hash(forceNewPassword, 10);
+      passwordHash = forcedPasswordHash;
     }
+
+    /* Son aktif admin'in yetkisi düşürülüyor veya pasife alınıyorsa engelle. */
+    const demotingAdmin = newRole !== USER_ROLE.ADMIN || newStatus !== USER_STATUS.ACTIVE;
+    if (demotingAdmin) {
+      await assertNotLastAdmin(tx, userId);
+    }
+
+    /* Rol, durum veya şifre değiştiyse mevcut token'lar geçersizleşsin.
+       Aksi halde yetkisi düşürülen kullanıcı 7 gün eski yetkileriyle çalışır. */
+    const bumpTokenVersion = Boolean(passwordHash)
+      || newRole !== existingUser.role
+      || newStatus !== existingUser.status
+      || (newUnitId ?? null) !== existingUser.unitId
+      || (newLocationId ?? null) !== existingUser.locationId;
 
     const updatedUser = await userRepo.updateUser(tx, userId, {
       role: newRole,
@@ -87,8 +124,8 @@ export const updateUser = asyncHandler<{ userId: string }, unknown, UserEditType
       unitId: newUnitId ?? null,
       locationId: newLocationId ?? null,
       expiryDate: newExpiryDate ?? null,
-      ...(passwordHash ? { passwordHash } : {}),
-    });
+      ...(passwordHash ? { passwordHash, mustChangePassword: true } : {}),
+    }, bumpTokenVersion);
 
     if (!updatedUser) return null;
 
@@ -156,7 +193,17 @@ export const updateUser = asyncHandler<{ userId: string }, unknown, UserEditType
 export const deleteUser = asyncHandler<{ userId: string }>(async (req, res) => {
   const { userId } = req.params;
 
+  /* Kendi hesabını silme, son admin korumasından önce engellenir: birden fazla
+     admin varken o koruma devreye girmez ve oturum bir sonraki istekte sessizce
+     kopardı. */
+  if (userId === req.user!.id) {
+    throw badRequest('Kendi hesabınızı silemezsiniz. Bu işlemi başka bir yönetici yapmalıdır.');
+  }
+
   const result = await withDrizzleTransaction(async (tx) => {
+    // Son aktif admin silinemez
+    await assertNotLastAdmin(tx, userId);
+
     const oldUser = await userRepo.findById(tx, userId);
     const deleted = await userRepo.deleteUser(tx, userId);
 
@@ -190,29 +237,36 @@ export const updateProfile = asyncHandler<Record<string, string>, unknown, Profi
   const userId = user.id;
   const { username, newPassword, oldPassword } = req.body;
 
+  /* Pahalı CPU işleri (bcrypt.compare + bcrypt.hash) transaction DIŞINDA yapılır;
+     transaction içinde havuz bağlantısını ~200 ms boyunca meşgul ederlerdi. */
+  const currentUser = await userRepo.findById(db, userId);
+  if (!currentUser) throw notFound('Kullanıcı bulunamadı.');
+
+  if (newPassword) {
+    if (!oldPassword) throw badRequest('Mevcut şifrenizi giriniz.');
+    const isMatch = await bcrypt.compare(oldPassword, currentUser.passwordHash);
+    if (!isMatch) throw badRequest('Mevcut şifre yanlış.');
+  }
+
+  const precomputedHash = newPassword
+    ? await bcrypt.hash(newPassword, 10)
+    : currentUser.passwordHash;
+
   let updatedUser;
   try {
     updatedUser = await withDrizzleTransaction(async (tx) => {
       const currUser = await userRepo.findById(tx, userId);
       if (!currUser) throw notFound('Kullanıcı bulunamadı.');
 
-      // Şifre değiştirme isteğinde eski şifreyi doğrula
-      if (newPassword) {
-        if (!oldPassword) throw badRequest('Mevcut şifrenizi giriniz.');
-        const isMatch = await bcrypt.compare(oldPassword, currUser.passwordHash);
-        if (!isMatch) throw badRequest('Mevcut şifre yanlış.');
-      }
-
       const oldUsername = currUser.username;
-      const newPasswordHash = newPassword
-        ? await bcrypt.hash(newPassword, 10)
-        : currUser.passwordHash;
+      const newPasswordHash = precomputedHash;
       const passwordChanged = !!newPassword;
       const usernameChanged = !!username && username !== currUser.username;
 
       const newUser = await userRepo.updateProfile(tx, userId, {
         username: username ?? null,
         passwordHash: newPasswordHash,
+        passwordChanged,
       });
 
       if (!newUser) throw notFound('Kullanıcı bulunamadı.');

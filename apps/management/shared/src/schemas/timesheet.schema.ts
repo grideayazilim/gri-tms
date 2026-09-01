@@ -17,12 +17,14 @@ export const timesheetDaySchema = z.object({
 
 export const timesheetRowSchema = z.object({
     employeeId: z.string().min(1, 'Çalışan ID gereklidir'),
-    days: z.array(timesheetDaySchema),
+    // Bir ayda en fazla 31 gün olabilir
+    days: z.array(timesheetDaySchema).max(31, 'Bir ayda en fazla 31 gün olabilir'),
 });
 
 export const timesheetSaveSchema = z.object({
     periodId: z.string().min(1, 'Dönem ID gereklidir'),
-    timesheets: z.array(timesheetRowSchema).min(1, 'En az bir puantaj verisi gereklidir'),
+    // Sınırsız dizi — tek istekte 100k satır tek transaction'a giriyordu
+    timesheets: z.array(timesheetRowSchema).min(1, 'En az bir puantaj verisi gereklidir').max(200, 'Tek seferde en fazla 200 çalışan kaydedilebilir'),
 });
 
 export type TimesheetSaveType = z.infer<typeof timesheetSaveSchema>;

@@ -25,16 +25,31 @@ export const getSystemSettings = () =>
 export const updateSystemSettings = (data: SystemSettingsType & { force?: boolean }) =>
   api.put<ApiResponse<{ settings: SystemSettings }>>('/settings/system', data);
 
-// ─── SYSTEM RESET ──────────────────────────────────────────────────────────────
+// ─── SYSTEM BACKUP & RESET ─────────────────────────────────────────────────────
 
-// Yedekli modda yanıt Blob (zip) döner — backend zip dosyasını stream eder
-export const resetSystemWithBackup = (data: SystemResetType): Promise<Blob> =>
-  httpClient.post<unknown, Blob>('/settings/reset', data, { responseType: 'blob', timeout: 120000 });
+/* Yedek üretimi yerleşke × dönem sayısına bağlı olarak dakikalar sürebilir
+   (70-84 workbook), bu yüzden sıfırlamadan ayrı ve salt-okunur bir uçtan alınır.
+   Tek uzun istekte birleştirilseydi timeout'ta kopan bağlantı sunucudaki
+   silmeyi durdurmazdı. */
+const LONG_OPERATION_TIMEOUT_MS = 600_000;   // 10 dakika
 
-// Yedeksiz modda standart JSON başarı yanıtı döner
-export const resetSystemWithoutBackup = (data: SystemResetType) =>
-  api.post<ApiResponse<Record<string, never>>>('/settings/reset', data);
+/** Yedek ZIP'ini indirir — sıfırlamadan bağımsız, veri silmez. */
+export const downloadBackupZip = (): Promise<Blob> =>
+  httpClient.get<unknown, Blob>('/settings/backup', {
+    responseType: 'blob',
+    timeout: LONG_OPERATION_TIMEOUT_MS,
+  });
 
-// Backward-compat: backup flag'ine göre uygun fonksiyona delege eder
-export const resetSystem = (data: SystemResetType): Promise<Blob | ApiResponse<Record<string, never>>> =>
-  data.backup ? resetSystemWithBackup(data) : resetSystemWithoutBackup(data);
+/* Sıfırlama sonucu artık kalıcı bir modalda gösteriliyor; sunucu neyin
+   silindiğini de döner. */
+export interface SystemResetResult {
+  deleted: { employees: number; users: number; periods: number };
+}
+
+/** Sistemi sıfırlar. Yedek almaz — önce downloadBackupZip() çağrılmalıdır. */
+export const resetSystem = (data: SystemResetType) =>
+  httpClient.post<unknown, ApiResponse<SystemResetResult>>(
+    '/settings/reset',
+    { ...data, backup: false },
+    { timeout: LONG_OPERATION_TIMEOUT_MS },
+  );

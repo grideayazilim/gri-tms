@@ -134,7 +134,9 @@ $control-height-sm: 32px;
   &__label {
     position: absolute;
     left: var(--space-sm);
-    top: 50%;
+    // Input satırının ortasına sabitlenir. `top: 50%` grubun tamamına göre
+    // hesaplandığı için altta yardım metni veya hata varsa label aşağı kayıyordu.
+    top: calc(#{$control-height} / 2);
     transform: translateY(-50%);
 
     font-family: var(--font-family-base);
@@ -223,6 +225,15 @@ $control-height-sm: 32px;
   color: #ff4d4f;
   font-size: 12px;
   font-weight: 500;
+  margin-top: 4px;
+  font-family: var(--font-family-base);
+}
+
+// Şifre kuralı yardım metni — PASSWORD_RULE_TEXT sabitinden gelir
+.input-rule-hint {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 12px;
   margin-top: 4px;
   font-family: var(--font-family-base);
 }

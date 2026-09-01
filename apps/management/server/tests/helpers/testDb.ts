@@ -4,7 +4,8 @@
    ======================================================================== */
 import { sql } from 'drizzle-orm'
 import bcrypt from 'bcrypt'
-import jwt from 'jsonwebtoken'
+
+import { generateAccessToken } from '../../src/utils/tokenUtils.js'
 import { faker } from '@faker-js/faker/locale/tr'
 import { db, pool } from '../../src/config/database.js'
 import {
@@ -57,7 +58,7 @@ export interface TestUser {
  */
 export async function createAdminUser(overrides: { username?: string; password?: string } = {}): Promise<TestUser> {
   const username = overrides.username ?? `admin_${faker.string.alphanumeric(6)}`
-  const password = overrides.password ?? 'Test@1234'
+  const password = overrides.password ?? 'Test@1234567'
   const passwordHash = await bcrypt.hash(password, 10)
 
   const [user] = await db.insert(users).values({
@@ -69,8 +70,17 @@ export async function createAdminUser(overrides: { username?: string; password?:
 
   if (!user) throw new Error('Admin kullanıcı oluşturulamadı')
 
-  const payload = { id: user.id, username: user.username, role: user.role }
-  const token = jwt.sign(payload, process.env['ACCESS_TOKEN_SECRET']!, { expiresIn: 900 })
+  /* Token'lar artık typ/iss/aud damgası taşıyor ve algoritma sabitlendi.
+     Testler de gerçek üreticiyi kullansın ki sözleşme tek yerde kalsın. */
+  const token = generateAccessToken({
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    locationId: null,
+    unitId: null,
+    mustChangePassword: user.mustChangePassword,
+    tokenVersion: user.tokenVersion,
+  })
   const cookie = `accessToken=${token}`
 
   return { id: user.id, username, password, role: 'ADMIN', token, cookie }
@@ -82,7 +92,7 @@ export async function createAdminUser(overrides: { username?: string; password?:
  */
 export async function createResponsibleUser(locationId: string, unitId: string, overrides: { username?: string } = {}): Promise<TestUser> {
   const username = overrides.username ?? `resp_${faker.string.alphanumeric(6)}`
-  const password = 'Test@1234'
+  const password = 'Test@1234567'
   const passwordHash = await bcrypt.hash(password, 10)
 
   const [user] = await db.insert(users).values({
@@ -96,8 +106,15 @@ export async function createResponsibleUser(locationId: string, unitId: string, 
 
   if (!user) throw new Error('Responsible kullanıcı oluşturulamadı')
 
-  const payload = { id: user.id, username: user.username, role: user.role, locationId, unitId }
-  const token = jwt.sign(payload, process.env['ACCESS_TOKEN_SECRET']!, { expiresIn: 900 })
+  const token = generateAccessToken({
+    id: user.id,
+    username: user.username,
+    role: user.role,
+    locationId,
+    unitId,
+    mustChangePassword: user.mustChangePassword,
+    tokenVersion: user.tokenVersion,
+  })
   const cookie = `accessToken=${token}`
 
   return { id: user.id, username, password, role: 'RESPONSIBLE', token, cookie }

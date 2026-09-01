@@ -52,7 +52,7 @@ describe('userEditSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('forceNewPassword 8 karakterden kısa ise reddeder', () => {
+  it('forceNewPassword 10 karakterden kısa ise reddeder', () => {
     const result = userEditSchema.safeParse({ forceNewPassword: 'short' })
     expect(result.success).toBe(false)
   })
@@ -102,7 +102,7 @@ describe('profileUpdateSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('newPassword 8 karakterden kısaysa reddeder', () => {
+  it('newPassword 10 karakterden kısaysa reddeder', () => {
     const result = profileUpdateSchema.safeParse({
       oldPassword: 'current123',
       newPassword: 'short',

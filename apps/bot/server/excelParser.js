@@ -12,6 +12,22 @@
 
 const ExcelJS = require('exceljs');
 
+/* Zip bomb koruması: .xlsx aslında bir ZIP, o yüzden magic byte'a bakıyoruz.
+   ExcelJS açılmış boyuta sınır koymadığı için satır/sütun üst sınırı veriyoruz;
+   1000 öğrenci için 5000 satır fazlasıyla yeterli. */
+const MAX_ROWS = 5000;
+const MAX_COLS = 40;
+
+function assertXlsxMagic(buf) {
+  if (
+    buf.length < 4
+    || buf[0] !== 0x50 || buf[1] !== 0x4b   // 'P','K'
+    || buf[2] !== 0x03 || buf[3] !== 0x04
+  ) {
+    throw new Error('Dosya geçerli bir Excel (.xlsx) dosyası değil');
+  }
+}
+
 /**
  * Excel dosyasını parse et
  * @param {Buffer|string} filePathOrBuffer
@@ -22,6 +38,7 @@ const ExcelJS = require('exceljs');
 async function parseExcel(filePathOrBuffer, month, year) {
   const workbook = new ExcelJS.Workbook();
   if (Buffer.isBuffer(filePathOrBuffer)) {
+    assertXlsxMagic(filePathOrBuffer);
     await workbook.xlsx.load(filePathOrBuffer);
   } else {
     await workbook.xlsx.readFile(filePathOrBuffer);
@@ -32,13 +49,19 @@ async function parseExcel(filePathOrBuffer, month, year) {
     throw new Error('Excel dosyası boş veya geçersiz format');
   }
 
+  if (worksheet.rowCount > MAX_ROWS) {
+    throw new Error(`Excel çok büyük: ${worksheet.rowCount} satır (üst sınır ${MAX_ROWS})`);
+  }
+
   // Worksheet'i 0-indexed satır dizilerine dönüştür (boş hücre = 0)
   // ExcelJS satırları 1-indexed; 0-indexed diziye dönüştür, boş hücre → 0
   const rows = [];
   const minCols = 3 + 31;
   worksheet.eachRow({ includeEmpty: false }, (row) => {
+    if (rows.length >= MAX_ROWS) return;
     const rowData = [];
-    const lastCol = Math.max(row.cellCount, minCols);
+    // Üst sınır — sütun sayısı kadar eleman ayrılır, MAX_COLS ile sınırlanır
+    const lastCol = Math.min(Math.max(row.cellCount, minCols), MAX_COLS);
     for (let i = 1; i <= lastCol; i++) {
       const cell = row.getCell(i);
       rowData.push(cell.value !== null && cell.value !== undefined ? cell.value : 0);

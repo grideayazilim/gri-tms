@@ -3,7 +3,7 @@
    Çalışan listeleme, ekleme, güncelleme ve silme işlemlerini yönetir.
    ======================================================================== */
 import { db, withDrizzleTransaction } from '../config/database.js';
-import { createAuditLog, buildActor, diffEntityWithLookups } from '../utils/auditLogger.js';
+import { createAuditLog, buildActor, diffEntityWithLookups , maskTcNo } from '../utils/auditLogger.js';
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared';
 import type { EmployeeType, EmployeeListQuery } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
@@ -101,7 +101,7 @@ export const createEmployee = asyncHandler<Record<string, string>, unknown, Empl
         entityId: employee.id,
         summary: `${firstName} ${lastName} adlı çalışan eklendi.`,
         metadata: {
-          tcNo: employee.tcNo,
+          tcNo: maskTcNo(employee.tcNo),   // maskeli saklanır
           unitName: unit?.name ?? null,
           locationName: unit?.locationName ?? null,
         },
@@ -208,7 +208,7 @@ export const deleteEmployee = asyncHandler<{ id: string }>(async (req, res) => {
       entityId: id,
       summary: `${fullName} adlı çalışan silindi.`,
       metadata: oldRow ? {
-        tcNo: oldRow.tcNo,
+        tcNo: maskTcNo(oldRow.tcNo),     // maskeli saklanır
         unitId: oldRow.unitId,
       } : {},
     });

@@ -47,7 +47,7 @@ function parseTimesheetQuery(query: Request['query']): TimesheetQueryParams {
 }
 
 type TimesheetDayEntry = { id: string; day: string; markerCode: MarkerCode; note: string | null };
-type PeriodSnapshot = { id: string; year: number; month: number; startDate: string; endDate: string; isLocked: boolean };
+type PeriodSnapshot = { id: string; year: number; month: number; startDate: string; endDate: string; isLocked: boolean; lockReason: 'AUTO' | 'MANUAL' };
 
 function buildDaysMap(daysResult: { timesheetId: string; id: string; day: string; markerCode: string; note: string | null }[]): Record<string, TimesheetDayEntry[]> {
   const map: Record<string, TimesheetDayEntry[]> = {};
@@ -116,7 +116,8 @@ export const getTimesheets = asyncHandler(async (req: Request, res: Response) =>
   const settingsResult = await db.select({ dailyWage: settings.dailyWage }).from(settings).limit(1);
   const dailyWage = Number(settingsResult[0]?.dailyWage ?? 0);
 
-  const periodSnapshot: PeriodSnapshot = { id: period.id, year: period.year, month: period.month, startDate: period.startDate, endDate: period.endDate, isLocked: period.isLocked };
+  // lockReason istemciye taşınır — admin kilidin kendi koyduğunu görebilsin
+  const periodSnapshot: PeriodSnapshot = { id: period.id, year: period.year, month: period.month, startDate: period.startDate, endDate: period.endDate, isLocked: period.isLocked, lockReason: period.lockReason };
   const timesheets = timesheetData.map((row) => toTimesheetRow(row, daysMap, periodSnapshot, dailyWage));
 
   res.json({ success: true, data: { timesheets, pagination: buildPagination(pageNum, limitNum, totalRecords) } });
@@ -140,8 +141,16 @@ interface TimesheetEntry {
  *    - markerCode değeri geçerli bir işaretçi ise veritabanına eklenir veya güncellenir (upsertDays).
  */
 export const createOrUpdateTimesheets = asyncHandler<Record<string, string>, unknown, TimesheetSaveType>(async (req, res) => {
-  const { periodId, timesheets } = req.body;
+  const { periodId, timesheets: incomingTimesheets } = req.body;
   const scope = req.scope;
+
+  /* Satır kilitlerini her zaman aynı sırayla al. Deterministik sıra,
+     iki eşzamanlı kaydetmenin birbirini beklemesini (deadlock) yapısal olarak
+     imkânsız kılar. Sıralama olmadan kilit sırası kullanıcının hangi hücreye
+     önce dokunduğuna bağlıydı. */
+  const timesheets = [...incomingTimesheets].sort((a, b) =>
+    a.employeeId.localeCompare(b.employeeId),
+  );
 
   await withDrizzleTransaction(async (tx) => {
     const period = await periodRepo.findById(tx, periodId);
@@ -219,15 +228,21 @@ export const createOrUpdateTimesheets = asyncHandler<Record<string, string>, unk
 
     const employeeTimesheetIds = new Map<string, string>();
 
+    /* Mevcut satırların tamamı TEK UPDATE ile dokunulur — sıralı id
+       listesiyle, satır başına ayrı sorgu atmadan. */
+    const existingIdsToTouch = timesheets
+      .map((ts) => existingTimesheetMap.get(ts.employeeId))
+      .filter((id): id is string => id != null)
+      .sort();
+    await timesheetRepo.touchTimesheets(tx, existingIdsToTouch);
+
     // 1. Aşama: Timesheet satırlarını oluştur ve haftalık limitleri kontrol et
     for (const ts of timesheets) {
       const emp = employeeMap.get(ts.employeeId);
       if (!emp) throw badRequest(`Çalışan bulunamadı: ${ts.employeeId}`);
 
       let timesheetId = existingTimesheetMap.get(ts.employeeId);
-      if (timesheetId) {
-        await timesheetRepo.touchTimesheet(tx, timesheetId);
-      } else {
+      if (!timesheetId) {
         timesheetId = await timesheetRepo.insertTimesheet(tx, {
           employeeId: ts.employeeId,
           periodId: periodId,
@@ -351,14 +366,15 @@ export const createOrUpdateTimesheets = asyncHandler<Record<string, string>, unk
 export const toggleLockPeriod = asyncHandler<{ periodId: string }>(async (req, res) => {
   const { periodId } = req.params;
 
-  let updatedPeriod: { id: string; year: number; month: number; startDate: string; endDate: string; isLocked: boolean } | null = null;
+  let updatedPeriod: { id: string; year: number; month: number; startDate: string; endDate: string; isLocked: boolean; lockReason: 'AUTO' | 'MANUAL' } | null = null;
 
   await withDrizzleTransaction(async (tx) => {
     const period = await periodRepo.findById(tx, periodId!);
     if (!period || period.isDeleted) throw notFound('Dönem bulunamadı');
 
     const newLockState = !period.isLocked;
-    await periodRepo.updateLockStatus(tx, periodId!, newLockState);
+    // Admin'in elle koyduğu kilit MANUAL; gece cron'u buna dokunmaz
+    await periodRepo.updateLockStatus(tx, periodId!, newLockState, newLockState ? 'MANUAL' : 'AUTO');
 
     updatedPeriod = {
       id: period.id,
@@ -367,6 +383,7 @@ export const toggleLockPeriod = asyncHandler<{ periodId: string }>(async (req, r
       startDate: period.startDate,
       endDate: period.endDate,
       isLocked: newLockState,
+      lockReason: newLockState ? 'MANUAL' : 'AUTO',
     };
 
     const periodLabel = formatPeriodLabel(period.year, period.month);
@@ -399,7 +416,8 @@ export const getPeriods = asyncHandler(async (req: Request, res: Response) => {
     month: p.month,
     startDate: p.startDate,
     endDate: p.endDate,
-    isLocked: p.isLocked
+    isLocked: p.isLocked,
+    lockReason: p.lockReason,
   }));
   res.json({ success: true, data: { periods } });
 });

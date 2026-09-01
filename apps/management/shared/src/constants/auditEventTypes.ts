@@ -14,6 +14,8 @@ export const AUDIT_ACTION = Object.freeze({
   USER_REGISTER: 'USER_REGISTER',
   USER_PASSWORD_CHANGE: 'USER_PASSWORD_CHANGE',
   USER_PROFILE_UPDATE: 'USER_PROFILE_UPDATE',
+  // Başarısız girişler admin ekranında görünsün
+  USER_LOGIN_FAILED: 'USER_LOGIN_FAILED',
   // User management
   USER_CREATE: 'USER_CREATE',
   USER_UPDATE: 'USER_UPDATE',
@@ -70,7 +72,7 @@ export type AuditEntityType = typeof AUDIT_ENTITY_TYPE[keyof typeof AUDIT_ENTITY
 
 // Genel Kategoriler: Arayüzdeki renkler, etiketler ve filtreleme grupları için
 
-// #26: Object.freeze eklendi — AUDIT_ACTION ve AUDIT_ENTITY_TYPE ile tutarlı hale getirildi
+// Object.freeze — AUDIT_ACTION ve AUDIT_ENTITY_TYPE ile tutarlı
 export const AUDIT_CATEGORIES = Object.freeze({
   AUTH: { code: 'AUTH', label: 'Kimlik Doğrulama', bg: 'rgba(139,92,246,0.12)', color: '#7c3aed' },
   USER: { code: 'USER', label: 'Kullanıcı', bg: 'rgba(59,130,246,0.12)', color: '#2563eb' },
@@ -95,6 +97,7 @@ export const AUDIT_ACTION_META: Record<AuditAction, { category: AuditCategory; l
   USER_REGISTER: { category: 'AUTH', label: 'Kayıt Olma' },
   USER_PASSWORD_CHANGE: { category: 'AUTH', label: 'Şifre Değişimi' },
   USER_PROFILE_UPDATE: { category: 'AUTH', label: 'Profil Güncelleme' },
+  USER_LOGIN_FAILED: { category: 'AUTH', label: 'Başarısız Giriş Denemesi' },
 
   USER_CREATE: { category: 'USER', label: 'Kullanıcı Oluşturma' },
   USER_UPDATE: { category: 'USER', label: 'Kullanıcı Güncelleme' },
@@ -137,7 +140,7 @@ export const AUDIT_ACTION_LIST = Object.entries(AUDIT_ACTION_META).map(([code, m
   ...meta,
 }));
 
-// #27: Shared library olduğu için explicit return type'lar eklendi — IDE deneyimi ve refactoring güvenliği
+// Shared library olduğu için explicit return type'lar: IDE deneyimi ve refactoring güvenliği
 export const getAuditActionMeta = (action: AuditAction): { category: AuditCategory; label: string } =>
   AUDIT_ACTION_META[action];
 

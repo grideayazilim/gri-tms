@@ -27,12 +27,20 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
-vi.mock('../../hooks/data/useLocationsAndUnits', () => ({
-  useLocationsAndUnits: () => ({
-    locations: [{ id: VALID_UUID, name: 'Merkez Yerleşke', programNo: '101' }],
-    units: [{ id: VALID_UNIT_UUID, name: 'IT Birimi' }],
-    fetchLocations: vi.fn(),
-    fetchUnitsByLocation: vi.fn(),
+/* Kayıt ekranı artık programNo/employeeCount sızdıran uçları değil,
+   yalnızca id + ad döndüren public kayıt ağacını kullanıyor. */
+vi.mock('../../hooks/data/useSignupTree', () => ({
+  useSignupTree: () => ({
+    locations: [{
+      id: VALID_UUID,
+      name: 'Merkez Yerleşke',
+      units: [{ id: VALID_UNIT_UUID, name: 'IT Birimi' }],
+    }],
+    unitsFor: (locationId: string | null | undefined) =>
+      (locationId === VALID_UUID ? [{ id: VALID_UNIT_UUID, name: 'IT Birimi' }] : []),
+    isLoading: false,
+    error: null,
+    fetchTree: vi.fn(),
   }),
 }));
 
@@ -119,7 +127,7 @@ describe('AuthPage (Giriş & Kayıt) Sayfası', () => {
     fireEvent.change(unitSelect, { target: { value: VALID_UNIT_UUID } });
 
     fireEvent.change(screen.getByLabelText('Kullanıcı Adı'), { target: { value: 'yenikullanici' } });
-    fireEvent.change(screen.getByLabelText('Şifre'), { target: { value: 'Sifre123!' } });
+    fireEvent.change(screen.getByLabelText('Şifre'), { target: { value: 'Sifre123!AB' } });
 
     const submitBtn = screen.getByRole('button', { name: 'Hesap Oluştur' });
     
@@ -160,5 +168,61 @@ describe('AuthPage (Giriş & Kayıt) Sayfası', () => {
       fireEvent.keyDown(form, { key: 'a', code: 'KeyA' });
     }
     expect(form).toBeTruthy();
+  });
+});
+
+/* Bot arayüzüne gitmek isteyen kullanıcı `/auth?next=/bot/` ile giriş ekranına
+   düşer ve girişten sonra oraya dönmelidir. Açık yönlendirmeyi (open redirect)
+   engellemek için yalnızca uygulama içi mutlak yollar kabul edilir. */
+describe('Giriş sonrası `next` yönlendirmesi', () => {
+  const assignMock = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLogin.mockResolvedValue({ success: true });
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...window.location, assign: assignMock },
+    });
+  });
+
+  async function submitLoginWith(search: string) {
+    render(
+      <MemoryRouter initialEntries={[`/auth${search}`]}>
+        <ToastProvider>
+          <AuthPage />
+        </ToastProvider>
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText('Kullanıcı Adı'), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByLabelText('Şifre'), { target: { value: 'Sifre123!AB' } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Giriş Yap' }));
+    });
+  }
+
+  it('güvenli `next` değerine yönlendirir', async () => {
+    await submitLoginWith('?next=%2Fbot%2F');
+    expect(assignMock).toHaveBeenCalledWith('/bot/');
+  });
+
+  it('dış adrese yönlendirmez (open redirect koruması)', async () => {
+    await submitLoginWith('?next=https%3A%2F%2Fevil.example');
+    expect(assignMock).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  it('protokolsüz dış adrese (//evil) yönlendirmez', async () => {
+    await submitLoginWith('?next=%2F%2Fevil.example');
+    expect(assignMock).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  it('`next` yoksa ana sayfaya gider', async () => {
+    await submitLoginWith('');
+    expect(assignMock).not.toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 });

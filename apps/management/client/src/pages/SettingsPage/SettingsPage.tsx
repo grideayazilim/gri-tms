@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { loginSettingsSchema, systemSettingsSchema } from "@timesheet/shared";
+import { loginSettingsSchema, systemSettingsSchema, PASSWORD_RULE_TEXT } from "@timesheet/shared";
 import type { LoginSettingsType, SystemSettingsType } from "@timesheet/shared";
 import { toISODateString } from "../../utils/dateUtils";
 import "../../styles/inputs.scss";
@@ -18,7 +18,8 @@ import { useToast } from "../../components/ToastBar/useToast";
 import { useSettings } from "../../hooks/data/useSettings";
 import { useUsers } from "../../hooks/data/useUsers";
 import { USER_STATUS } from "@timesheet/shared";
-import { resetSystem as callResetSystem } from "../../api/settingsService";
+import { resetSystem as callResetSystem, downloadBackupZip } from "../../api/settingsService";
+import { ResetConfirmContent, ResetSuccessContent, ResetFailureContent } from "./ResetDialogs/ResetDialogs";
 import "./SettingsPage.scss";
 
 
@@ -61,7 +62,7 @@ function SettingsPage() {
   };
 
 
-  const { showConfirm } = useModal();
+  const { showConfirm, showModal } = useModal();
   const toast = useToast();
 
   const {
@@ -84,6 +85,8 @@ function SettingsPage() {
   const [resetStartDate, setResetStartDate] = useState('');
   const [resetEndDate, setResetEndDate] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+  /* Yedek + sıfırlama iki ayrı adım; kullanıcı hangi adımda olduğunu görmeli. */
+  const [resetStatus, setResetStatus] = useState<string | null>(null);
   const [resetErrors, setResetErrors] = useState<{
     dailyWage?: string;
     weeklyDays?: string;
@@ -138,8 +141,11 @@ function SettingsPage() {
   } = useForm<z.input<typeof systemSettingsSchema>, unknown, SystemSettingsType>({
     resolver: zodResolver(systemSettingsSchema),
     defaultValues: {
-      dailyWage: "0",
-      maxWeeklyDays: "0",
+      /* Varsayılan "0" idi; artık 0 geçersiz bir değer (tüm maaş çıktıları
+         sessizce 0 TL üretiyordu). Boş string şemada null'a çevrilir — "henüz
+         ayarlanmamış" durumu serbesttir. */
+      dailyWage: "",
+      maxWeeklyDays: "",
       programStartDate: "",
       programEndDate: "",
     },
@@ -211,34 +217,35 @@ function SettingsPage() {
     }
     setResetErrors({});
 
-    const confirmed = await showConfirm({
+    /* Genel "emin misiniz?" onayı kas hafızasıyla tıklanıyordu. Aynı
+       modal artık silineceklerin listesini gösteriyor ve düğmeyi ancak
+       SIFIRLA kelimesi birebir yazılınca açıyor. */
+    const confirmed = await showModal<boolean>({
       title: 'Sistemi Sıfırla',
-      message: 'Bu işlem geri alınamaz. Devam etmek istediğinizden emin misiniz?',
-      type: 'danger',
-      confirmText: 'Onayla',
-      cancelText: 'İptal',
+      size: 'small',
+      content: (closeModal) => (
+        <ResetConfirmContent
+          deleteLocationsAndUnits={resetDeleteLocations}
+          onClose={closeModal}
+        />
+      ),
     });
     if (!confirmed) return;
 
     setIsResetting(true);
+    // Hata modalı "indirdiğiniz yedek geçerlidir" diyebilmek için bunu bilmeli
+    let backupTaken = false;
     try {
-      const payload = {
-        backup: resetBackup === 'with',
-        deleteLocationsAndUnits: resetDeleteLocations,
-        newSettings: {
-          dailyWage: dailyWageNum,
-          maxWeeklyDays: weeklyDaysNum,
-          programStartDate: resetStartDate,
-          programEndDate: resetEndDate,
-        },
-      };
+      const wantsBackup = resetBackup === 'with';
 
-      const response = await callResetSystem(payload);
+      /* Yedek önce ve ayrı bir istekte alınır: iki kısa istek, tek uzun istek
+         yerine. Yedek başarısız olursa hiçbir şey silinmez. */
+      if (wantsBackup) {
+        setResetStatus('Yedek hazırlanıyor, bu birkaç dakika sürebilir...');
+        const blob = await downloadBackupZip();
 
-      // Yedekli modda yanıt blob olarak gelir → indir
-      if (payload.backup && response instanceof Blob) {
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const url = URL.createObjectURL(response);
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
         a.download = `sistem-yedegi-${timestamp}.zip`;
@@ -246,24 +253,66 @@ function SettingsPage() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+        backupTaken = true;
       }
 
-      toast({ type: "success", message: "Sistem başarıyla sıfırlandı." });
+      setResetStatus('Sistem sıfırlanıyor...');
+      const response = await callResetSystem({
+        backup: false,
+        deleteLocationsAndUnits: resetDeleteLocations,
+        newSettings: {
+          dailyWage: dailyWageNum,
+          maxWeeklyDays: weeklyDaysNum,
+          programStartDate: resetStartDate,
+          programEndDate: resetEndDate,
+        },
+      });
+
+      /* Geri dönüşü olmayan bir işlemin sonucu kalıcı modalda gösterilir; toast
+         kullanıcı okumadan kaybolurdu. Çıkış, kullanıcı "Tamam"a basınca yapılır. */
+      const deleted = response.success
+        ? response.data.deleted
+        : { employees: 0, users: 0, periods: 0 };
+
+      await showModal<boolean>({
+        title: 'Sistem sıfırlandı',
+        size: 'small',
+        showCloseButton: false,
+        content: (closeModal) => (
+          <ResetSuccessContent deleted={deleted} onClose={closeModal} />
+        ),
+      });
+
       // Admin olmayan tüm session'lar geçersiz oldu; tutarlı başlangıç için logout yap
-      setTimeout(() => { void logout(); }, 2000);
+      void logout();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Sistem sıfırlanamadı.';
-      toast({ type: "error", message });
+      const message = err instanceof Error ? err.message : 'Sistem sıfırlanamadı.';
+      const status = (err as { status?: number })?.status ?? null;
+
+      await showModal<boolean>({
+        title: 'Sistem sıfırlanamadı',
+        size: 'small',
+        content: (closeModal) => (
+          <ResetFailureContent
+            serverMessage={message}
+            status={status}
+            backupTaken={backupTaken}
+            onClose={closeModal}
+          />
+        ),
+      });
     } finally {
       setIsResetting(false);
+      setResetStatus(null);
     }
   };
 
   useEffect(() => {
     if (systemSettings) {
       resetSystem({
-        dailyWage: systemSettings.dailyWage?.toString() ?? "0",
-        maxWeeklyDays: systemSettings.maxWeeklyDays?.toString() ?? "0",
+        // Ayarlanmamış değer "0" değil boş gelir (bkz. defaultValues)
+        dailyWage: systemSettings.dailyWage?.toString() ?? "",
+        maxWeeklyDays: systemSettings.maxWeeklyDays?.toString() ?? "",
         programStartDate: toISODateString(systemSettings.programStartDate) ?? "",
         programEndDate: toISODateString(systemSettings.programEndDate) ?? "",
       });
@@ -338,6 +387,8 @@ function SettingsPage() {
           <label htmlFor="password" className="floating-group__label">
             Yeni Şifre
           </label>
+          {/* Metin gerçek şifre politikasından okunur, elle yazılmaz */}
+          <span className="input-rule-hint">{PASSWORD_RULE_TEXT}</span>
           {loginErrors.password && (
             <span className="input-error-message">{loginErrors.password.message}</span>
           )}
@@ -593,7 +644,7 @@ function SettingsPage() {
             onClick={handleSystemReset}
             disabled={isResetting}
           >
-            {isResetting ? 'Sıfırlanıyor...' : 'Sistemi Sıfırla'}
+            {isResetting ? (resetStatus ?? 'Sıfırlanıyor...') : 'Sistemi Sıfırla'}
           </button>
         </div>
       )}

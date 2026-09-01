@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../../vitest.setup';
-import httpClient, { api } from './httpClient';
+import httpClient, { api, ApiError } from './httpClient';
 
 /*
   httpClient (Axios) interceptor testleri.
@@ -12,6 +12,7 @@ import httpClient, { api } from './httpClient';
   - 401 → refresh başarısız → reject etmeli
   - Auth endpoint'lerinde (login/me/register/refresh) 401 → döngüye girmemeli
   - 4xx/5xx hata → ApiError { message, status } ile reject etmeli
+  - ApiError bir Error SINIFIDIR — `err instanceof Error` doğru çalışmalı
   - api wrapper metodları (get/post/put/patch/delete) doğru endpoint'e gitmeli
 
   NOT: window.location mock'laması MSW'nin URL çözümlemesini bozduğu için,
@@ -228,6 +229,65 @@ describe('httpClient interceptor', () => {
     await expect(httpClient.post('/employees', {})).rejects.toMatchObject({
       message: 'Geçersiz veri',
       status: 400,
+    });
+  });
+
+  /* ApiError Error'dan türer; düz bir nesne (`{ message, status }`) olsaydı
+     catch bloklarındaki `err instanceof Error` kontrolleri her zaman false döner
+     ve sunucunun açıklayıcı mesajı yerine genel bir metin gösterilirdi. */
+  describe('ApiError bir Error sınıfıdır', () => {
+    it('HTTP hatası Error örneği olarak reddedilir ve status taşır', async () => {
+      server.use(
+        http.get('*/api/users', () =>
+          HttpResponse.json({ message: 'TC No 11 haneli rakam olmalıdır' }, { status: 400 }),
+        ),
+      );
+
+      const err = await httpClient.get('/users').catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(Error);
+      expect(err).toBeInstanceOf(ApiError);
+      expect((err as ApiError).message).toBe('TC No 11 haneli rakam olmalıdır');
+      expect((err as ApiError).status).toBe(400);
+      expect((err as ApiError).name).toBe('ApiError');
+    });
+
+    it('ağ hatası da Error örneğidir', async () => {
+      server.use(
+        http.get('*/api/users', () => HttpResponse.error()),
+      );
+
+      const err = await httpClient.get('/users').catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(Error);
+      expect((err as ApiError).status).toBe(0);
+    });
+
+    it('auth endpoint hatası da Error örneğidir (döngü koruması yolu)', async () => {
+      server.use(
+        http.post('*/api/auth/login', () =>
+          HttpResponse.json({ message: 'Kullanıcı adı veya şifre yanlış' }, { status: 401 }),
+        ),
+      );
+
+      const err = await httpClient.post('/auth/login', {}).catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(Error);
+      expect((err as ApiError).message).toBe('Kullanıcı adı veya şifre yanlış');
+      expect((err as ApiError).status).toBe(401);
+    });
+
+    it('`err instanceof Error ? err.message : fallback` kalıbı gerçek mesajı verir', async () => {
+      server.use(
+        http.get('*/api/users', () =>
+          HttpResponse.json({ message: 'Sunucudan gelen gerçek mesaj' }, { status: 500 }),
+        ),
+      );
+
+      const err = await httpClient.get('/users').catch((e: unknown) => e);
+      const message = err instanceof Error ? err.message : 'genel hata metni';
+
+      expect(message).toBe('Sunucudan gelen gerçek mesaj');
     });
   });
 

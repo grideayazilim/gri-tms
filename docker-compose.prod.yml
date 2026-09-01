@@ -9,20 +9,22 @@
 #   docker compose -f docker-compose.prod.yml down             # durdur
 # ============================================================================
 
+name: gritms-prod
+
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: timesheet_postgres
+    container_name: gritms-prod-postgres
     restart: always
     env_file:
       - ./apps/management/server/.env.prod
     environment:
       - TZ=Europe/Istanbul
     volumes:
-      - postgres_prod_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     networks:
-      - timesheet_prod_net
+      - net
     expose:
       - "5432"
     healthcheck:
@@ -35,12 +37,17 @@ services:
       options:
         max-size: "20m"
         max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 1g
 
   server:
     build:
       context: .
       dockerfile: apps/management/server/Dockerfile
-    container_name: timesheet_server
+    image: gritms/server:${IMAGE_TAG:-prod}
+    container_name: gritms-prod-server
     restart: always
     env_file:
       - ./apps/management/server/.env.prod
@@ -50,7 +57,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - timesheet_prod_net
+      - net
     expose:
       - "3000"
     logging:
@@ -64,19 +71,65 @@ services:
           memory: 512m
         reservations:
           memory: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   client:
     build:
       context: .
       dockerfile: apps/management/client/Dockerfile
-    container_name: timesheet_client
+    image: gritms/client:${IMAGE_TAG:-prod}
+    container_name: gritms-prod-client
     restart: always
     ports:
-      - "80:8080"
+      - "80:8080"     # yalnızca ACME doğrulaması + HTTPS'e yönlendirme
+      - "443:8443"    # asıl trafik
+    volumes:
+      # TLS sertifikaları. Let's Encrypt veya kurumsal iç CA'dan gelen
+      # fullchain.pem + privkey.pem bu klasörde olmalı.
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
+      - ./docker/nginx/certbot-www:/var/www/certbot:ro
     depends_on:
       - server
     networks:
-      - timesheet_prod_net
+      - net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --no-check-certificate https://127.0.0.1:8443/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    # nginx yenilenen sertifikayı kendiliğinden OKUMAZ; periyodik reload şart.
+    # Reload kesintisiz çalışır (mevcut bağlantılar korunur).
+    command: >
+      sh -c "while :; do sleep 6h; nginx -s reload 2>/dev/null || true; done &
+             nginx -g 'daemon off;'"
+
+  # Sertifika yenileme — yalnızca Let's Encrypt senaryosu içindir. Kurumsal iç
+  # CA kullanıyorsanız bu servisi kaldırıp check-cert.sh'ı cron'a ekleyin.
+  # İlk sertifika bir kez elle alınmalı, certs/live/... symlink'leri kurulmalı.
+  certbot:
+    image: certbot/certbot:latest
+    container_name: gritms-prod-certbot
+    restart: always
+    profiles: ["letsencrypt"]      # yalnızca --profile letsencrypt ile çalışır
+    volumes:
+      - ./docker/nginx/certs:/etc/letsencrypt
+      - ./docker/nginx/certbot-www:/var/www/certbot
+    entrypoint: >
+      sh -c "trap exit TERM;
+             while :; do
+               certbot renew --webroot -w /var/www/certbot --quiet;
+               sleep 12h & wait $${!};
+             done"
     logging:
       driver: "json-file"
       options:
@@ -87,30 +140,63 @@ services:
     build:
       context: ./apps/bot/server
       dockerfile: Dockerfile
-    container_name: timesheet_bot_server
+    image: gritms/bot-server:${IMAGE_TAG:-prod}
+    container_name: gritms-prod-bot-server
     restart: always
+    # Sıra önemli, sonraki öncekini ezer: yönetim sunucusunun .env.prod'u
+    # yalnızca ACCESS_TOKEN_SECRET için okunur, bot ayarları ikinci dosyadan.
+    env_file:
+      - path: ./apps/management/server/.env.prod
+        required: true
+      - path: ./apps/bot/server/.env.prod
+        required: false
     environment:
-      - ALLOWED_ORIGIN=${BOT_ALLOWED_ORIGIN:-http://localhost:80}
+      # environment env_file'ı ezer; buraya yalnızca ezilmesi zorunlu olanlar.
+      # Yönetim .env.prod'unda PORT=3000 var, bot ise 3001'de dinlemeli.
+      - PORT=3001
+      - TZ=Europe/Istanbul
     expose:
       - "3001"
+    # İlerleme dosyası kalıcı olmalı — yeniden deploy'da 1000 kişilik iş
+    # baştan başlamasın ve zaten yazılmış kayıtlar tekrar işlenmesin.
+    volumes:
+      - bot_progress:/app/data
     networks:
-      - timesheet_prod_net
+      - net
     logging:
       driver: "json-file"
       options:
         max-size: "100m"
         max-file: "10"
+    # Takılan bot kendini toparlasın — Docker yeniden başlatabilsin
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    # Chromium + Node + ExcelJS uzun işlerde 1 GB'ı aşabiliyor; büyük bir Excel
+    # host'u OOM'a sürüklemesin. Asıl zip bomb koruması excelParser.js'te.
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+        reservations:
+          memory: 512m
+    # Playwright (Chromium) paylaşılan bellek ister; varsayılan 64m yetersiz
+    shm_size: 512m
 
   bot-client:
     build:
       context: ./apps/bot/client
       dockerfile: Dockerfile
-    container_name: timesheet_bot_client
+    image: gritms/bot-client:${IMAGE_TAG:-prod}
+    container_name: gritms-prod-bot-client
     restart: always
     expose:
       - "80"
     networks:
-      - timesheet_prod_net
+      - net
     logging:
       driver: "json-file"
       options:
@@ -118,8 +204,9 @@ services:
         max-file: "3"
 
 volumes:
-  postgres_prod_data:
+  pgdata:
+  bot_progress:      # bot ilerleme dosyası
 
 networks:
-  timesheet_prod_net:
+  net:
     driver: bridge

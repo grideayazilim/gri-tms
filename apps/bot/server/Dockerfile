@@ -11,6 +11,10 @@ RUN npm ci
 COPY . .
 
 
+# progress.json'ın yazıldığı kalıcı dizin (compose'da volume olarak mount edilir)
+RUN mkdir -p /app/data
+ENV PROGRESS_DIR=/app/data
+
 # Change ownership to the built-in pwuser
 RUN chown -R pwuser:pwuser /app
 

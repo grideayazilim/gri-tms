@@ -281,4 +281,62 @@ describe('TimesheetPage (Puantaj Yönetimi)', () => {
     expect(await screen.findByText('Puantaj İşaretleme')).toBeInTheDocument();
     expect(screen.queryByText('Veri Girişini Kilitle')).not.toBeInTheDocument();
   });
+
+  /* Manuel kilidi gece cron'u açmaz. Admin kilidi kendisinin
+     koyduğunu ve elle açması gerektiğini ekranda görmeli; yoksa dönem kapalı
+     kalır ve sorumlular veri giremez. */
+  describe('Dönem kilit nedeni görünürlüğü', () => {
+    // Önceki testler useAuth'u non-admin'e çevirmiş olabiliyor (mockReturnValue
+    // clearAllMocks ile temizlenmez); kilit satırı yalnızca admin'e görünür.
+    beforeEach(() => {
+      vi.mocked(useAuth).mockReturnValue({ user: { username: 'admin', role: 'ADMIN' }, isAdmin: true } as any);
+    });
+
+    it('manuel kilitte "elle kilitlendi" uyarısı gösterilir', async () => {
+      mockFetchTimesheets.mockResolvedValue({
+        success: true,
+        data: {
+          rows: [{ id: '1', tcNo: '123', firstName: 'Ahmet', lastName: 'Yılmaz', timesheet_days: {}, workDaysCount: 0, isLocked: true, lockReason: 'MANUAL' }],
+          pagination: { total: 1, page: 1, limit: 10 },
+        },
+      });
+
+      renderTimesheetPage();
+      await screen.findByText('Veri Girişini Kilitle');
+
+      expect(await screen.findByText(/yönetici tarafından elle/i)).toBeInTheDocument();
+      expect(screen.getByText(/Otomatik olarak açılmaz/i)).toBeInTheDocument();
+    });
+
+    it('otomatik kilitte program takvimi uyarısı gösterilir', async () => {
+      mockFetchTimesheets.mockResolvedValue({
+        success: true,
+        data: {
+          rows: [{ id: '1', tcNo: '123', firstName: 'Ahmet', lastName: 'Yılmaz', timesheet_days: {}, workDaysCount: 0, isLocked: true, lockReason: 'AUTO' }],
+          pagination: { total: 1, page: 1, limit: 10 },
+        },
+      });
+
+      renderTimesheetPage();
+      await screen.findByText('Veri Girişini Kilitle');
+
+      expect(await screen.findByText(/program takvimine göre otomatik/i)).toBeInTheDocument();
+    });
+
+    it('kilit yokken hiçbir uyarı gösterilmez', async () => {
+      mockFetchTimesheets.mockResolvedValue({
+        success: true,
+        data: {
+          rows: [{ id: '1', tcNo: '123', firstName: 'Ahmet', lastName: 'Yılmaz', timesheet_days: {}, workDaysCount: 0, isLocked: false }],
+          pagination: { total: 1, page: 1, limit: 10 },
+        },
+      });
+
+      renderTimesheetPage();
+
+      await screen.findByText('Veri Girişini Kilitle');
+      expect(screen.queryByText(/yönetici tarafından elle/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/program takvimine göre otomatik/i)).not.toBeInTheDocument();
+    });
+  });
 });

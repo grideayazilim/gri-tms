@@ -20,8 +20,17 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
+/* Excel üretimi yerleşke başına saniyeler sürebiliyor ve sunucuda
+   semafor kuyruğu var. Varsayılan 10 sn'lik istemci timeout'u nginx'in izin
+   verdiği 120 sn'nin çok altındaydı; büyük export'lar istemcide kopuyordu. */
+const EXPORT_TIMEOUT_MS = 120_000;
+
 async function fetchBlob(url: string, params: Record<string, unknown>): Promise<Blob> {
-  const blob = await httpClient.get<unknown, Blob>(url, { params, responseType: 'blob' });
+  const blob = await httpClient.get<unknown, Blob>(url, {
+    params,
+    responseType: 'blob',
+    timeout: EXPORT_TIMEOUT_MS,
+  });
   return blob;
 }
 

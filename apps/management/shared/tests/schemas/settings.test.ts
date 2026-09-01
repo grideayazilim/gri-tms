@@ -47,13 +47,41 @@ describe('loginSettingsSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('yeni şifre 8 karakterden kısaysa reddeder', () => {
+  it('yeni şifre politikadan kısaysa reddeder', () => {
     const result = loginSettingsSchema.safeParse({
       username: 'admin',
       currentPassword: 'oldpass',
       password: 'short',
     })
     expect(result.success).toBe(false)
+  })
+
+  /* Bu alan ortak passwordPolicy'yi kullanmalı (min 10 + "sadece rakam olamaz"
+     + yaygın şifre yasağı). Kendi `min(8)` kuralını kullansaydı kullanıcı forma
+     göre doğru davrandığı hâlde sunucudan hata alırdı. */
+  describe('ortak şifre politikası', () => {
+    const withPassword = (password: string) =>
+      loginSettingsSchema.safeParse({ username: 'admin', currentPassword: 'oldpass', password })
+
+    it("'12345678' reddedilir (8 karakter, politika 10 istiyor)", () => {
+      const result = withPassword('12345678')
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.message).toContain('10 karakter')
+    })
+
+    it('10 karakterli ama sadece rakamdan oluşan şifre reddedilir', () => {
+      const result = withPassword('1234567890')
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.message).toContain('sadece rakamlardan')
+    })
+
+    it('yaygın şifre reddedilir', () => {
+      expect(withPassword('qwertyuiop').success).toBe(false)
+    })
+
+    it('10+ karakterli karışık şifre geçer', () => {
+      expect(withPassword('Karisik123abc').success).toBe(true)
+    })
   })
 })
 
@@ -95,5 +123,41 @@ describe('systemSettingsSchema', () => {
   it('boş tarih string kabul edilir (or literal)', () => {
     const result = systemSettingsSchema.safeParse({ ...validSystem, programStartDate: '' })
     expect(result.success).toBe(true)
+  })
+
+  /* `.min(0)` günlük ödeneğin 0 kaydedilmesine izin verir ve tüm maaş çıktıları
+     sessizce 0 TL üretir. Bu şema sıfırlama formuyla (reset.schema.ts) hizalıdır:
+     null serbest, 0 reddedilir. */
+  describe('sıfır ödenek reddi', () => {
+    it('dailyWage: 0 reddedilir', () => {
+      const result = systemSettingsSchema.safeParse({ ...validSystem, dailyWage: 0 })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.message).toContain('sıfırdan büyük')
+    })
+
+    it('maxWeeklyDays: 0 reddedilir', () => {
+      const result = systemSettingsSchema.safeParse({ ...validSystem, maxWeeklyDays: 0 })
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.message).toContain('sıfırdan büyük')
+    })
+
+    it('negatif dailyWage reddedilir', () => {
+      expect(systemSettingsSchema.safeParse({ ...validSystem, dailyWage: -5 }).success).toBe(false)
+    })
+
+    it("null (henüz ayarlanmamış) geçer", () => {
+      const result = systemSettingsSchema.safeParse({ ...validSystem, dailyWage: '', maxWeeklyDays: '' })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.dailyWage).toBeNull()
+        expect(result.data.maxWeeklyDays).toBeNull()
+      }
+    })
+
+    it('150 geçer', () => {
+      const result = systemSettingsSchema.safeParse({ ...validSystem, dailyWage: 150 })
+      expect(result.success).toBe(true)
+      if (result.success) expect(result.data.dailyWage).toBe(150)
+    })
   })
 })

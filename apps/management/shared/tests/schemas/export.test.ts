@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { exportQuerySchema } from '../../src/schemas/export.schema.js'
 
 const validQuery = {
-  locationId: 'loc-uuid-123',
+  locationId: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
   year: 2024,
   month: 6,
 }
@@ -25,6 +25,15 @@ describe('exportQuerySchema', () => {
   it('boş locationId reddeder', () => {
     const result = exportQuerySchema.safeParse({ ...validQuery, locationId: '' })
     expect(result.success).toBe(false)
+  })
+
+  // UUID olmayan locationId Postgres'e ulaşıp 22P02 → 500 üretiyordu
+  it('UUID formatında olmayan locationId reddeder', () => {
+    const result = exportQuerySchema.safeParse({ ...validQuery, locationId: 'loc-uuid-123' })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((i) => i.path.includes('locationId'))).toBe(true)
+    }
   })
 
   it('1999 yılı reddeder', () => {

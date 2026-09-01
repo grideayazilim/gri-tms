@@ -8,6 +8,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { ModalProvider } from "./components/Modal";
 import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
+import ForcePasswordChange from "./components/ForcePasswordChange";
 import Navbar from "./components/Navbar/Navbar";
 import { AnimatePresence } from "framer-motion";
 import {
@@ -35,6 +36,9 @@ function App() {
 
   return (
     <ModalProvider>
+      {/* Varsayılan şifreyle devam edilemez — route ağacının dışında,
+          her sayfanın üstünde görünür ve kapatılamaz. */}
+      <ForcePasswordChange />
       <div className="app">
         <Routes>
           {/* Public Routes (Auth) */}

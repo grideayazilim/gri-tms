@@ -16,6 +16,7 @@ import {
   diffEntity,
   diffEntityWithLookups,
   truncateChanges,
+  maskTcNo,
   FIELD_MAPS,
 } from '../../../src/utils/auditLogger.js'
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared'
@@ -251,5 +252,26 @@ describe('truncateChanges', () => {
 
   it('dizi değilse boş array döner', () => {
     expect(truncateChanges(null as never)).toEqual([])
+  })
+})
+
+/* KVKK veri minimizasyonu — audit metadata'sında TC maskelenir. */
+describe('maskTcNo', () => {
+  it('11 haneli TC için ilk 2 ve son 2 hane kalır', () => {
+    expect(maskTcNo('12345678901')).toBe('12*******01')
+  })
+
+  it('null ve undefined için null döner', () => {
+    expect(maskTcNo(null)).toBeNull()
+    expect(maskTcNo(undefined)).toBeNull()
+  })
+
+  it('çok kısa değerler için null döner', () => {
+    expect(maskTcNo('123')).toBeNull()
+  })
+
+  it('maskeli değerde orijinal TC bulunmaz', () => {
+    const masked = maskTcNo('12345678901')
+    expect(masked).not.toContain('345678')
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { signInSchema, signUpSchema } from '../../src/schemas/auth.schema.js'
+import { signInSchema, signUpSchema, initialPasswordSchema } from '../../src/schemas/auth.schema.js'
 
 describe('signInSchema', () => {
   it('geçerli giriş verisi ile başarılı olur', () => {
@@ -56,8 +56,19 @@ describe('signUpSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('8 karakterden kısa şifre reddeder', () => {
-    const result = signUpSchema.safeParse({ ...validAdmin, password: 'short' })
+  // Şifre politikası: en az 10 karakter
+  it('10 karakterden kısa şifre reddeder', () => {
+    const result = signUpSchema.safeParse({ ...validAdmin, password: 'sifre1234' })
+    expect(result.success).toBe(false)
+  })
+
+  it('sadece rakamlardan oluşan şifre reddeder', () => {
+    const result = signUpSchema.safeParse({ ...validAdmin, password: '12345678901' })
+    expect(result.success).toBe(false)
+  })
+
+  it('yaygın şifreleri reddeder', () => {
+    const result = signUpSchema.safeParse({ ...validAdmin, password: 'qwertyuiop' })
     expect(result.success).toBe(false)
   })
 
@@ -107,6 +118,43 @@ describe('signUpSchema', () => {
       role: 'RESPONSIBLE',
       locationId: 'not-a-uuid',
       unitId: '550e8400-e29b-41d4-a716-446655440001',
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe('initialPasswordSchema (zorunlu şifre değişimi)', () => {
+  it('eşleşen ve politikaya uyan şifre ile başarılı olur', () => {
+    const result = initialPasswordSchema.safeParse({
+      newPassword: 'Guclu-Sifre-2026',
+      newPasswordConfirm: 'Guclu-Sifre-2026',
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('şifreler eşleşmiyorsa reddeder', () => {
+    const result = initialPasswordSchema.safeParse({
+      newPassword: 'Guclu-Sifre-2026',
+      newPasswordConfirm: 'Baska-Sifre-2026',
+    })
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some(i => i.path.includes('newPasswordConfirm'))).toBe(true)
+    }
+  })
+
+  it('10 karakterden kısa şifre reddeder', () => {
+    const result = initialPasswordSchema.safeParse({
+      newPassword: 'kisa12',
+      newPasswordConfirm: 'kisa12',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('varsayılan 1234 gibi zayıf şifreyi reddeder', () => {
+    const result = initialPasswordSchema.safeParse({
+      newPassword: '1234',
+      newPasswordConfirm: '1234',
     })
     expect(result.success).toBe(false)
   })

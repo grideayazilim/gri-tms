@@ -34,4 +34,14 @@
       background-color: #fee2e2;
     }
   }
+
+  // Devre dışı silme — sebebi title ile gösterilir
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+
+    &:hover {
+      background-color: #fef2f2;
+    }
+  }
 }

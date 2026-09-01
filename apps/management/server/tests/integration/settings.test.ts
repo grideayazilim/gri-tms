@@ -110,6 +110,9 @@ describe('Settings API', () => {
       expect(res.body.success).toBe(false)
     })
 
+    /* Testin başlığı 400 diyordu ama 200 bekliyor ve hatalı davranışı
+       kilitliyordu: sıfırlama formu 0'ı reddederken aynı alan normal ayarlar
+       formundan 0 yapılabiliyor, tüm maaş çıktıları sessizce 0 TL üretiyordu. */
     it('PUT /api/settings/system → geçersiz maxWeeklyDays (0) → 400', async () => {
       const admin = await createAdminUser()
 
@@ -123,7 +126,25 @@ describe('Settings API', () => {
           programEndDate: '2024-12-31',
         })
 
-      expect(res.status).toBe(200)
+      expect(res.status).toBe(400)
+      expect(res.body.success).toBe(false)
+    })
+
+    it('PUT /api/settings/system → geçersiz dailyWage (0) → 400', async () => {
+      const admin = await createAdminUser()
+
+      const res = await request(app)
+        .put('/api/settings/system')
+        .set('Cookie', admin.cookie)
+        .send({
+          dailyWage: 0,
+          maxWeeklyDays: 5,
+          programStartDate: '2024-01-01',
+          programEndDate: '2024-12-31',
+        })
+
+      expect(res.status).toBe(400)
+      expect(res.body.success).toBe(false)
     })
 
     it('PUT /api/settings/system → programEndDate < programStartDate → 400', async () => {

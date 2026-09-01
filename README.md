@@ -120,7 +120,7 @@ npm run db:seed:demo  # Opsiyonel: Test verileri için
 npm run build:shared
 npm run dev:all
 ```
-* **Yönetim Arayüzü:** [http://localhost:5173](http://localhost:5173) (Giriş: `admin` / `1234`)
+* **Yönetim Arayüzü:** [http://localhost:5173](http://localhost:5173) (Giriş: `admin` / `1234` — yalnızca yerel geliştirme; production'da ilk girişte şifre değişimi zorunludur)
 
 ```bash
 # Veritabanını sıfırlamak için (sırayla)
@@ -150,13 +150,70 @@ cd gri-tms
 cp apps/management/server/.env.prod.example apps/management/server/.env.prod
 nano apps/management/server/.env.prod
 
-# 3. Docker ile tüm sistemi arka planda build edip başlatın
+# 2b. Bot'un kendi ayar dosyası — origin ve süre sınırları burada.
+#     Oluşturulmazsa koddaki varsayılanlarla çalışır.
+cp apps/bot/server/.env.prod.example apps/bot/server/.env.prod
+nano apps/bot/server/.env.prod
+
+# 3. TLS sertifikalarını yerleştirin
+#    Kurumsal iç CA'dan veya Let's Encrypt'ten alınan dosyalar:
+mkdir -p docker/nginx/certs docker/nginx/certbot-www
+cp /yol/fullchain.pem docker/nginx/certs/fullchain.pem
+cp /yol/privkey.pem   docker/nginx/certs/privkey.pem
+
+# 4. Docker ile tüm sistemi arka planda build edip başlatın
+#    Let's Encrypt kullanıyorsanız certbot profilini de açın:
+#    docker compose -f docker-compose.prod.yml --profile letsencrypt up -d --build
 docker compose -f docker-compose.prod.yml up -d --build
 
-# 4. İlk kurulumda admin kullanıcısı ve sistem ayarlarını yükleyin
+# 5. İlk kurulumda admin kullanıcısı ve sistem ayarlarını yükleyin
 docker compose -f docker-compose.prod.yml exec server node dist/database/seeder.js
 ```
-* **Prod Ortamında Uygulama Arayüzü:** `http://<SUNUCU_IP>` (Varsayılan 80 portundan Nginx ile sunulur)
+* **Prod Ortamında Uygulama Arayüzü:** `https://<SUNUCU_ADRESI>` (80 portu yalnızca HTTPS'e yönlendirir)
+
+> 🤖 **Bot ayarları `apps/bot/server/.env.prod` dosyasına yazılır.** Süre
+> sınırları (`BOT_*_MINUTES`) ve `ALLOWED_ORIGIN` oradan okunur; yönetim
+> sunucusunun `.env.prod`'una yazılan bot ayarları **etkisiz kalır**. Bot o
+> dosyadan yalnızca `ACCESS_TOKEN_SECRET`'ı alır — token'ı yönetim
+> uygulamasıyla aynı anahtarla doğrulamak zorunda.
+
+> ⚠️ **HTTPS hazır değilse:** `nginx/nginx.conf` içindeki HTTPS bloğunu geçici
+> olarak HTTP'ye çevirin **ve** `.env.prod` içinde `COOKIE_SECURE=false` yapın.
+> Aksi halde tarayıcı oturum cookie'sini kaydetmez ve hiç kimse giriş yapamaz.
+
+#### 🔐 Sertifika yenilemesi
+
+Sertifika yenilenmezse sistem **tamamen erişilemez** hale gelir. Hangi yolu
+kullandığınıza göre:
+
+* **Let's Encrypt (public domain):** `--profile letsencrypt` ile başlatın.
+  `certbot` servisi 12 saatte bir yenileme dener, `client` servisi 6 saatte bir
+  `nginx -s reload` yapar (nginx yenilenen sertifikayı kendiliğinden okumaz).
+
+  > ⚠️ `certbot renew` **yalnızca daha önce alınmış** bir sertifikayı yeniler.
+  > İlk sertifikayı bir kez elle alın:
+  > ```bash
+  > docker compose -f docker-compose.prod.yml --profile letsencrypt run --rm \
+  >   --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
+  >   -d <alan.adiniz> --agree-tos -m <eposta> --no-eff-email
+  > ```
+  > certbot dosyaları `docker/nginx/certs/live/<alan.adiniz>/` altına yazar;
+  > nginx ise `docker/nginx/certs/fullchain.pem` + `privkey.pem` yollarını okur.
+  > İkisini bir kez bağlayın, yoksa yenilenen sertifika nginx'e hiç ulaşmaz:
+  > ```bash
+  > ln -sf live/<alan.adiniz>/fullchain.pem docker/nginx/certs/fullchain.pem
+  > ln -sf live/<alan.adiniz>/privkey.pem   docker/nginx/certs/privkey.pem
+  > ```
+* **Kurumsal iç CA:** Otomatik yenileme genelde mümkün değildir. Bitiş tarihini
+  bugün öğrenin ve 30 gün öncesine takvim hatırlatıcısı koyun:
+  ```bash
+  openssl x509 -enddate -noout -in docker/nginx/certs/fullchain.pem
+  ```
+  Ayrıca kontrol scriptini gece cron'una ekleyin — 30 günden az kalınca log'a
+  uyarı yazar:
+  ```bash
+  0 8 * * * /path/to/project/docker/backup/check-cert.sh >> /var/log/timesheet-cert.log 2>&1
+  ```
 
 > 💡 **Prod Ortamı Yönetim Komutları:**
 > * Komutlardaki `<DOSYA>` alanına `docker-compose.prod.yml` yazın.

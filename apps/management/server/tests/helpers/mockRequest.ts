@@ -10,6 +10,7 @@ interface MockReqOptions {
   user?: JwtPayload
   scope?: { unitId: string; locationId: string } | null
   path?: string
+  originalUrl?: string
   method?: string
   ip?: string
 }
@@ -23,6 +24,8 @@ export function mockReq(opts: MockReqOptions = {}): Request {
     user: opts.user,
     scope: opts.scope,
     path: opts.path ?? '/test',
+    originalUrl: opts.originalUrl ?? opts.path ?? '/test',
+    url: opts.originalUrl ?? opts.path ?? '/test',
     method: opts.method ?? 'GET',
     ip: opts.ip ?? '127.0.0.1',
   } as unknown as Request

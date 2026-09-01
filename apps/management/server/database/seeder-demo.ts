@@ -287,6 +287,24 @@ const runDemoSeed = async () => {
       }
     }
 
+    /* ── E2E/demo kolaylığı: admin'in zorunlu şifre değişimini kapat ──────────
+       Gerçek kurulumda `seeder.ts` admin'i must_change_password = true ile
+       oluşturur. Demo/E2E ortamında testlerin admin ile doğrudan
+       ilerleyebilmesi için bu bayrak temizlenir. */
+    await db.execute(sql`
+      UPDATE app.users SET must_change_password = false WHERE username = 'admin';
+    `);
+
+    /* Zorunlu şifre değişimi akışını E2E'de test edebilmek için özel kullanıcı.
+       Kullanıcı adı ve şifresi aynı: ilk_giris / ilk_giris */
+    const firstLoginHash = await bcrypt.hash('ilk_giris', 10);
+    await db.execute(sql`
+      INSERT INTO app.users (username, password_hash, role, status, must_change_password)
+      VALUES ('ilk_giris', ${firstLoginHash}, 'ADMIN', 'ACTIVE', true)
+      ON CONFLICT (username) DO UPDATE
+      SET password_hash = ${firstLoginHash}, must_change_password = true, token_version = app.users.token_version + 1;
+    `);
+
     const createdUnitIds = createdUnits.map(u => u.id);
 
     // ── 3. 1000 Gerçekçi Öğrenci/Çalışan Oluştur ─────────────────────────────

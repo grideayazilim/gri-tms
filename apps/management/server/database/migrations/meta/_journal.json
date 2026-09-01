@@ -15,6 +15,13 @@
       "when": 1780915709333,
       "tag": "0001_ancient_prism",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788171757096,
+      "tag": "0002_session_control_and_lock_reason",
+      "breakpoints": true
     }
   ]
 }

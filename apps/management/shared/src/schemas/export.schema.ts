@@ -5,7 +5,8 @@
 import { z } from 'zod';
 
 export const exportQuerySchema = z.object({
-    locationId: z.string().min(1, 'Yerleşke seçimi zorunludur'),
+    // UUID doğrulaması — geçersiz string Postgres'e ulaşıp 22P02 ile 500 üretiyordu
+    locationId: z.string().uuid('Geçersiz yerleşke kimliği'),
     year: z.coerce
         .number({ invalid_type_error: 'Yıl sayısal olmalıdır' })
         .int('Yıl tam sayı olmalıdır')

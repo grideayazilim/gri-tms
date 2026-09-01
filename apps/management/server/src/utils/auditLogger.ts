@@ -252,3 +252,12 @@ export function truncateChanges(items: readonly string[], max = 50): string[] {
   const remaining = items.length - max;
   return [...items.slice(0, max), `... ve ${remaining} kayıt daha`];
 }
+
+/**
+ * KVKK veri minimizasyonu — audit log metadata'sında TC'nin tamamını
+ * saklamaya gerek yok. entityId zaten çalışanın UUID'sini tutuyor.
+ */
+export function maskTcNo(tcNo: string | null | undefined): string | null {
+  if (!tcNo || tcNo.length < 4) return null;
+  return `${tcNo.slice(0, 2)}${'*'.repeat(tcNo.length - 4)}${tcNo.slice(-2)}`;
+}

@@ -8,18 +8,19 @@ import { createAuditLog, buildActor, diffEntity } from '../utils/auditLogger.js'
 import { AUDIT_ACTION, AUDIT_ENTITY_TYPE } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { notFound } from '../utils/AppError.js';
-import { buildPagination } from '../utils/pagination.js';
+import { buildPagination, paginationParams } from '../utils/pagination.js';
 import { announcementRepo } from '../repositories/announcementRepo.js';
 
 // ==================== OKUMA (GET) İŞLEMLERİ ====================
 
 export const getAnnouncements = asyncHandler(async (req: Request, res: Response) => {
-  const pageStr = typeof req.query.page === 'string' ? req.query.page : undefined;
-  const limitStr = typeof req.query.limit === 'string' ? req.query.limit : undefined;
-
-  const page = parseInt(pageStr || '1', 10);
-  const limit = parseInt(limitStr || '20', 10);
-  const offset = (page - 1) * limit;
+  /* paginationParams sayfa/limit değerlerini Math.min/Math.max ile sınırlar;
+     doğrulanmamış parseInt, ?limit=999999 ile sınırsız sorgu ve ?page=abc ile
+     OFFSET NaN → 500 üretir. */
+  const { page, limit, offset } = paginationParams({
+    ...(typeof req.query.page === 'string' ? { page: req.query.page } : {}),
+    ...(typeof req.query.limit === 'string' ? { limit: req.query.limit } : {}),
+  });
 
   // Toplam kayıt sayısını bul (Pagination için)
   const totalRecords = await announcementRepo.getCount(db);

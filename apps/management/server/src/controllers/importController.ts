@@ -2,14 +2,55 @@
    IMPORT CONTROLLER (İÇE AKTARIM KONTROLCÜSÜ)
    Excel'den puantaj verisi veya toplu çalışan listesi içe aktarımını yönetir.
    ======================================================================== */
+import { sql } from 'drizzle-orm';
+
 import { db, withDrizzleTransaction } from '../config/database.js';
 import { createAuditLog, buildActor, truncateChanges } from '../utils/auditLogger.js';
-import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, BulkImportEmployeesType, normalizePhone } from '@timesheet/shared';
+import { AUDIT_ACTION, AUDIT_ENTITY_TYPE, BulkImportEnvelopeType, bulkImportEmployeeSchema, normalizePhone } from '@timesheet/shared';
 import { asyncHandler } from '../middlewares/asyncHandler.js';
 import { conflict } from '../utils/AppError.js';
 import { importRepo } from '../repositories/importRepo.js';
+import logger from '../utils/logger.js';
 
-export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown, BulkImportEmployeesType>(async (req, res) => {
+/* Ham Postgres hata metinleri (kısıt adları, tablo adları) yanıta
+   gitmesin. Yalnızca bizim ürettiğimiz doğrulama mesajları geçer. */
+const SAFE_MESSAGES = new Set([
+  'TC No eksik',
+  'Ad Soyad eksik',
+  'Yerleşke adı eksik',
+  'İşe Giriş tarihi eksik',
+  'IBAN eksik',
+  'Birim adı zorunludur',
+  'Bu TC No zaten sistemde kayıtlı',
+]);
+
+/* Satır doğrulaması controller içinde yapıldığı için Zod mesajları kullanıcıya
+   ulaşmalı. Bunlar bizim yazdığımız sabit metinler; ayrı bir hata tipi olduğu
+   için safeImportMessage onları filtrelemeden geçirir. */
+class RowValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RowValidationError';
+  }
+}
+
+function safeImportMessage(err: unknown): string {
+  if (err instanceof RowValidationError) return err.message;
+  const raw = err instanceof Error ? err.message : String(err);
+  // Yerleşke/birim bulunamadı mesajları tırnakla başlar: 'X' adında ...
+  if (SAFE_MESSAGES.has(raw) || raw.startsWith("'")) return raw;
+  logger.warn('Toplu içe aktarım satır hatası', { error: raw });
+  return 'Kayıt eklenemedi (veri formatı hatalı olabilir)';
+}
+
+/* Doğrulanmamış satırdan görüntülenecek adı çıkarır — satır şemadan geçmemiş
+   olabileceği için tip garantisi yoktur. */
+function rowName(row: unknown): string {
+  const value = (row as { fullName?: unknown } | null)?.fullName;
+  return typeof value === 'string' && value.trim() !== '' ? value.trim() : 'Bilinmiyor';
+}
+
+export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown, BulkImportEnvelopeType>(async (req, res) => {
   const { employees } = req.body;
 
   if (!Array.isArray(employees)) {
@@ -40,18 +81,36 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
   await withDrizzleTransaction(async (tx) => {
     for (const [index, emp] of employees.entries()) {
       const rowNumber = index + 2;
-      const {
-        tcNo,
-        fullName,
-        locationName,
-        unitName,
-        ibanNo,
-        phoneNo,
-        startDate,
-        endDate,
-      } = emp;
+      /* PostgreSQL'de bir statement hata verirse tüm transaction ABORTED olur;
+         hatayı JS tarafında yakalamak bunu değiştirmez. SAVEPOINT her satırı
+         izole eder, böylece tek bozuk satır partinin tamamını götürmez.
+         Savepoint adı index (sayı) ile üretilir, kullanıcı girdisi değildir. */
+      const savepoint = `sp_import_${index}`;
+      // Hata raporunda satır adı görünebilsin diye ham değer (doğrulanmamış)
+      const rawName = rowName(emp);
 
       try {
+        await tx.execute(sql.raw(`SAVEPOINT ${savepoint}`));
+
+        /* Satır doğrulaması artık burada. Rota tüm diziyi tek parça
+           doğruladığı için tek hatalı satır 500 geçerli satırı da 400 ile
+           reddettiriyordu; şimdi hatalı satır rapora yazılır, diğerleri geçer. */
+        const parsed = bulkImportEmployeeSchema.safeParse(emp);
+        if (!parsed.success) {
+          throw new RowValidationError(parsed.error.errors[0]?.message ?? 'Satır doğrulanamadı');
+        }
+
+        const {
+          tcNo,
+          fullName,
+          locationName,
+          unitName,
+          ibanNo,
+          phoneNo,
+          startDate,
+          endDate,
+        } = parsed.data;
+
         if (!tcNo) throw new Error('TC No eksik');
         if (!fullName) throw new Error('Ad Soyad eksik');
         if (!locationName) throw new Error('Yerleşke adı eksik');
@@ -86,16 +145,22 @@ export const bulkImportEmployees = asyncHandler<Record<string, string>, unknown,
           throw conflict('Bu TC No zaten sistemde kayıtlı');
         }
 
+        await tx.execute(sql.raw(`RELEASE SAVEPOINT ${savepoint}`));
+
         results.successes.push({
           row: rowNumber,
           name: fullName,
         });
         results.successCount++;
       } catch (err: unknown) {
+        // Transaction'ı kurtar — bu satır atlanır, diğerleri devam eder
+        await tx.execute(sql.raw(`ROLLBACK TO SAVEPOINT ${savepoint}`));
+        await tx.execute(sql.raw(`RELEASE SAVEPOINT ${savepoint}`));
+
         results.failures.push({
           row: rowNumber,
-          name: fullName || 'Bilinmiyor',
-          error: err instanceof Error ? err.message : String(err),
+          name: rawName,
+          error: safeImportMessage(err),
         });
       }
     }

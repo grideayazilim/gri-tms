@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,7 @@ function SignIn({ onToggle }: SignInProps) {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // React Hook Form Kurulumu: Zod şeması ile validasyon yapılır.
   // hookform/resolvers v5: zodResolver returns Resolver<z.input, any, z.output>.
@@ -45,6 +46,13 @@ function SignIn({ onToggle }: SignInProps) {
   };
 
 
+  /** Yalnızca uygulama içi mutlak yollara izin ver — `//evil.com` ve `http://…` reddedilir. */
+  const isSafeRedirect = (value: string | null): value is string =>
+    typeof value === "string"
+    && value.startsWith("/")
+    && !value.startsWith("//")
+    && !value.includes("\\");
+
   const onSubmitForm = async (data: SignInType) => {
     setGeneralError("");
     setIsLoading(true);
@@ -53,8 +61,16 @@ function SignIn({ onToggle }: SignInProps) {
     const result = await login(data.username, data.password);
 
     if (result.success) {
-      // Giriş başarılıysa ana sayfaya yönlendir
-      navigate("/");
+      /* Bot arayüzü auth arkasında olduğu için oraya gitmek isteyen kullanıcı
+         `/auth?next=/bot/` ile buraya düşer ve girişten sonra oraya dönmelidir.
+         Açık yönlendirmeyi (open redirect) engellemek için yalnızca tek eğik
+         çizgiyle başlayan, şema/host içermeyen yollar kabul edilir. */
+      const next = searchParams.get("next");
+      if (isSafeRedirect(next)) {
+        window.location.assign(next);
+      } else {
+        navigate("/");
+      }
     } else {
       // Hata mesajını (örn: Yanlış şifre) ekranda göster
       setGeneralError(result.error || "Giriş başarısız");

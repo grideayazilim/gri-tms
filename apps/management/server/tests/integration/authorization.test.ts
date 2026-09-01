@@ -172,21 +172,40 @@ describe('Authorization Tests', () => {
 
   // ─── Edge Case'ler (Rate Limit) ─────────────────────────────────────────
   describe("Edge case'ler", () => {
-    it('Rate limit: auth endpoint\'ine 21+ istek → 429', async () => {
-      // Auth limiter: 20 istek / 15 dakika
+    /* IP başına sayaç 20 → LOGIN_IP_RATE_LIMIT_MAX (varsayılan 100) oldu.
+       Okulda tüm bilgisayarlar tek dış IP'nin arkasında olduğu için 20 çok
+       dardı. Brute force'a karşı ASIL koruma kullanıcı adı başına sayaçtır
+       (15 dakikada 10) — değişmedi ve muafiyeti yok. Bu test artık onu
+       sınıyor: aynı kullanıcı adına art arda denemeler. */
+    it('Rate limit: aynı kullanıcı adına 11+ deneme → 429', async () => {
+      const responses: number[] = []
+
+      for (let i = 0; i < 12; i++) {
+        const res = await request(app)
+          .post('/api/auth/login')
+          .set('x-test-rate-limit', 'true')
+          .send({ username: 'ratelimit_hedefi', password: `wrong-${i}` })
+        responses.push(res.status)
+      }
+
+      expect(responses).toContain(429)
+    }, 60000) // Rate limit testi için daha uzun timeout
+
+    /* asıl kabul ölçütü: farklı kullanıcı adlarına yapılan denemeler
+       IP sayacını doldurup masum kullanıcıları kilitlememeli. */
+    it('Farklı kullanıcı adlarına 22 deneme IP sayacını doldurmaz', async () => {
       const responses: number[] = []
 
       for (let i = 0; i < 22; i++) {
         const res = await request(app)
           .post('/api/auth/login')
           .set('x-test-rate-limit', 'true')
-          .send({ username: `ratelimit_${i}`, password: 'wrong' })
+          .send({ username: `ip_sayaci_${i}`, password: 'wrong' })
         responses.push(res.status)
       }
 
-      // En az bir 429 gelmeli
-      expect(responses).toContain(429)
-    }, 60000) // Rate limit testi için daha uzun timeout
+      expect(responses).not.toContain(429)
+    }, 60000)
 
     it('ADMIN token ile RESPONSIBLE endpoint → erişilir', async () => {
       const location = await createLocation()

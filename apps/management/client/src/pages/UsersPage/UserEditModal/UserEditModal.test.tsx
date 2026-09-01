@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { UserListItem } from '@timesheet/shared';
 import UserEditModal from './UserEditModal';
 import { ToastProvider } from '../../../components/ToastBar/ToastContext';
 
@@ -30,19 +31,31 @@ vi.mock('../../../hooks/data/useLocationsAndUnits', () => ({
   }),
 }));
 
-const adminUser = {
+/* Fixture'lar `TestUser` olarak tiplenir; `renderModal`'ın parametresi
+   varsayılan değerden çıkarılırsa `adminUser`'ın literal tipine daralır ve
+   `responsibleUser` geçirilemez. */
+type TestUser = {
+  id: string;
+  username: string;
+  role: 'ADMIN' | 'RESPONSIBLE';
+  isActive: boolean;
+  expiryDate: string | null;
+  unit: { id: number; name: string; location: { id: number; name: string } } | null;
+};
+
+const adminUser: TestUser = {
   id: 'u1',
   username: 'admin_user',
-  role: 'ADMIN' as const,
+  role: 'ADMIN',
   isActive: true,
   expiryDate: null,
   unit: null,
 };
 
-const responsibleUser = {
+const responsibleUser: TestUser = {
   id: 'u2',
   username: 'sorumlu',
-  role: 'RESPONSIBLE' as const,
+  role: 'RESPONSIBLE',
   isActive: true,
   expiryDate: '2025-12-31',
   unit: {
@@ -52,10 +65,10 @@ const responsibleUser = {
   },
 };
 
-function renderModal(user = adminUser, onClose = vi.fn(), onSave = vi.fn()) {
+function renderModal(user: TestUser = adminUser, onClose = vi.fn(), onSave = vi.fn()) {
   return render(
     <ToastProvider>
-      <UserEditModal user={user as any} onClose={onClose} onSave={onSave} />
+      <UserEditModal user={user as unknown as UserListItem} onClose={onClose} onSave={onSave} />
     </ToastProvider>,
   );
 }
@@ -128,6 +141,41 @@ describe('UserEditModal bileşeni', () => {
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({ role: 'ADMIN' }),
+      );
+    });
+  });
+
+  /* Sunucu ADMIN rolündeki kullanıcının geçerlilik tarihini kaydetmez (süresi
+     dolan bir admin sistemi yöneticisiz bırakabilir). Form da aynı kuralı
+     göstermeli, yoksa kullanıcı sessizce çöpe giden bir değer girer. */
+  it('rol ADMIN iken geçerlilik tarihi alanı kapalıdır', () => {
+    renderModal(adminUser);
+    expect(screen.getByLabelText('Geçerlilik Tarihi')).toBeDisabled();
+    expect(screen.getByText(/Yönetici hesaplarına süre verilmez/)).toBeInTheDocument();
+  });
+
+  it('rol SORUMLU iken geçerlilik tarihi alanı açıktır', () => {
+    renderModal(responsibleUser);
+    expect(screen.getByLabelText('Geçerlilik Tarihi')).not.toBeDisabled();
+  });
+
+  it('rol ADMIN yapılınca girilmiş geçerlilik tarihi temizlenir', async () => {
+    const onSave = vi.fn();
+    renderModal(responsibleUser, vi.fn(), onSave);
+
+    const expiryInput = screen.getByLabelText('Geçerlilik Tarihi') as HTMLInputElement;
+    expect(expiryInput.value).toBe('2025-12-31');
+
+    fireEvent.change(screen.getByLabelText('Rol'), { target: { value: 'ADMIN' } });
+
+    await waitFor(() => expect(expiryInput).toBeDisabled());
+    expect(expiryInput.value).toBe('');
+
+    fireEvent.click(screen.getByText('Güncelle'));
+
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ role: 'ADMIN', expiryDate: null }),
       );
     });
   });

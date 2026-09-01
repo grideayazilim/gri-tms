@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { importEmployeeSchema, importFinalizeSchema, bulkImportEmployeesSchema } from '../../src/schemas/import.schema.js'
+import { importEmployeeSchema, importFinalizeSchema, bulkImportEmployeesSchema, bulkImportEnvelopeSchema, bulkImportEmployeeSchema } from '../../src/schemas/import.schema.js'
 
 describe('importEmployeeSchema', () => {
   const validImport = {
@@ -90,9 +90,10 @@ describe('bulkImportEmployeesSchema', () => {
     expect(result.success).toBe(true)
   })
 
-  it('boş employees dizisi kabul edilir', () => {
+  // Boş dizi artık reddedilir — anlamsız istek DB'ye gitmesin
+  it('boş employees dizisi reddeder', () => {
     const result = bulkImportEmployeesSchema.safeParse({ employees: [] })
-    expect(result.success).toBe(true)
+    expect(result.success).toBe(false)
   })
 
   it('tcNo eksikse reddeder', () => {
@@ -100,5 +101,112 @@ describe('bulkImportEmployeesSchema', () => {
       employees: [{ fullName: 'Ahmet', locationName: 'Merkez' }],
     })
     expect(result.success).toBe(false)
+  })
+
+  // 500 kayıt üst sınırı
+  it('500 kayıttan fazlasını reddeder', () => {
+    const employees = Array.from({ length: 501 }, (_, i) => ({
+      tcNo: String(10000000000 + i),
+      fullName: 'Ahmet Yılmaz',
+      locationName: 'Merkez',
+    }))
+    const result = bulkImportEmployeesSchema.safeParse({ employees })
+    expect(result.success).toBe(false)
+  })
+
+  // Bozuk tarih Zod'da yakalanır; Postgres'e ulaşsa tüm transaction'ı ABORT ederdi
+  it('YYYY-MM-DD formatında olmayan startDate reddeder', () => {
+    const result = bulkImportEmployeesSchema.safeParse({
+      employees: [{ tcNo: '12345678901', fullName: 'Ahmet Yılmaz', locationName: 'Merkez', startDate: '01.02.2026' }],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('geçerli ISO tarihleri kabul eder', () => {
+    const result = bulkImportEmployeesSchema.safeParse({
+      employees: [{
+        tcNo: '12345678901', fullName: 'Ahmet Yılmaz', locationName: 'Merkez',
+        startDate: '2026-02-01', endDate: '2026-06-30',
+      }],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  // end_date < start_date DB'de 23514 check violation üretiyordu
+  it('çıkış tarihi giriş tarihinden önceyse reddeder', () => {
+    const result = bulkImportEmployeesSchema.safeParse({
+      employees: [{
+        tcNo: '12345678901', fullName: 'Ahmet Yılmaz', locationName: 'Merkez',
+        startDate: '2026-06-30', endDate: '2026-02-01',
+      }],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('geçersiz IBAN formatını reddeder', () => {
+    const result = bulkImportEmployeesSchema.safeParse({
+      employees: [{ tcNo: '12345678901', fullName: 'Ahmet Yılmaz', locationName: 'Merkez', ibanNo: 'TR123' }],
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('11 haneli olmayan tcNo reddeder', () => {
+    const result = bulkImportEmployeesSchema.safeParse({
+      employees: [{ tcNo: '123', fullName: 'Ahmet Yılmaz', locationName: 'Merkez' }],
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+/* Zarf şeması yalnızca dizi sınırlarını (1-500 satır) kontrol eder. Satır
+   doğrulaması controller'da satır bazlı yapılır ve hatalı satır rapora yazılır;
+   böylece tek geçersiz satır tüm dosyayı reddettirmez. */
+describe('bulkImportEnvelopeSchema', () => {
+  it('boş employees dizisi reddedilir', () => {
+    const result = bulkImportEnvelopeSchema.safeParse({ employees: [] })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toContain('En az bir çalışan')
+  })
+
+  it('500 kayıttan fazlası reddedilir', () => {
+    const employees = Array.from({ length: 501 }, () => ({}))
+    const result = bulkImportEnvelopeSchema.safeParse({ employees })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toContain('en fazla 500')
+  })
+
+  it('500 kayıt tam sınırda geçer', () => {
+    const employees = Array.from({ length: 500 }, () => ({}))
+    expect(bulkImportEnvelopeSchema.safeParse({ employees }).success).toBe(true)
+  })
+
+  it('employees alanı yoksa reddedilir', () => {
+    expect(bulkImportEnvelopeSchema.safeParse({}).success).toBe(false)
+  })
+
+  it('HATALI satır zarfı GEÇER — satır doğrulaması controller\'da yapılır', () => {
+    const result = bulkImportEnvelopeSchema.safeParse({
+      employees: [
+        { tcNo: '12345678901', fullName: 'Ahmet Yılmaz', locationName: 'Merkez' },
+        { tcNo: 'GECERSIZ', fullName: 'Mehmet Demir', locationName: 'Merkez' },
+      ],
+    })
+    expect(result.success).toBe(true)
+
+    // Aynı veri eski (tüm diziyi doğrulayan) şemada tümüyle reddediliyordu
+    expect(bulkImportEmployeesSchema.safeParse({
+      employees: [
+        { tcNo: '12345678901', fullName: 'Ahmet Yılmaz', locationName: 'Merkez' },
+        { tcNo: 'GECERSIZ', fullName: 'Mehmet Demir', locationName: 'Merkez' },
+      ],
+    }).success).toBe(false)
+  })
+
+  it('satır şeması hatalı TC için anlamlı mesaj üretir (rapora yazılan metin)', () => {
+    const result = bulkImportEmployeeSchema.safeParse({
+      tcNo: 'GECERSIZ', fullName: 'Ahmet Yılmaz', locationName: 'Merkez',
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.errors[0]?.message).toBe('TC No 11 haneli rakam olmalıdır')
   })
 })

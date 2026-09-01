@@ -136,21 +136,26 @@ export const timesheetRepo = {
     ));
   },
 
-  /**
-   * Puantaj satırını günceller (updated_at)
-   */
-  async touchTimesheet(executor: DbExecutor, id: string): Promise<void> {
+  /* Puantaj satırlarını tek UPDATE ile günceller. Satır başına ayrı UPDATE,
+     kilitleri istemciden gelen sıraya göre aldığı için eşzamanlı kaydetmelerde
+     deadlock üretiyordu. */
+  async touchTimesheets(executor: DbExecutor, ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
     await executor.update(timesheets)
       .set({ updatedAt: new Date() })
-      .where(eq(timesheets.id, id));
+      .where(inArray(timesheets.id, ids));
   },
 
-  /**
-   * Yeni puantaj satırı ekler
-   */
+  /* Yeni puantaj satırı ekler. Aynı çalışanın ilk puantajını iki kullanıcı aynı
+     anda kaydedebiliyor; ON CONFLICT DO UPDATE çakışmada da satırı döndürdüğü
+     için kaybeden kullanıcının girişi rollback olmuyor. */
   async insertTimesheet(executor: DbExecutor, data: TimesheetInsert): Promise<string> {
     const res = await executor.insert(timesheets)
       .values(data)
+      .onConflictDoUpdate({
+        target: [timesheets.employeeId, timesheets.periodId],
+        set: { updatedAt: new Date() },
+      })
       .returning({ id: timesheets.id });
     return res[0]!.id;
   },

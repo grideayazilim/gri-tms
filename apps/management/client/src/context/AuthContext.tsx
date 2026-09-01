@@ -22,7 +22,11 @@ export interface AuthContextValue {
   register: (payload: SignUpType) => Promise<Result<Record<string, never>>>;
   logout: () => Promise<void>;
   changePassword: (oldPassword: string, newPassword: string) => Promise<Result<Record<string, never>>>;
+  /** Zorunlu ilk şifre değişimi — eski şifre sorulmaz, yeni şifre + tekrarı gönderilir. */
+  changeInitialPassword: (newPassword: string, newPasswordConfirm: string) => Promise<Result<Record<string, never>>>;
   updateProfile: (updatedUser: Partial<AuthUser>) => void;
+  /** Zorunlu şifre değişimi gerekiyor mu? */
+  mustChangePassword: boolean;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -118,12 +122,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  /* Şifre değişimi tamamlanınca sunucu yeni token'lar basar ve bayrağı
+     temizlenmiş kullanıcıyı döner; state'i o yanıttan güncelleriz. */
+  const changeInitialPassword = async (
+    newPassword: string,
+    newPasswordConfirm: string,
+  ): Promise<Result<Record<string, never>>> => {
+    try {
+      const response = await authService.changeInitialPassword(newPassword, newPasswordConfirm);
+      if (!response.success) {
+        return { success: false, error: response.message ?? 'Şifre değiştirilemedi' };
+      }
+      setUser(response.data.user);
+      setIsAuthenticated(true);
+      return { success: true, data: {} };
+    } catch (error: unknown) {
+      const message = getErrorMessage(error, 'Şifre değiştirilemedi');
+      return { success: false, error: message };
+    }
+  };
+
   const updateProfile = (updatedUser: Partial<AuthUser>): void => {
     setUser((prev) => (prev ? { ...prev, ...updatedUser } : null));
   };
 
   const isAdmin = user?.role === USER_ROLE.ADMIN;
   const isResponsible = user?.role === USER_ROLE.RESPONSIBLE;
+  const mustChangePassword = isAuthenticated && user?.mustChangePassword === true;
 
   const value: AuthContextValue = {
     user,
@@ -133,9 +158,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     register,
     logout,
     changePassword,
+    changeInitialPassword,
     updateProfile,
     isAdmin,
     isResponsible,
+    mustChangePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

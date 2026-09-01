@@ -85,3 +85,26 @@ describe('timesheetSaveSchema', () => {
     expect(result.success).toBe(false)
   })
 })
+
+describe('puantaj dizi sınırları', () => {
+  it('200 çalışandan fazlası reddedilir', () => {
+    const timesheets = Array.from({ length: 201 }, (_, i) => ({
+      employeeId: `emp-${i}`,
+      days: [],
+    }))
+    const result = timesheetSaveSchema.safeParse({ periodId: 'p1', timesheets })
+    expect(result.success).toBe(false)
+  })
+
+  it('31 günden fazlası reddedilir', () => {
+    const days = Array.from({ length: 32 }, (_, i) => ({
+      day: `2026-01-${String((i % 28) + 1).padStart(2, '0')}`,
+      markerCode: null,
+    }))
+    const result = timesheetSaveSchema.safeParse({
+      periodId: 'p1',
+      timesheets: [{ employeeId: 'emp-1', days }],
+    })
+    expect(result.success).toBe(false)
+  })
+})

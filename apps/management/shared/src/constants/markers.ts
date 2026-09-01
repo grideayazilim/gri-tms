@@ -3,7 +3,7 @@
    ============================================ */
 
 export const MARKERS = Object.freeze({
-    // #24: Key 'I' (ASCII), code değeri 'İ' (Türkçe büyük İ) — kasıtlı farklılık.
+    // Key 'I' (ASCII), code değeri 'İ' (Türkçe büyük İ) — kasıtlı farklılık.
     // Key: JS property adı (ASCII uyumlu), code: veritabanında ve puantajda kullanılan gerçek değer.
     X:  { code: "X",  label: "Geldi",         isPaid: true  },
     I:  { code: "İ",  label: "İzinli",         isPaid: false },
@@ -16,7 +16,7 @@ export type MarkerCode = typeof MARKERS[keyof typeof MARKERS]['code'];
 
 export const MARKER_LIST = Object.values(MARKERS);
 
-// #23: Set<string> yerine Set<MarkerCode> — .has() çağrısında tip güvenliği sağlanır
+// Set<string> yerine Set<MarkerCode> — .has() çağrısında tip güvenliği sağlanır
 export const PAID_CODES: Set<MarkerCode> = new Set(
     MARKER_LIST.filter(m => m.isPaid).map(m => m.code),
 );

@@ -6,7 +6,7 @@ import {
   getSystemSettings,
   updateSystemSettings,
 } from '../controllers/settingsController.js';
-import { systemReset } from '../controllers/resetController.js';
+import { systemReset, downloadBackup } from '../controllers/resetController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { adminMiddleware } from '../middlewares/adminMiddleware.js';
 import { validate } from '../middlewares/validate.js';
@@ -25,5 +25,8 @@ router.put('/system', authMiddleware, adminMiddleware, validate(systemSettingsSc
 
 // 3. System Reset
 router.post('/reset', authMiddleware, adminMiddleware, validate(systemResetSchema), systemReset);
+
+// Yedek indirme — sıfırlamadan bağımsız, salt-okunur uzun işlem
+router.get('/backup', authMiddleware, adminMiddleware, downloadBackup);
 
 export default router;

@@ -16,7 +16,29 @@ interface UnitListData {
   units: UnitItem[];
 }
 
+/** Kayıt ekranı için asgari veri — programNo ve employeeCount içermez. */
+export interface SignupTreeUnit {
+  id: string;
+  name: string;
+}
+
+export interface SignupTreeLocation {
+  id: string;
+  name: string;
+  units: SignupTreeUnit[];
+}
+
+interface SignupTreeData {
+  locations: SignupTreeLocation[];
+}
+
 // ─── Servis ───────────────────────────────────────────────────────────────────
+
+/* Kayıt (SignUp) ekranı henüz giriş yapmamış kullanıcıya yerleşke/birim
+   seçtiriyor. Eski uçlar programNo (İŞKUR kurum kimliği) ve employeeCount gibi
+   alanları da kimliksiz döndürüyordu; bu uç yalnızca id + ad döndürür. */
+export const getSignupTree = () =>
+  api.get<ApiResponse<SignupTreeData>>('/locationAndUnits/public/signup-tree');
 
 // Tüm yerleşkeleri getir
 export const getLocations = () =>

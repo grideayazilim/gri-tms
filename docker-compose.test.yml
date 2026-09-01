@@ -9,10 +9,12 @@
 #   docker compose -f docker-compose.test.yml down -v       # sıfırla
 # ============================================================================
 
+name: gritms-test
+
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: timesheet_postgres_test
+    container_name: gritms-test-postgres
     restart: unless-stopped
     env_file:
       - ./apps/management/server/.env.test
@@ -21,10 +23,10 @@ services:
     environment:
       - TZ=Europe/Istanbul
     volumes:
-      - postgres_test_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/01-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
     networks:
-      - timesheet_test_net
+      - net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -37,7 +39,8 @@ services:
       dockerfile: apps/management/server/Dockerfile
       args:
         - SKIP_PRUNE=true
-    container_name: timesheet_server_test
+    image: gritms/server:test
+    container_name: gritms-test-server
     restart: unless-stopped
     env_file:
       - ./apps/management/server/.env.test
@@ -47,7 +50,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - timesheet_test_net
+      - net
     logging:
       driver: "json-file"
       options:
@@ -58,14 +61,22 @@ services:
     build:
       context: .
       dockerfile: apps/management/client/Dockerfile
-    container_name: timesheet_client_test
+    image: gritms/client:test
+    container_name: gritms-test-client
     restart: unless-stopped
     ports:
-      - "80:8080"
+      - "80:8080"     # yalnızca HTTPS'e yönlendirme
+      - "443:8443"    # nginx TLS ile çalışır
+    volumes:
+      # Test ortamı için self-signed sertifika üretin:
+      #   mkdir -p docker/nginx/certs && openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
+      #     -keyout docker/nginx/certs/privkey.pem -out docker/nginx/certs/fullchain.pem -subj "/CN=localhost"
+      - ./docker/nginx/certs:/etc/nginx/certs:ro
+      - ./docker/nginx/certbot-www:/var/www/certbot:ro
     depends_on:
       - server
     networks:
-      - timesheet_test_net
+      - net
     logging:
       driver: "json-file"
       options:
@@ -76,10 +87,15 @@ services:
     build:
       context: ./apps/bot/server
       dockerfile: Dockerfile
-    container_name: timesheet_bot_server_test
+    image: gritms/bot-server:test
+    container_name: gritms-test-bot-server
     restart: unless-stopped
+    # Bot, yönetim uygulamasıyla aynı ACCESS_TOKEN_SECRET ile doğrulama yapar
+    env_file:
+      - ./apps/management/server/.env.test
+    shm_size: 512m
     networks:
-      - timesheet_test_net
+      - net
     logging:
       driver: "json-file"
       options:
@@ -90,10 +106,11 @@ services:
     build:
       context: ./apps/bot/client
       dockerfile: Dockerfile
-    container_name: timesheet_bot_client_test
+    image: gritms/bot-client:test
+    container_name: gritms-test-bot-client
     restart: unless-stopped
     networks:
-      - timesheet_test_net
+      - net
     logging:
       driver: "json-file"
       options:
@@ -101,8 +118,8 @@ services:
         max-file: "3"
 
 volumes:
-  postgres_test_data:
+  pgdata:
 
 networks:
-  timesheet_test_net:
+  net:
     driver: bridge

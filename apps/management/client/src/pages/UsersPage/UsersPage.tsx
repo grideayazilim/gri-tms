@@ -10,6 +10,7 @@ import { userFilterConfig } from './userFilters';
 import { useUsers } from '../../hooks/data/useUsers';
 import { useLocationUnitFilter } from '../../hooks/data/useLocationUnitFilter';
 import { useToast } from '../../components/ToastBar/useToast';
+import { useAuth } from '../../context/AuthContext';
 import '../../styles/inputs.scss';
 import type { UserEditType } from '@timesheet/shared';
 import { DEFAULT_PAGINATION } from '../../constants/pagination';
@@ -18,6 +19,7 @@ const PAGE_LIMIT = DEFAULT_PAGINATION.limit;
 
 const UsersPage = () => {
   const { users, pagination, isLoading, fetchUsers, editUser, removeUser } = useUsers();
+  const { user } = useAuth();
 
   const [page, setPage] = useState(1);
 
@@ -114,7 +116,7 @@ const UsersPage = () => {
         onFilterChange={handleFilterChangeAndReset}
       />
       <DynamicTable
-        columns={userColumns(handleEdit, handleDelete)}
+        columns={userColumns(handleEdit, handleDelete, user?.id)}
         data={users}
         loading={isLoading}
         pagination={pagination}

@@ -254,7 +254,11 @@ const BulkImportView = ({ onClose, onBusyChange, onImportSuccess }: BulkImportVi
         onImportSuccess();
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Dosya işlenirken hata oluştu';
+      /* httpClient'ın ApiError'ı bir Error sınıfı olduğu için sunucu mesajı
+         buradan geçer; fallback yalnızca yerel dosya okuma hataları içindir. */
+      const message = err instanceof Error
+        ? err.message
+        : 'Dosya okunamadı. Excel dosyasının bozuk olmadığından emin olun.';
       toast({ type: 'error', message });
       setStatus('idle');
     }
@@ -262,6 +266,8 @@ const BulkImportView = ({ onClose, onBusyChange, onImportSuccess }: BulkImportVi
 
   const resetImport = () => {
     setImportReport(null);
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setStatus('idle');
   };
 
@@ -309,11 +315,11 @@ const BulkImportView = ({ onClose, onBusyChange, onImportSuccess }: BulkImportVi
               <span className="file-name">{selectedFile.name}</span>
               <span className="file-size">{(selectedFile.size / 1024).toFixed(1)} KB</span>
             </div>
-            <p className="file-hint" onClick={() => setSelectedFile(null)}>
-              Bu dosyayı değiştirmek için <u>buraya tıklayın</u>.
-            </p>
             <div className="file-actions">
               <button className="btn btn--secondary" onClick={() => setSelectedFile(null)}>
+                Dosyayı Değiştir
+              </button>
+              <button className="btn btn--secondary" onClick={onClose}>
                 Vazgeç
               </button>
               <button className="btn" onClick={() => void startImport()}>

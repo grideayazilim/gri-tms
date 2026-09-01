@@ -23,6 +23,7 @@ const mockLogin = vi.mocked(authService.login);
 const mockLogout = vi.mocked(authService.logout);
 const mockRegister = vi.mocked(authService.register);
 const mockChangePassword = vi.mocked(authService.changePassword);
+const mockChangeInitialPassword = vi.mocked(authService.changeInitialPassword);
 
 const adminUser = {
   id: 1,
@@ -345,5 +346,77 @@ describe('AuthContext', () => {
     );
 
     expect(screen.getByTestId('child')).toBeInTheDocument();
+  });
+
+  /* Zorunlu şifre değişimi — bayrak ve akış. */
+  describe('mustChangePassword akışı', () => {
+    it('kullanıcı bayrağı true ise mustChangePassword true olur', async () => {
+      mockGetMe.mockResolvedValue({
+        success: true,
+        data: { user: { ...adminUser, mustChangePassword: true } },
+      } as any);
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => expect(result.current.isBooting).toBe(false));
+      expect(result.current.mustChangePassword).toBe(true);
+    });
+
+    it('bayrak yoksa mustChangePassword false olur', async () => {
+      mockGetMe.mockResolvedValue({ success: true, data: { user: adminUser } } as any);
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => expect(result.current.isBooting).toBe(false));
+      expect(result.current.mustChangePassword).toBe(false);
+    });
+
+    it('oturum yoksa mustChangePassword false olur', async () => {
+      mockGetMe.mockResolvedValue({ success: false } as any);
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+
+      await waitFor(() => expect(result.current.isBooting).toBe(false));
+      expect(result.current.mustChangePassword).toBe(false);
+    });
+
+    it('şifre değişimi başarılı olunca bayrak temizlenir', async () => {
+      mockGetMe.mockResolvedValue({
+        success: true,
+        data: { user: { ...adminUser, mustChangePassword: true } },
+      } as any);
+      mockChangeInitialPassword.mockResolvedValue({
+        success: true,
+        data: { user: { ...adminUser, mustChangePassword: false } },
+      } as any);
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+      await waitFor(() => expect(result.current.mustChangePassword).toBe(true));
+
+      await act(async () => {
+        await result.current.changeInitialPassword('Guclu-Sifre-2026', 'Guclu-Sifre-2026');
+      });
+
+      expect(result.current.mustChangePassword).toBe(false);
+    });
+
+    it('sunucu hatası Result.error olarak döner ve bayrak açık kalır', async () => {
+      mockGetMe.mockResolvedValue({
+        success: true,
+        data: { user: { ...adminUser, mustChangePassword: true } },
+      } as any);
+      mockChangeInitialPassword.mockRejectedValue({ message: 'Şifreler eşleşmiyor', status: 400 });
+
+      const { result } = renderHook(() => useAuth(), { wrapper });
+      await waitFor(() => expect(result.current.mustChangePassword).toBe(true));
+
+      let res: { success: boolean; error?: string } | undefined;
+      await act(async () => {
+        res = await result.current.changeInitialPassword('Guclu-Sifre-2026', 'Baska-2026');
+      });
+
+      expect(res?.success).toBe(false);
+      expect(result.current.mustChangePassword).toBe(true);
+    });
   });
 });

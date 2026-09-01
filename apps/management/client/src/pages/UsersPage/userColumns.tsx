@@ -7,7 +7,9 @@ import type { Column } from '../../components/DynamicTable/DynamicTable';
 
 export const userColumns = (
   handleEdit: (id: string) => void,
-  handleDelete: (id: string) => void
+  handleDelete: (id: string) => void,
+  // Oturumdaki kullanıcının kimliği — kendi satırında silme kapatılır
+  currentUserId?: string,
 ): Column<UserListItem>[] => [
   { header: 'Kullanıcı Adı', accessor: 'username' },
   {
@@ -40,6 +42,8 @@ export const userColumns = (
       <ActionButtons
         onEdit={() => handleEdit(row.id)}
         onDelete={() => handleDelete(row.id)}
+        deleteDisabled={row.id === currentUserId}
+        {...(row.id === currentUserId ? { deleteTitle: 'Kendi hesabınızı silemezsiniz' } : {})}
       />
     ),
   },

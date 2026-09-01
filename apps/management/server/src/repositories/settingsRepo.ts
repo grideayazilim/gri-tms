@@ -5,9 +5,10 @@ import { USER_ROLE, USER_STATUS } from '@timesheet/shared';
 
 export const settingsRepo = {
   /**
-   * Bekleyen kullanıcıları listeler
+   * Bekleyen kullanıcıları listeler (üst sınırlı).
+   * Kayıt ucu kötüye kullanılırsa binlerce sahte kayıt tek yanıtta dönmesin.
    */
-  async getPendingUsers(executor: DbExecutor) {
+  async getPendingUsers(executor: DbExecutor, limit = 100) {
     return await executor.select({
       id: users.id,
       username: users.username,
@@ -23,7 +24,8 @@ export const settingsRepo = {
     .leftJoin(locations, eq(users.locationId, locations.id))
     .leftJoin(units, eq(users.unitId, units.id))
     .where(eq(users.status, USER_STATUS.PENDING))
-    .orderBy(desc(users.createdAt));
+    .orderBy(desc(users.createdAt))
+    .limit(limit);
   },
 
   /**
@@ -128,6 +130,10 @@ export const settingsRepo = {
           startDate: data.startDate,
           endDate: data.endDate,
           isDeleted: false,
+          /* Program tarihleri değiştiğinde dönem tazelenir; eski MANUAL
+             damgası üzerinde kalırsa gece cron'u o dönemi bir daha asla
+             açamaz ve sorumlular veri giremez. */
+          lockReason: 'AUTO',
         }
       });
   },

@@ -3,6 +3,7 @@
    Sistem ayarları ve kullanıcı giriş ayarları
    ============================================ */
 import { z } from 'zod';
+import { passwordPolicy } from './auth.schema';
 
 export const loginSettingsSchema = z.object({
     username: z
@@ -11,10 +12,12 @@ export const loginSettingsSchema = z.object({
         .min(1, 'Kullanıcı adı gereklidir')
         .regex(/^\S+$/, 'Kullanıcı adında boşluk olamaz'),
     currentPassword: z.string().optional().or(z.literal('')),
-    // #13: optional + transform — boş string undefined'a çevrilir, or(literal('')) kaldırıldı
+    /* Boş string undefined'a çevrilir. Kural gövdesi ortak passwordPolicy'den
+       gelir (min 10 + "sadece rakam olamaz" + yaygın şifre yasağı); burada ayrı
+       bir kural tanımlanırsa form ile sunucu ayrışır. */
     password: z.preprocess(
         v => (v === '' ? undefined : v),
-        z.string().min(8, 'Yeni şifre en az 8 karakter olmalıdır').optional(),
+        passwordPolicy.optional(),
     ),
 }).superRefine((val, ctx) => {
     // Yeni şifre girilmişse mevcut şifre de zorunludur
@@ -30,17 +33,19 @@ export const loginSettingsSchema = z.object({
 export type LoginSettingsType = z.infer<typeof loginSettingsSchema>;
 
 export const systemSettingsSchema = z.object({
-    // #10: Boş string null'a çevrilir; tip number | null (artık "" yok)
+    /* Boş string null'a çevrilir; tip number | null. `null` (henüz ayarlanmamış)
+       serbesttir, `0` reddedilir — 0 günlük ödenek tüm maaş çıktılarını sessizce
+       0 TL yapar. reset.schema.ts ile hizalıdır. */
     dailyWage: z.preprocess(
         v => (v === '' ? null : v),
-        z.coerce.number().min(0, 'Geçerli bir ödenek giriniz').nullable(),
+        z.coerce.number().nullable().refine(v => v === null || v > 0, 'Günlük ödenek sıfırdan büyük olmalıdır'),
     ),
-    // #10 + #11: Aynı preprocess pattern; .int() eklendi (reset.schema.ts ile tutarlı)
+    // Aynı preprocess pattern; .int() ile reset.schema.ts'e hizalı
     maxWeeklyDays: z.preprocess(
         v => (v === '' ? null : v),
-        z.coerce.number().int().min(0, 'Geçerli bir limit giriniz').nullable(),
+        z.coerce.number().int().nullable().refine(v => v === null || v > 0, 'Haftalık gün sınırı sıfırdan büyük olmalıdır'),
     ),
-    // #12: YYYY-MM-DD format validasyonu eklendi (reset.schema.ts ile tutarlı)
+    // YYYY-MM-DD format doğrulaması (reset.schema.ts ile tutarlı)
     programStartDate: z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, 'Başlangıç tarihi YYYY-MM-DD formatında olmalıdır')

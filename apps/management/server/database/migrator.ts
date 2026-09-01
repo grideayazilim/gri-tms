@@ -30,7 +30,10 @@ const runMigration = async () => {
     console.log('🔒 Şema izinleri ayarlanıyor...');
     const appUser = process.env.DB_APP_USER || 'app_user';
     await migrationPool.query(`GRANT USAGE ON SCHEMA "app" TO "${appUser}"`);
-    await migrationPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA "app" TO "${appUser}"`);
+    /* TRUNCATE'i sistem sıfırlaması kullanıyor. Aynı yetki listesi
+       01-init.sh ve docker-setup.ts içinde de var. */
+    await migrationPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA "app" TO "${appUser}"`);
+    await migrationPool.query(`ALTER DEFAULT PRIVILEGES IN SCHEMA "app" GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE ON TABLES TO "${appUser}"`);
     await migrationPool.query(`GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA "app" TO "${appUser}"`);
     
     console.log('✅ Migrasyonlar başarıyla tamamlandı.');

@@ -13,6 +13,7 @@ import {
   createEmployee,
   createPeriod,
   createSettings,
+  createResponsibleUser,
 } from '../helpers/testDb.js'
 
 // Excel (OOXML) dosyası ZIP formatında başlar: PK\x03\x04
@@ -176,5 +177,69 @@ describe('Export API', () => {
 
 
     })
+  })
+})
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Export uçlarında yetki kontrolü.
+   Bu uçlar TC + IBAN içeren Excel üretir; yalnızca admin erişebilmelidir.
+   ───────────────────────────────────────────────────────────────────────── */
+describe('Export yetkilendirmesi', () => {
+  beforeEach(async () => {
+    await cleanDb()
+  })
+
+  it('RESPONSIBLE kullanıcı kendi yerleşkesini bile dışa aktaramaz → 403', async () => {
+    const location = await createLocation()
+    const unit = await createUnit(location.id)
+    const responsible = await createResponsibleUser(location.id, unit.id)
+
+    const res = await request(app)
+      .get('/api/export/timesheet')
+      .query({ locationId: location.id, year: 2026, month: 3 })
+      .set('Cookie', responsible.cookie)
+
+    expect(res.status).toBe(403)
+  })
+
+  it('RESPONSIBLE kullanıcı BAŞKA yerleşkenin verisini indiremez → 403', async () => {
+    const own = await createLocation()
+    const ownUnit = await createUnit(own.id)
+    const other = await createLocation()
+    const responsible = await createResponsibleUser(own.id, ownUnit.id)
+
+    const res = await request(app)
+      .get('/api/export/timesheet')
+      .query({ locationId: other.id, year: 2026, month: 3 })
+      .set('Cookie', responsible.cookie)
+
+    expect(res.status).toBe(403)
+    // Yanıt gövdesinde Excel/OOXML olmamalı
+    expect(res.headers['content-type']).not.toContain('spreadsheetml')
+  })
+
+  it('RESPONSIBLE kullanıcı bot çıktısını indiremez → 403', async () => {
+    const location = await createLocation()
+    const unit = await createUnit(location.id)
+    const responsible = await createResponsibleUser(location.id, unit.id)
+
+    const res = await request(app)
+      .get('/api/export/bot')
+      .query({ locationId: location.id, year: 2026, month: 3 })
+      .set('Cookie', responsible.cookie)
+
+    expect(res.status).toBe(403)
+  })
+
+  it('ADMIN kullanıcı için export çalışmaya devam eder → 200', async () => {
+    const admin = await createAdminUser()
+    const location = await createLocation()
+
+    const res = await request(app)
+      .get('/api/export/timesheet')
+      .query({ locationId: location.id, year: 2026, month: 3 })
+      .set('Cookie', admin.cookie)
+
+    expect(res.status).toBe(200)
   })
 })

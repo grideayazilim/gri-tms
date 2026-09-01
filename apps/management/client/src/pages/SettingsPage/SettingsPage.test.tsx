@@ -44,9 +44,12 @@ const mockEditProfile = vi.fn();
 const mockApproveUser = vi.fn();
 const mockUpdateSystemSettings = vi.fn();
 const mockResetSystem = vi.fn();
+const mockDownloadBackupZip = vi.fn();
+const mockLogout = vi.fn();
 
 vi.mock('../../api/settingsService', () => ({
-  resetSystem: (...args: any[]) => mockResetSystem(...args)
+  resetSystem: (...args: any[]) => mockResetSystem(...args),
+  downloadBackupZip: (...args: any[]) => mockDownloadBackupZip(...args),
 }));
 
 vi.mock('../../context/AuthContext', () => {
@@ -56,7 +59,7 @@ vi.mock('../../context/AuthContext', () => {
       isAdmin: true, 
       user: stableUser,
       updateProfile: mockUpdateProfile,
-      logout: vi.fn()
+      logout: mockLogout
     }),
   };
 });
@@ -231,9 +234,9 @@ describe('SettingsPage (Yönetim)', () => {
     });
   });
 
-  it('reset form doldurulunca confirm dialog açılmalı', async () => {
-    renderSettingsPage();
-
+  /* Genel "emin misiniz?" onayı yerine SIFIRLA yazma adımı geldi —
+     sistemdeki en yıkıcı işlemde kas hafızasıyla tıklamayı engellemek için. */
+  function fillResetForm() {
     const dailyWageInputs = screen.getAllByLabelText('Günlük Ödenek (₺)');
     fireEvent.change(dailyWageInputs[1]!, { target: { value: '100' } });
 
@@ -242,14 +245,49 @@ describe('SettingsPage (Yönetim)', () => {
 
     fireEvent.change(screen.getByLabelText('Yeni Program Başlangıcı'), { target: { value: '2025-01-01' } });
     fireEvent.change(screen.getByLabelText('Yeni Program Bitişi'), { target: { value: '2025-12-31' } });
+  }
 
-    const resetBtn = screen.getByText('Sistemi Sıfırla');
-    fireEvent.click(resetBtn);
+  /* Sayfadaki tetikleyici düğme de "Sistemi Sıfırla" adını taşıyor; modaldaki
+     en sondaki (aktif) olanı al. */
+  function confirmButton(): HTMLElement {
+    const buttons = screen.getAllByRole('button', { name: 'Sistemi Sıfırla' });
+    return buttons[buttons.length - 1]!;
+  }
 
-    // Confirm dialog açılmalı — "İptal" butonu sadece confirm dialog'da olur
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'İptal' })).toBeInTheDocument();
-    });
+  /** Formu doldurur, onay modalını açar, SIFIRLA yazıp onaylar. */
+  async function fillAndConfirmReset() {
+    fillResetForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Sistemi Sıfırla' }));
+
+    // Onay düğmesi ancak SIFIRLA birebir yazılınca açılır
+    const confirmInput = await screen.findByLabelText(/Onaylamak için/);
+    fireEvent.change(confirmInput, { target: { value: 'SIFIRLA' } });
+    fireEvent.click(confirmButton());
+  }
+
+  it('reset form doldurulunca onay modalı açılmalı ve düğme kapalı gelmeli', async () => {
+    renderSettingsPage();
+
+    fillResetForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Sistemi Sıfırla' }));
+
+    const confirmInput = await screen.findByLabelText(/Onaylamak için/);
+    expect(confirmInput).toBeInTheDocument();
+    expect(confirmButton()).toBeDisabled();
+  });
+
+  it('onay düğmesi yanlış kelime yazılınca da kapalı kalmalı', async () => {
+    renderSettingsPage();
+
+    fillResetForm();
+    fireEvent.click(screen.getByRole('button', { name: 'Sistemi Sıfırla' }));
+
+    const confirmInput = await screen.findByLabelText(/Onaylamak için/);
+    fireEvent.change(confirmInput, { target: { value: 'sifirla' } });
+    expect(confirmButton()).toBeDisabled();
+
+    fireEvent.change(confirmInput, { target: { value: 'SIFIRLA' } });
+    expect(confirmButton()).toBeEnabled();
   });
 
   it('başlangıç tarihi bitiş tarihinden büyük ise hata toast\'ı göstermeli', async () => {
@@ -268,6 +306,124 @@ describe('SettingsPage (Yönetim)', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Bitiş tarihi başlangıç tarihinden sonra olmalıdır.')).toBeInTheDocument();
+    });
+  });
+
+  /* Yedek, sıfırlamadan ayrı bir istekte alınır: tek uzun istekte timeout'a
+     takılan bağlantı sunucudaki silmeyi durdurmazdı. */
+  describe('Yedekli sıfırlama akışı', () => {
+    it('yedekli modda ÖNCE yedek indirilir SONRA sıfırlama yapılır', async () => {
+      mockDownloadBackupZip.mockResolvedValue(new Blob(['zip'], { type: 'application/zip' }));
+      mockResetSystem.mockResolvedValue({ success: true, data: { deleted: { employees: 3, users: 1, periods: 2 } } });
+
+      renderSettingsPage();
+      await fillAndConfirmReset();
+
+      await waitFor(() => expect(mockResetSystem).toHaveBeenCalled());
+      expect(mockDownloadBackupZip).toHaveBeenCalledOnce();
+
+      // Sıfırlama isteği artık backup taşımaz — yedek ayrı uçtan alındı
+      expect(mockResetSystem).toHaveBeenCalledWith(
+        expect.objectContaining({ backup: false }),
+      );
+    });
+
+    it('yedek başarısız olursa sıfırlama HİÇ çalışmaz (veri silinmez)', async () => {
+      mockDownloadBackupZip.mockRejectedValue({ message: 'Yedek alınamadı', status: 500 });
+
+      renderSettingsPage();
+      await fillAndConfirmReset();
+
+      await waitFor(() => expect(mockDownloadBackupZip).toHaveBeenCalled());
+      expect(mockResetSystem).not.toHaveBeenCalled();
+    });
+
+    it('yedeksiz modda yedek ucu hiç çağrılmaz', async () => {
+      mockResetSystem.mockResolvedValue({ success: true, data: { deleted: { employees: 3, users: 1, periods: 2 } } });
+
+      renderSettingsPage();
+      fireEvent.click(screen.getByDisplayValue('without'));
+      await fillAndConfirmReset();
+
+      await waitFor(() => expect(mockResetSystem).toHaveBeenCalled());
+      expect(mockDownloadBackupZip).not.toHaveBeenCalled();
+    });
+  });
+
+  /* Geri dönüşü olmayan bir işlemin sonucu kalıcı ve açık gösterilmeli:
+     yedeğin geçerli olup olmadığı, verilerin silinip silinmediği ve tekrar
+     denemenin güvenli olup olmadığı modalda yazar. */
+  describe('sıfırlama sonucu kalıcı modalda gösterilir', () => {
+    it('başarısızlıkta modal açılır, sunucu mesajını ve güvence metinlerini gösterir', async () => {
+      mockDownloadBackupZip.mockResolvedValue(new Blob(['zip'], { type: 'application/zip' }));
+      mockResetSystem.mockRejectedValue(
+        new (class extends Error { status = 500; })('Veritabanı yetkisi eksik olduğu için işlem yapılamadı.'),
+      );
+
+      renderSettingsPage();
+      await fillAndConfirmReset();
+
+      expect(await screen.findByText('Sistem sıfırlanamadı')).toBeInTheDocument();
+      // 1) Sunucunun mesajı birebir
+      expect(screen.getByText('Veritabanı yetkisi eksik olduğu için işlem yapılamadı.')).toBeInTheDocument();
+      // 2) Veriler yerinde (silme tek transaction, hata durumunda tamamı geri alınır)
+      expect(screen.getByText('Verileriniz yerinde.')).toBeInTheDocument();
+      // 3) Yedek alındıysa tekrar almaya gerek yok
+      expect(screen.getByText(/İndirdiğiniz yedek geçerlidir/)).toBeInTheDocument();
+      // 4) Tekrar denemek güvenli
+      expect(screen.getByText(/güvenle tekrar deneyebilirsiniz/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Hata detayını kopyala/ })).toBeInTheDocument();
+    });
+
+    it('hata modalı kendiliğinden kapanmaz', async () => {
+      mockResetSystem.mockRejectedValue(new Error('Sunucu hatası'));
+
+      renderSettingsPage();
+      fireEvent.click(screen.getByDisplayValue('without'));
+      await fillAndConfirmReset();
+
+      expect(await screen.findByText('Sistem sıfırlanamadı')).toBeInTheDocument();
+
+      // Toast'ların kaybolduğu süreden uzun bir bekleyişten sonra hâlâ açık olmalı
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      expect(screen.getByText('Sistem sıfırlanamadı')).toBeInTheDocument();
+
+      // Kullanıcı kapatana kadar oturum da kapanmaz
+      expect(mockLogout).not.toHaveBeenCalled();
+    });
+
+    it('yedek ALINMADIYSA yedek cümlesi gösterilmez', async () => {
+      mockResetSystem.mockRejectedValue(new Error('Sunucu hatası'));
+
+      renderSettingsPage();
+      fireEvent.click(screen.getByDisplayValue('without'));
+      await fillAndConfirmReset();
+
+      expect(await screen.findByText('Sistem sıfırlanamadı')).toBeInTheDocument();
+      expect(screen.queryByText(/İndirdiğiniz yedek geçerlidir/)).not.toBeInTheDocument();
+    });
+
+    it('başarıda silinen sayıları gösterir ve logout yalnızca "Tamam" sonrası çalışır', async () => {
+      mockResetSystem.mockResolvedValue({
+        success: true,
+        data: { deleted: { employees: 1012, users: 68, periods: 12 } },
+      });
+
+      renderSettingsPage();
+      fireEvent.click(screen.getByDisplayValue('without'));
+      await fillAndConfirmReset();
+
+      expect(await screen.findByText('Sistem sıfırlandı')).toBeInTheDocument();
+      expect(screen.getByText('1012 çalışan silindi')).toBeInTheDocument();
+      expect(screen.getByText('68 kullanıcı silindi')).toBeInTheDocument();
+      expect(screen.getByText('12 dönem silindi')).toBeInTheDocument();
+      expect(screen.getByText(/oturumunuz kapatılacak/)).toBeInTheDocument();
+
+      // Çıkış otomatik değil: kullanıcı modalı okuyup "Tamam"a basmalı
+      expect(mockLogout).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Tamam' }));
+      await waitFor(() => expect(mockLogout).toHaveBeenCalled());
     });
   });
 });

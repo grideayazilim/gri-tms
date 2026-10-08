@@ -51,8 +51,8 @@ if [ "$DAYS_LEFT" -lt 0 ]; then
   exit 1
 elif [ "$DAYS_LEFT" -lt "$WARN_DAYS" ]; then
   echo "$LOG_PREFIX ⚠️  UYARI: Sertifikanın bitmesine $DAYS_LEFT gün kaldı ($END_DATE_RAW)." >&2
-  echo "$LOG_PREFIX     Let's Encrypt: certbot servisinin çalıştığını doğrulayın." >&2
-  echo "$LOG_PREFIX     Kurumsal iç CA: yeni sertifika için bilgi işlemle iletişime geçin." >&2
+  echo "$LOG_PREFIX     Kurumsal sertifika: yenileme icin Bilgi Islem ile iletisime gecin." >&2
+  echo "$LOG_PREFIX     Kendinden imzali: CERT.md Senaryo B komutu tekrarlanir." >&2
   exit 1
 else
   echo "$LOG_PREFIX ✅ Sertifika geçerli, $DAYS_LEFT gün kaldı ($END_DATE_RAW)."

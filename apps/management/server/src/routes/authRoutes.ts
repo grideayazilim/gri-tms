@@ -10,7 +10,7 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import type { Request } from 'express';
 
-import { register, login, refresh, logout, getMe, changeInitialPassword, verifySession } from '../controllers/authController.js';
+import { register, login, refresh, logout, getMe, changeInitialPassword, verifySession, verifySessionUser } from '../controllers/authController.js';
 import { authMiddleware } from '../middlewares/authMiddleware.js';
 import { validate } from '../middlewares/validate.js';
 import { signInSchema, signUpSchema, initialPasswordSchema } from '@timesheet/shared';
@@ -115,5 +115,8 @@ router.post('/change-initial-password', authMiddleware, validate(initialPassword
 
 // nginx auth_request bu ucu çağırır; bot arayüzü/API'si buradan korunur
 router.get('/verify', authMiddleware, verifySession);
+
+// Video rehberleri için: yalnızca oturum kontrolü, rol şartı yok
+router.get('/verify-user', authMiddleware, verifySessionUser);
 
 export default router;

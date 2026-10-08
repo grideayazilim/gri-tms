@@ -134,7 +134,7 @@ npm run db:seed
 
 ### 🌐 2. Canlıya Alma
 
-Sunucu ortamlarında tüm servisler (Backend, Frontend, Veritabanı, Nginx proxy) Docker container'ı içinde izole şekilde çalıştırılmaktadır. 
+Sunucu ortamlarında tüm servisler (Backend, Frontend, Veritabanı, Nginx proxy) Docker container'ı içinde izole şekilde çalıştırılmaktadır.
 
 #### 📋 Gereksinimler
 * **Docker:** v24+ & **Docker Compose:** v2+
@@ -146,86 +146,78 @@ Sunucu ortamlarında tüm servisler (Backend, Frontend, Veritabanı, Nginx proxy
 git clone https://github.com/grideayazilim/gri-tms.git
 cd gri-tms
 
-# 2. Üretim ortam değişkenlerini kopyalayın ve şifreleri düzenleyin (nano/vim ile)
+# 2. Şifreleri ve anahtarları üretin, çıktıları bir kenara not alın
+openssl rand -hex 24   # 1) POSTGRES_PASSWORD / DB_SUPER_PASSWORD (aynı değer)
+openssl rand -hex 24   # 2) DB_APP_PASSWORD
+openssl rand -hex 24   # 3) DB_MIGRATION_PASSWORD
+openssl rand -hex 64   # 4) ACCESS_TOKEN_SECRET
+openssl rand -hex 64   # 5) REFRESH_TOKEN_SECRET  (4'ten farklı olmalı)
+openssl rand -hex 12   # 6) SEED_ADMIN_PASSWORD
+
+# 3. Üretim ortam değişkenlerini kopyalayın ve doldurun (aşağıdaki tabloya bakın)
 cp apps/management/server/.env.prod.example apps/management/server/.env.prod
 nano apps/management/server/.env.prod
 
-# 2b. Bot'un kendi ayar dosyası — origin ve süre sınırları burada.
+# 3b. Bot'un kendi ayar dosyası — origin ve süre sınırları burada.
 #     Oluşturulmazsa koddaki varsayılanlarla çalışır.
 cp apps/bot/server/.env.prod.example apps/bot/server/.env.prod
 nano apps/bot/server/.env.prod
 
-# 3. TLS sertifikalarını yerleştirin
-#    Kurumsal iç CA'dan veya Let's Encrypt'ten alınan dosyalar:
+# 3c. Dosya okunabiliyor mu — hata vermeden geçmeli
+docker compose -f docker-compose.prod.yml config > /dev/null && echo "DOSYA TAMAM"
+
+# 4. TLS sertifikasını yerleştirin.
+#    ┌──────────────────────────────────────────────────────────────────────┐
+#    │ DUR. Elinizde fullchain.pem + privkey.pem yoksa buradan devam        │
+#    │ etmeyin — nginx bu iki dosya olmadan BAŞLAMAZ, sistem hiç açılmaz.   │
+#    │ Önce CERT.md'ye gidin, sertifikayı üretin veya temin edin, dönün.    │
+#    │ Kurumsal sertifikayı beklemeyin: kendinden imzalıyla başlanır,       │
+#    │ sertifika gelince iki dosya değiştirilir (yine CERT.md).             │
+#    └──────────────────────────────────────────────────────────────────────┘
 mkdir -p docker/nginx/certs docker/nginx/certbot-www
 cp /yol/fullchain.pem docker/nginx/certs/fullchain.pem
 cp /yol/privkey.pem   docker/nginx/certs/privkey.pem
 
-# 4. Docker ile tüm sistemi arka planda build edip başlatın
-#    Let's Encrypt kullanıyorsanız certbot profilini de açın:
-#    docker compose -f docker-compose.prod.yml --profile letsencrypt up -d --build
+# 4b. İki dosya da yerinde mi — boş çıktı veya "No such file" görürseniz durun
+ls -l docker/nginx/certs/fullchain.pem docker/nginx/certs/privkey.pem
+
+# 5. Docker ile tüm sistemi arka planda build edip başlatın (ilk build 5-15 dk)
 docker compose -f docker-compose.prod.yml up -d --build
 
-# 5. İlk kurulumda admin kullanıcısı ve sistem ayarlarını yükleyin
+# 6. Beş servis de ayakta mı: postgres, server, client, bot-server, bot-client
+docker compose -f docker-compose.prod.yml ps
+
+# 7. İlk kurulumda admin kullanıcısı ve sistem ayarlarını yükleyin (bir kez)
 docker compose -f docker-compose.prod.yml exec server node dist/database/seeder.js
 ```
 * **Prod Ortamında Uygulama Arayüzü:** `https://<SUNUCU_ADRESI>` (80 portu yalnızca HTTPS'e yönlendirir)
+* **İlk giriş:** `admin` / 2. adımda ürettiğiniz `SEED_ADMIN_PASSWORD` — ilk girişte şifre değişimi zorunludur.
 
-> 🤖 **Bot ayarları `apps/bot/server/.env.prod` dosyasına yazılır.** Süre
-> sınırları (`BOT_*_MINUTES`) ve `ALLOWED_ORIGIN` oradan okunur; yönetim
-> sunucusunun `.env.prod`'una yazılan bot ayarları **etkisiz kalır**. Bot o
-> dosyadan yalnızca `ACCESS_TOKEN_SECRET`'ı alır — token'ı yönetim
-> uygulamasıyla aynı anahtarla doğrulamak zorunda.
+#### ⚙️ `.env.prod` içinde doldurulacaklar
 
-> ⚠️ **HTTPS hazır değilse:** `nginx/nginx.conf` içindeki HTTPS bloğunu geçici
-> olarak HTTP'ye çevirin **ve** `.env.prod` içinde `COOKIE_SECURE=false` yapın.
-> Aksi halde tarayıcı oturum cookie'sini kaydetmez ve hiç kimse giriş yapamaz.
+| Değişken | Ne yazılacak |
+|---|---|
+| `POSTGRES_PASSWORD` / `DB_SUPER_PASSWORD` | 1. değer (ikisi aynı) |
+| `DB_APP_PASSWORD` / `DB_MIGRATION_PASSWORD` | 2. ve 3. değer |
+| `DATABASE_URL` / `MIGRATION_DATABASE_URL` | **URL'lerin içindeki şifreleri de** 2. ve 3. değerle değiştirin |
+| `ACCESS_TOKEN_SECRET` / `REFRESH_TOKEN_SECRET` | 4. ve 5. değer |
+| `SEED_ADMIN_PASSWORD` | 6. değer |
+| `COOKIE_SECURE` | `true` |
+| `FRONTEND_URL` | `https://<SUNUCU_ADRESI>` — adres çubuğundakiyle birebir aynı, sonunda `/` yok |
+| `ALLOW_SELF_REGISTRATION` | `false` (örnek dosyada `true` gelir) |
 
-#### 🔐 Sertifika yenilemesi
+Bot dosyasında değiştirilecek tek satır: `ALLOWED_ORIGIN=https://<SUNUCU_ADRESI>`.
 
-Sertifika yenilenmezse sistem **tamamen erişilemez** hale gelir. Hangi yolu
-kullandığınıza göre:
-
-* **Let's Encrypt (public domain):** `--profile letsencrypt` ile başlatın.
-  `certbot` servisi 12 saatte bir yenileme dener, `client` servisi 6 saatte bir
-  `nginx -s reload` yapar (nginx yenilenen sertifikayı kendiliğinden okumaz).
-
-  > ⚠️ `certbot renew` **yalnızca daha önce alınmış** bir sertifikayı yeniler.
-  > İlk sertifikayı bir kez elle alın:
-  > ```bash
-  > docker compose -f docker-compose.prod.yml --profile letsencrypt run --rm \
-  >   --entrypoint certbot certbot certonly --webroot -w /var/www/certbot \
-  >   -d <alan.adiniz> --agree-tos -m <eposta> --no-eff-email
-  > ```
-  > certbot dosyaları `docker/nginx/certs/live/<alan.adiniz>/` altına yazar;
-  > nginx ise `docker/nginx/certs/fullchain.pem` + `privkey.pem` yollarını okur.
-  > İkisini bir kez bağlayın, yoksa yenilenen sertifika nginx'e hiç ulaşmaz:
-  > ```bash
-  > ln -sf live/<alan.adiniz>/fullchain.pem docker/nginx/certs/fullchain.pem
-  > ln -sf live/<alan.adiniz>/privkey.pem   docker/nginx/certs/privkey.pem
-  > ```
-* **Kurumsal iç CA:** Otomatik yenileme genelde mümkün değildir. Bitiş tarihini
-  bugün öğrenin ve 30 gün öncesine takvim hatırlatıcısı koyun:
-  ```bash
-  openssl x509 -enddate -noout -in docker/nginx/certs/fullchain.pem
-  ```
-  Ayrıca kontrol scriptini gece cron'una ekleyin — 30 günden az kalınca log'a
-  uyarı yazar:
-  ```bash
-  0 8 * * * /path/to/project/docker/backup/check-cert.sh >> /var/log/timesheet-cert.log 2>&1
-  ```
-
-> 💡 **Prod Ortamı Yönetim Komutları:**
-> * Komutlardaki `<DOSYA>` alanına `docker-compose.prod.yml` yazın.
-> * Servis durumunu kontrol etme: `docker compose -f <DOSYA> ps`
-> * Canlı log izleme: `docker compose -f <DOSYA> logs -f server`
-> * Kod güncelleme ve yeniden deploy etme: `git pull && docker compose -f <DOSYA> up -d --build`
+> 🔐 **Sertifikayla ilgili her şey [CERT.md](CERT.md)'de** — temin, kurulum,
+> değiştirme, yenileme ve sorun giderme. Sertifika yenilenmediğinde sistem
+> tamamen erişilemez hale gelir; bitiş tarihinin takvime işlenmesi ve Bilgi
+> İşlem'in izleme sistemine eklenmesi için [CERT.md → Yenileme](CERT.md#yenileme).
 
 ---
 
 ### 💾 3. Otomatik Yedekleme ve Geri Yükleme (Backup & Restore)
 
-Verilerin güvenliği için günlük otomatik yedekleme mekanizması kuruludur. Yedek dosyaları sunucuda `/var/backups/timesheet` dizininde saklanır.
+Verilerin güvenliği için günlük otomatik yedekleme mekanizması kuruludur. Yedek dosyaları sunucuda `/var/backups/timesheet` dizininde saklanır ve 30 gün tutulur.
 
 ```bash
 # 1. Script'lere çalıştırma izni verin ve yedek dizinini oluşturun
@@ -248,14 +240,15 @@ mkdir -p /var/backups/timesheet
 # 5. Yedeği geri yüklemek isterseniz:
 ./docker/backup/restore.sh timesheet_2026-05-23_03-00.sql.gz
 ```
+
 ---
 
 ## 🔌 Portlar Özet Tablosu
 
 | Modül / Servis | Yerel (Dev) Ortamı | Production Ortamı |
 |---|---|---|
-| **Yönetim Paneli (Client)** | `localhost:5173` | `localhost:80` (Nginx Proxy) |
+| **Yönetim Paneli (Client / Nginx)** | `localhost:5173` | `:443` — asıl trafik (`:80` yalnızca HTTPS'e yönlendirir) |
 | **Yönetim API (Server)** | `localhost:3000` | Nginx Proxy → İç ağda `:3000` |
-| **Bot Arayüzü (Client)** | `localhost:3005` | Nginx Proxy → İç ağda `:80` |
-| **Bot Servisi (Server)** | `localhost:3001` | Nginx Proxy → İç ağda `:3001` |
+| **Bot Arayüzü (Client)** | `localhost:3005` | Nginx Proxy `/bot/` → İç ağda `:8080` |
+| **Bot Servisi (Server)** | `localhost:3001` | Nginx Proxy `/bot-api/` → İç ağda `:3001` |
 | **Veritabanı (PostgreSQL)** | `localhost:5432` | Sadece Docker iç ağında `:5432` |

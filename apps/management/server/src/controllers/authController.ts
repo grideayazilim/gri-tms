@@ -420,3 +420,15 @@ export const verifySession = asyncHandler(async (req, res) => {
   res.setHeader('X-Auth-User-Id', user.id);
   res.status(204).end();
 });
+
+/* Aynı iş, rol kontrolü olmadan: video rehberleri giriş yapmış HERKESE açık.
+   verifySession admin olmayana 403 döndüğü için birim sorumluları rehberleri
+   izleyemiyordu; nginx onları ana sayfaya atıyordu. */
+export const verifySessionUser = asyncHandler(async (req, res) => {
+  const user = req.user!;
+
+  res.setHeader('X-Auth-User', encodeURIComponent(user.username));
+  res.setHeader('X-Auth-Role', user.role);
+  res.setHeader('X-Auth-User-Id', user.id);
+  res.status(204).end();
+});

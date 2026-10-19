@@ -72,6 +72,31 @@
       color: var(--brand-color);
       font-weight: var(--font-weight-bold);
     }
+
+    // Logo varken kapalı navbarda sadece logo görünür, 'griTMS' 'gri' gibi gizlenir
+    &--logo {
+      align-items: center;
+      transform: none;
+
+      // Kutu genişliği link butonuyla aynı (ikon + iki yan padding), logo ikonlarla hizalı kalır
+      .logo {
+        flex-shrink: 0;
+        width: calc(20px + 2 * var(--space-sm));
+        height: 32px;
+        object-fit: contain;
+      }
+
+      .prefix {
+        margin-left: 0;
+      }
+
+      .colored {
+        opacity: 0;
+        max-width: 0;
+        overflow: hidden;
+        transition: 0.4s;
+      }
+    }
   }
 
   // Telefon ekranında management route'larını yönetme butonu
@@ -147,6 +172,18 @@
       // 'gri' yazısını göster
       .nav__title {
         .prefix {
+          max-width: 150px;
+          opacity: 1;
+        }
+      }
+
+      // Logo varken 'gri' ile birlikte 'TMS' de logonun sağında açılır
+      .nav__title--logo {
+        .prefix {
+          margin-left: 10px;
+        }
+
+        .colored {
           max-width: 150px;
           opacity: 1;
         }

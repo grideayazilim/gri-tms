@@ -15,6 +15,14 @@ import { motion } from "framer-motion";
 import { managementRoutes, settingsRoute } from "../../routes";
 import "./Navbar.scss";
 
+// Bu klasörde logo.png varsa başlıkta logo gösterilir, yoksa sadece yazı.
+// Build anında çözülür; dosya yoksa glob boş döner ve runtime'da 404 oluşmaz.
+const logoModules = import.meta.glob<string>("./logo.png", {
+  eager: true,
+  import: "default",
+});
+const logoUrl: string | undefined = Object.values(logoModules)[0];
+
 function Navbar() {
   // ========== HOOK TANIMLARI
   const { isPhone, isTablet, isDesktop } = useBreakpoint();
@@ -180,7 +188,11 @@ function Navbar() {
       <div className="nav__bg"></div>
       {/* Nav management kısmı (üst kısım) */}
       <div className="nav__management">
-        <div className="nav__title" onClick={() => navigate("/")}>
+        <div
+          className={`nav__title ${logoUrl ? "nav__title--logo" : ""}`}
+          onClick={() => navigate("/")}
+        >
+          {logoUrl && <img className="logo" src={logoUrl} alt="griTMS" />}
           <div className="prefix">gri</div>
           <div className="colored">TMS</div>
         </div>

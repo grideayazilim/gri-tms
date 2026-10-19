@@ -106,10 +106,6 @@ const TimesheetPage = () => {
 
   // ── Dönem kilit durumu (ADMIN tarafından toggle edilir) ─────────────────
   const [periodIsLocked, setPeriodIsLocked] = useState(false);
-  /* Kilidi kim koydu. MANUAL kilitleri gece cron'u AÇMAZ; admin elle
-     açmazsa dönem kapalı kalır ve sorumlular veri giremez. Bu yüzden kilidin
-     kaynağı ekranda açıkça yazılmalı. */
-  const [periodLockReason, setPeriodLockReason] = useState<'AUTO' | 'MANUAL' | undefined>(undefined);
 
   // ── Dönem listesi ──────────────────────────────────────
   useEffect(() => {
@@ -216,18 +212,13 @@ const TimesheetPage = () => {
   // React 18 batching → tek effect çalışması → tek fetch, çift istek yok.
   useEffect(() => {
     if (!apiParams.month) return;
+    // Yanıt gelene (veya istek düşene) kadar önceki dönemin kilidi görünmesin
+    const periodLocked = periodsRef.current.find((p) => p.value === apiParams.month)?.isLocked ?? false;
+    setPeriodIsLocked(periodLocked);
     fetchTimesheets({ ...apiParams, page, limit: PAGE_LIMIT }).then((result) => {
       if (result.success && result.data?.rows) {
         setOriginalSnapshot(structuredClone(result.data.rows));
-        const locked =
-          result.data.rows[0]?.isLocked ??
-          periodsRef.current.find((p) => p.value === apiParams.month)?.isLocked ??
-          false;
-        setPeriodIsLocked(locked);
-        setPeriodLockReason(
-          result.data.rows[0]?.lockReason ??
-          periodsRef.current.find((p) => p.value === apiParams.month)?.lockReason,
-        );
+        setPeriodIsLocked(result.data.rows[0]?.isLocked ?? periodLocked);
       }
     }).catch(() => {});
   }, [fetchTimesheets, apiParams, page]);
@@ -364,7 +355,6 @@ const TimesheetPage = () => {
     if (result.success) {
       const newState = result.data.period.isLocked;
       setPeriodIsLocked(newState);
-      setPeriodLockReason(newState ? 'MANUAL' : 'AUTO');
       setTimesheets((prev) => prev.map((r) => ({ ...r, isLocked: newState })));
       toast({
         type: "success",
@@ -505,18 +495,6 @@ const TimesheetPage = () => {
             />
             <span>{isLocking ? "İşleniyor..." : "Veri Girişini Kilitle"}</span>
           </label>
-          {/* Manuel kilit otomatik açılmaz — admin bunu bilmeli */}
-          {periodIsLocked && periodLockReason === 'MANUAL' && (
-            <p className="ts-lock-row__hint">
-              Bu dönem <strong>yönetici tarafından elle</strong> kilitlendi. Otomatik olarak
-              açılmaz; veri girişine izin vermek için bu kutunun işaretini kaldırın.
-            </p>
-          )}
-          {periodIsLocked && periodLockReason !== 'MANUAL' && (
-            <p className="ts-lock-row__hint">
-              Bu dönem <strong>program takvimine göre otomatik</strong> kilitlendi.
-            </p>
-          )}
         </div>
       )}
 

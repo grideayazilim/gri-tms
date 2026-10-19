@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-import type { MarkerCode, PaginationMeta, PeriodItem, Result, TimesheetListItem, PeriodLockReason } from '@timesheet/shared';
+import type { MarkerCode, PaginationMeta, PeriodItem, Result, TimesheetListItem } from '@timesheet/shared';
 
 import { timesheetService } from '../../api';
 import { TURKISH_MONTHS_UPPER } from '../../utils/dateUtils';
@@ -18,8 +18,6 @@ export interface UIPeriod {
   startDate: string;
   endDate: string;
   isLocked: boolean;
-  /** MANUAL kilitleri gece cron'u açmaz — kullanıcıya bunu göstermeliyiz. */
-  lockReason?: PeriodLockReason;
   id: string;
 }
 
@@ -35,7 +33,6 @@ export interface TimesheetUIRow {
   locationId: string | null;
   periodId: string;
   isLocked: boolean;
-  lockReason?: PeriodLockReason;
   timesheet_days: Record<string, MarkerCode>;
   workDaysCount?: number;
 }
@@ -67,7 +64,6 @@ const mapPeriod = (p: PeriodItem): UIPeriod => ({
   startDate: p.startDate,
   endDate: p.endDate,
   isLocked: p.isLocked,
-  ...(p.lockReason ? { lockReason: p.lockReason } : {}),
 });
 
 // API'den gelen iç içe geçmiş (nested) puantaj verisini UI tablosunun hızlıca
@@ -95,7 +91,6 @@ const mapTimesheetToUI = (ts: TimesheetListItem): TimesheetUIRow => {
     periodId: ts.timesheet.periodId,
     // API tarafındaki Period join'e bağlı isLocked alanının güvenli erişimi
     isLocked: ts.period?.isLocked ?? false,
-    ...(ts.period?.lockReason ? { lockReason: ts.period.lockReason } : {}),
     timesheet_days,
     // totalWorkDays varsa ekle
     ...(ts.totalWorkDays !== undefined ? { workDaysCount: ts.totalWorkDays } : {}),
@@ -220,6 +215,11 @@ export const useTimesheets = (): UseTimesheetsReturn => {
     try {
       const response = await timesheetService.toggleLockPeriod(periodId);
       if (response.success) {
+         /* Dönem listesindeki isLocked da güncellenmeli. Sayfa, puantaj satırı
+            gelmeyen dönemlerde kilidi bu listeden okuyor; liste eski kalırsa
+            başka döneme gidip dönünce kutu eski durumunu gösteriyordu. */
+         const { isLocked } = response.data.period;
+         setPeriods((prev) => prev.map((p) => (p.id === periodId ? { ...p, isLocked } : p)));
          return { success: true, data: response.data };
       } else {
          return { success: false, error: response.message };

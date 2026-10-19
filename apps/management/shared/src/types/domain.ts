@@ -93,7 +93,7 @@ export interface TimesheetListItem {
   >;
   unit: { id: string; name: string } | null;
   location: { id: string; name: string } | null;
-  period?: { isLocked: boolean; lockReason?: PeriodLockReason };
+  period?: { isLocked: boolean };
   totalWorkDays?: number;
   timesheet: {
     id: string | null;
@@ -102,9 +102,6 @@ export interface TimesheetListItem {
   };
 }
 
-/** Kilidi kim koydu — AUTO (gece cron'u) veya MANUAL (yönetici). */
-export type PeriodLockReason = 'AUTO' | 'MANUAL';
-
 export interface PeriodItem {
   id: string;
   year: number;
@@ -112,8 +109,6 @@ export interface PeriodItem {
   startDate: string;
   endDate: string;
   isLocked: boolean;
-  /** MANUAL kilitleri gece cron'u açmaz; arayüz bunu göstermelidir. */
-  lockReason?: PeriodLockReason;
   isDeleted: boolean;
   createdAt: string;
 }

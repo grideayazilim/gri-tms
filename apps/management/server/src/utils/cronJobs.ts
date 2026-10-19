@@ -64,8 +64,7 @@ export async function runNightlyMaintenance(): Promise<void> {
             }
 
             const lockedPeriods = await tx.update(periods)
-                // Otomatik kilit AUTO olarak işaretlenir
-                .set({ isLocked: true, lockReason: 'AUTO' })
+                .set({ isLocked: true })
                 .where(and(
                     eq(periods.isLocked, false),
                     sql`${todayStr}::date >= (${periods.endDate}::date + INTERVAL '5 days')::DATE`,
@@ -91,14 +90,13 @@ export async function runNightlyMaintenance(): Promise<void> {
             }
 
             /* Yeni aya geçildiğinde veya dönemin süresi başladığında kilidi
-               otomatik aç. Yalnızca AUTO kilitler açılır; admin'in "Veri Girişini
-               Kilitle" ile koyduğu MANUAL kilide dokunulmaz. */
+               otomatik aç. Admin'in "Veri Girişini Kilitle" ile koyduğu kilit de
+               dahil; dönem penceresi içindeki her kilit gece açılır. */
             const unlockedPeriods = await tx.update(periods)
-                .set({ isLocked: false, lockReason: 'AUTO' })
+                .set({ isLocked: false })
                 .where(and(
                     eq(periods.isLocked, true),
                     eq(periods.isDeleted, false),
-                    eq(periods.lockReason, 'AUTO'),
                     sql`${todayStr}::date >= ${periods.startDate}::date`,
                     sql`${todayStr}::date < (${periods.endDate}::date + INTERVAL '5 days')::DATE`,
                 ))

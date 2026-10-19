@@ -218,6 +218,38 @@ describe('useTimesheets hook', () => {
       expect(result.current.isLocking).toBe(false);
     });
 
+    /* Sayfa, satırı olmayan dönemlerde kilidi periods listesinden okuyor.
+       Liste güncellenmezse başka döneme gidip dönünce kutu eski durumda kalıyordu. */
+    it('başarılı kilitlemeden sonra periods listesindeki isLocked da güncellenmeli', async () => {
+      server.use(
+        http.get('*/api/timesheets/periods', () => HttpResponse.json({
+          success: true,
+          data: {
+            periods: [
+              { id: 'p-1', year: 2026, month: 5, startDate: '2026-05-01', endDate: '2026-05-31', isLocked: false },
+              { id: 'p-2', year: 2026, month: 6, startDate: '2026-06-01', endDate: '2026-06-30', isLocked: false },
+            ]
+          }
+        })),
+        http.patch('*/api/timesheets/p-1/lock', () => HttpResponse.json({
+          success: true,
+          data: { period: { id: 'p-1', isLocked: true } }
+        }))
+      );
+
+      const { result } = renderHook(() => useTimesheets());
+
+      await act(async () => {
+        await result.current.fetchPeriods();
+      });
+      await act(async () => {
+        await result.current.toggleLockPeriod('p-1');
+      });
+
+      expect(result.current.periods.find((p) => p.id === 'p-1')?.isLocked).toBe(true);
+      expect(result.current.periods.find((p) => p.id === 'p-2')?.isLocked).toBe(false);
+    });
+
     it('kilitleme sırasında hata oluşursa hatayı dönmeli', async () => {
       server.use(
         http.patch('*/api/timesheets/p-1/lock', () => HttpResponse.json({ message: 'Kilitleme başarısız' }, { status: 500 }))

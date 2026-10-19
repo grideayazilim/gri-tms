@@ -6,6 +6,7 @@
    - Başarısız girişler her denemede değil, eşik aşıldığında bir kez audit_logs'a
      yazılır.
    - Denetim kayıtları 18 aydan sonra otomatik silinir.
+   - Admin'in elle koyduğu dönem kilidi de gece bakımında otomatik açılır.
    ======================================================================== */
 import { describe, it, expect, beforeEach } from 'vitest'
 import request from 'supertest'
@@ -23,7 +24,7 @@ import {
   createResponsibleUser,
 } from '../helpers/testDb.js'
 import { db } from '../../src/config/database.js'
-import { auditLogs, timesheetDays, users } from '../../database/schema.js'
+import { auditLogs, periods, timesheetDays, users } from '../../database/schema.js'
 import { auditLogRepo } from '../../src/repositories/auditLogRepo.js'
 import { __resetFailedLoginCounters } from '../../src/controllers/authController.js'
 import { runNightlyMaintenance } from '../../src/utils/cronJobs.js'
@@ -267,5 +268,51 @@ describe('Gece bakımı — admin koruması', () => {
 
     const [row] = await db.select().from(users).where(eq(users.id, responsible.id))
     expect(row?.status).toBe('EXPIRED')
+  })
+})
+
+/* Admin kilidiyle otomatik kilit arasında ayrım yok: dönem penceresi
+   (başlangıç → bitiş + 5 gün) içindeyse gece bakımı kilidi kimin koyduğuna
+   bakmadan açar. */
+describe('Gece bakımı — dönem kilidi', () => {
+  beforeEach(async () => {
+    await cleanDb()
+  })
+
+  it("admin'in kutudan koyduğu kilit, pencere içindeyse gece açılır", async () => {
+    const admin = await createAdminUser()
+    const period = await createPeriod(2026, 3)
+    await db.update(periods)
+      .set({
+        startDate: sql`current_date - INTERVAL '1 day'`,
+        endDate: sql`current_date + INTERVAL '10 days'`,
+      })
+      .where(eq(periods.id, period.id))
+
+    const res = await request(app)
+      .patch(`/api/timesheets/${period.id}/lock`)
+      .set('Cookie', admin.cookie)
+    expect(res.status).toBe(200)
+    expect(res.body.data.period.isLocked).toBe(true)
+
+    await runNightlyMaintenance()
+
+    const [row] = await db.select().from(periods).where(eq(periods.id, period.id))
+    expect(row?.isLocked).toBe(false)
+  })
+
+  it('penceresi geçmiş dönemin kilidi açılmaz', async () => {
+    const period = await createPeriod(2026, 3, { isLocked: true })
+    await db.update(periods)
+      .set({
+        startDate: sql`current_date - INTERVAL '40 days'`,
+        endDate: sql`current_date - INTERVAL '10 days'`,
+      })
+      .where(eq(periods.id, period.id))
+
+    await runNightlyMaintenance()
+
+    const [row] = await db.select().from(periods).where(eq(periods.id, period.id))
+    expect(row?.isLocked).toBe(true)
   })
 })

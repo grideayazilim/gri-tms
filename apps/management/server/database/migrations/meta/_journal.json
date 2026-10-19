@@ -22,6 +22,13 @@
       "when": 1788171757096,
       "tag": "0002_session_control_and_lock_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792408578915,
+      "tag": "0003_drop_period_lock_reason",
+      "breakpoints": true
     }
   ]
 }

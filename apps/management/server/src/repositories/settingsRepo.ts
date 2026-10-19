@@ -130,10 +130,6 @@ export const settingsRepo = {
           startDate: data.startDate,
           endDate: data.endDate,
           isDeleted: false,
-          /* Program tarihleri değiştiğinde dönem tazelenir; eski MANUAL
-             damgası üzerinde kalırsa gece cron'u o dönemi bir daha asla
-             açamaz ve sorumlular veri giremez. */
-          lockReason: 'AUTO',
         }
       });
   },

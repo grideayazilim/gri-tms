@@ -110,8 +110,6 @@ describe('Sistem sıfırlama', () => {
     // 2027-01 .. 2027-06 → 6 dönem
     expect(rows).toHaveLength(6)
     expect(rows.every((p) => p.year === 2027)).toBe(true)
-    // yeni dönemler AUTO damgasıyla başlar
-    expect(rows.every((p) => p.lockReason === 'AUTO')).toBe(true)
   })
 
   /* Yedeği silme isteğinin içinde üretmek, timeout'ta kopan bağlantıya rağmen

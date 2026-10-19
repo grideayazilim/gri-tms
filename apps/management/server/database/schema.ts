@@ -144,8 +144,6 @@ export const periods = appSchema.table('periods', {
   endDate: date('end_date').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   isLocked: boolean('is_locked').default(true).notNull(), // Kilitli dönemlerde değişiklik yapılamaz
-  // Kilidi kim koydu — gece cron'u yalnızca AUTO kilitleri açar, MANUAL olanlara dokunmaz
-  lockReason: text('lock_reason', { enum: ['AUTO', 'MANUAL'] }).default('AUTO').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   isDeleted: boolean('is_deleted').default(false).notNull(),
 }, (table) => ({

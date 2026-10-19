@@ -1,0 +1,1 @@
+ALTER TABLE "app"."periods" DROP COLUMN "lock_reason";
